@@ -19777,7 +19777,8 @@
     },
     "validation-core": {
       "accepted_members": {
-        "crr-d1-observed-engine-contract-and-dataframe-deferral-1": "0464ce015ae4960166bbfc249fab02d8504fa82b"
+        "crr-d1-observed-engine-contract-and-dataframe-deferral-1": "0464ce015ae4960166bbfc249fab02d8504fa82b",
+        "crr-v0-reference-reader-and-generator": "797f86f0382596d61b1d636e6e3290654de7527a"
       },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
@@ -19792,10 +19793,64 @@
           ],
           "integration_head": "a66e6635e3e91f7ae3341b2c919af82d0f244646",
           "integration_seq": 1
+        },
+        "crr-v0-reference-reader-and-generator": {
+          "accepted_head": "797f86f0382596d61b1d636e6e3290654de7527a",
+          "changed_files": [
+            "Makefile",
+            "_project/scripts/generate_oracle_coverage_map.py",
+            "_project/scripts/generate_ssb_row_count_references.py",
+            "_project/scripts/generate_tpcds_subscale_row_counts.py",
+            "_project/scripts/generate_tpch_subscale_row_counts.py",
+            "_project/scripts/row_count_reference_generation.py",
+            "benchbox/core/dataframe/query_validation.py",
+            "benchbox/core/expected_results/loader.py",
+            "benchbox/core/expected_results/models.py",
+            "benchbox/core/expected_results/reference_digests/tpcds_subscale_row_counts.json",
+            "benchbox/core/expected_results/reference_row_counts/ssb_row_counts_sf0.01.json",
+            "benchbox/core/expected_results/reference_row_counts/ssb_row_counts_sf0.1.json",
+            "benchbox/core/expected_results/reference_row_counts/ssb_row_counts_sf1.json",
+            "benchbox/core/expected_results/reference_row_counts/ssb_row_counts_sf10.json",
+            "benchbox/core/expected_results/reference_row_counts/tpcds_row_counts_sf0.01.json",
+            "benchbox/core/expected_results/reference_row_counts/tpcds_row_counts_sf0.1.json",
+            "benchbox/core/expected_results/reference_row_counts/tpcds_row_counts_sf1.json",
+            "benchbox/core/expected_results/reference_row_counts/tpch_row_counts_sf0.01.json",
+            "benchbox/core/expected_results/reference_row_counts/tpch_row_counts_sf0.1.json",
+            "benchbox/core/expected_results/reference_row_counts/tpch_row_counts_sf1.json",
+            "benchbox/core/expected_results/row_count_references.py",
+            "benchbox/core/expected_results/ssb_results.py",
+            "benchbox/core/expected_results/tpcds_results.py",
+            "benchbox/core/expected_results/tpch_results.py",
+            "benchbox/core/tpcds/power_test.py",
+            "benchbox/core/tpch/benchmark.py",
+            "benchbox/core/tpch/power_test.py",
+            "benchbox/core/validation/query_validation.py",
+            "changelog.d/feat-per-stream-row-count-reference-reader.json",
+            "docs/agent/maintainer-bundles.md",
+            "make/tests.mk",
+            "scripts/generate_corpus_rule_data.py",
+            "scripts/sql_execution_gate/gate.py",
+            "tests/integration/test_ssb_cross_surface_equivalence.py",
+            "tests/unit/cli/test_shipped_docs_urls.py",
+            "tests/unit/core/dataframe/test_query_validation.py",
+            "tests/unit/core/expected_results/test_missing_expected_count.py",
+            "tests/unit/core/expected_results/test_query_id_normalization.py",
+            "tests/unit/core/expected_results/test_row_count_references.py",
+            "tests/unit/core/expected_results/test_singleflight_run_policy.py",
+            "tests/unit/core/expected_results/test_ssb_sql_validation.py",
+            "tests/unit/core/expected_results/test_tpcds_subscale_validation.py",
+            "tests/unit/core/expected_results/test_validation_engine.py",
+            "tests/unit/core/test_query_validation.py",
+            "tests/unit/platforms/dataframe/test_benchmark_mixin.py",
+            "tests/unit/scripts/test_generate_tpch_subscale_row_counts.py",
+            "tests/unit/sql_compat/test_datafusion_fork_rewrites_reference.py"
+          ],
+          "integration_head": "d148520166eb0ccc81532ba2db3024575ae0b564",
+          "integration_seq": 2
         }
       },
       "integration_branch": "feat/validation-core",
-      "integration_head": "a66e6635e3e91f7ae3341b2c919af82d0f244646",
+      "integration_head": "d148520166eb0ccc81532ba2db3024575ae0b564",
       "integration_log": [
         {
           "at": "2026-11-27T14:59:12Z",
@@ -19811,6 +19866,15 @@
           "op_id": "c4ef0cae23d86f015078458430e4b1e8",
           "previous_head": "372f743e84df1422dea5d4926d8338b371be8518",
           "seq": 1
+        },
+        {
+          "at": "2026-11-28T03:31:24Z",
+          "head": "d148520166eb0ccc81532ba2db3024575ae0b564",
+          "kind": "prepare",
+          "member": "crr-v0-reference-reader-and-generator",
+          "op_id": "e436a6d7023cee7cb8ec2d09408a9c00",
+          "previous_head": "a66e6635e3e91f7ae3341b2c919af82d0f244646",
+          "seq": 2
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-validation-core",
@@ -28096,17 +28160,12 @@
       "title": "Site: amend methodology answers 2, 5 and 6 for official mode"
     },
     "crr-v0-reference-reader-and-generator": {
-      "claim": {
-        "expires_at": "2026-11-29T03:31:20Z",
-        "generation": "92351ce566e841b48f78f5a16c696d63",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1aa1b7754325244256f109cf"
-      },
+      "claim": null,
       "needs": [
         "crr-c1-validation-status-vocabulary"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "Land the single row-count reference reader and generator with the SF 0.01, 0.1 and 1 references"
     },
     "crr-v1-row-evidence-roll-up": {
