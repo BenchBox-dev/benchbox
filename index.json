@@ -27935,12 +27935,17 @@
       "title": "Stop the Dask distributed-setup test leaking its replaced Client and LocalCluster into later tests"
     },
     "crr-d2-observed-engine-sql-platforms": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-29T02:27:09Z",
+        "generation": "97d9a025ec6e4e098dcfdd3b4d13935c",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1aa1b7754325244256f109cf"
+      },
       "needs": [
         "crr-d1-observed-engine-contract-and-dataframe"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Record the observed execution engine on the SQL platforms that declare engines"
     },
     "crr-i1-tpcds-q93-empty-sf01": {
