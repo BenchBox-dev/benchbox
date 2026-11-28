@@ -54065,6 +54065,13 @@
       "status": "open",
       "title": "Pin the Theseus release that fixes joeharris76/theseus#77, then close soundness gap #2807"
     },
+    "theseus-adr-0001-known-exceptions-20261126": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Theseus: resolve the three known exceptions to ADR 0001 (consumer domain text, the member schema name, and consumer names in general docs)"
+    },
     "theseus-adr-inventory-baseline-20261102": {
       "claim": null,
       "needs": [
