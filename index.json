@@ -43782,7 +43782,7 @@
       "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "dropped",
       "title": "pr-preflight writes a passed receipt when the run is killed while waiting for the heavy lock"
     },
     "pr-preflight-skips-verified-theseus-tests-20261109": {

@@ -6,6 +6,7 @@
   ],
   "context": "Observed while preparing BenchBox PR #4541. The run was stopped by a harness timeout while it waited for the lock (exit 143), and the receipt for that tree was written as passed. A later full preflight of a newer tree (76f3c65d) ran normally. Out of scope for the derived-paths work; filed at the owner's request.",
   "description": "A make pr-preflight run was killed with exit 143 (SIGTERM) while it was still waiting for the shared heavy-work lock, before any test had run. It still wrote a preflight receipt with status passed for that tree under ~/.cache/benchbox/preflight/<tree>.json. make pr-open trusts that receipt, so a tree no test ever ran against can be opened as preflighted.",
+  "drop_reason": "Duplicate of preflight-receipt-passes-when-killed-20261125; this occurrence (a kill during the heavy-lock wait that left a passed receipt) and its lock-wait test requirement are recorded in that item's context and acceptance. Filed at the owner's request; this merge keeps the evidence.",
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:0a697a35e720a04d19e44a28",
@@ -14,6 +15,14 @@
       "op": "create",
       "op_id": "34f7d61d06b1f54ecd87d8b9eb039df2",
       "session_id": "25f1c82986254513a0ef576dc2985dfb"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4ee2124a787b6f05e0bc0950",
+      "at": "2026-11-28T13:04:09Z",
+      "client": "omp-coding-agent",
+      "op": "drop",
+      "op_id": "15d4cd93779833b1e8b8c1ab70c379e6",
+      "session_id": "1d89ef118510408e88eb75fe7b796609"
     }
   ]
 }
