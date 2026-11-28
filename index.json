@@ -17024,20 +17024,60 @@
       "terminal_outcome": "deliver"
     },
     "tpcdi-incremental": {
-      "accepted_members": {},
+      "accepted_members": {
+        "tpcdi-incremental-dimensions-20261121": "86ec6bd28315eabfd8fd7a83d8492a180af89bc8"
+      },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
-      "integrated_members": {},
+      "integrated_members": {
+        "tpcdi-incremental-dimensions-20261121": {
+          "accepted_head": "86ec6bd28315eabfd8fd7a83d8492a180af89bc8",
+          "changed_files": [
+            "benchbox/core/tpcdi/etl/DEPARTURES.yaml",
+            "benchbox/core/tpcdi/etl/PROVENANCE.json",
+            "benchbox/core/tpcdi/etl/historical.py",
+            "benchbox/core/tpcdi/etl/historical/prospect.sql",
+            "benchbox/core/tpcdi/etl/incremental.py",
+            "benchbox/core/tpcdi/etl/incremental/dim_account.sql",
+            "benchbox/core/tpcdi/etl/incremental/dim_customer.sql",
+            "benchbox/core/tpcdi/etl/incremental/ingest/account.sql",
+            "benchbox/core/tpcdi/etl/incremental/ingest/customer.sql",
+            "benchbox/core/tpcdi/etl/incremental/prospect.sql",
+            "benchbox/core/tpcdi/etl/staging.py",
+            "benchbox/core/tpcdi/phases.py",
+            "changelog.d/feat-tpcdi-incremental--tpcdi-incremental-dimensions-20261121.json",
+            "docs/internal/tpcdi-duckdb-comparison.md",
+            "tests/integration/core/test_tpcdi_etl_incremental_dims_digen_output.py",
+            "tests/integration/core/test_tpcdi_etl_staging_digen_output.py",
+            "tests/unit/core/tpcdi/test_etl_historical.py",
+            "tests/unit/core/tpcdi/test_etl_incremental.py",
+            "tests/unit/core/tpcdi/test_etl_staging.py",
+            "tests/unit/sql_compat/golden_corpus/area_tpcdi_etl.py",
+            "tests/unit/sql_compat/golden_corpus/frozen/area_tpcdi_etl.json"
+          ],
+          "integration_head": "2c4be7defd701570fbb4361bb513b883a27bae2c",
+          "integration_seq": 1
+        }
+      },
       "integration_branch": "feat/tpcdi-incremental",
-      "integration_head": "18bcc9697b575a1b09049158d82bf42092873e05",
+      "integration_head": "2c4be7defd701570fbb4361bb513b883a27bae2c",
       "integration_log": [
         {
           "at": "2026-11-28T02:18:52Z",
           "head": "18bcc9697b575a1b09049158d82bf42092873e05",
           "kind": "start",
           "seq": 0
+        },
+        {
+          "at": "2026-11-28T02:56:39Z",
+          "head": "2c4be7defd701570fbb4361bb513b883a27bae2c",
+          "kind": "prepare",
+          "member": "tpcdi-incremental-dimensions-20261121",
+          "op_id": "172f2877b1bd4c728307b55ce296f64b",
+          "previous_head": "18bcc9697b575a1b09049158d82bf42092873e05",
+          "seq": 1
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpcdi-incremental",
@@ -55218,17 +55258,12 @@
       "title": "TPC-DI step 16: historical load, trade and fact tables"
     },
     "tpcdi-incremental-dimensions-20261121": {
-      "claim": {
-        "expires_at": "2026-11-29T02:56:35Z",
-        "generation": "cd0a04fc792549cdb907c78c0dd02832",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d9c82d4657b7a4cbcbfb0e73"
-      },
+      "claim": null,
       "needs": [
         "tpcdi-correct-stale-claims-and-surfaces-20261121"
       ],
       "priority": "medium-high",
-      "status": "active",
+      "status": "open",
       "title": "TPC-DI step 22: incremental updates, dimension tables"
     },
     "tpcdi-incremental-facts-20261121": {
