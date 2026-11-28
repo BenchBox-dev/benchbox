@@ -46583,6 +46583,13 @@
       "status": "done",
       "title": "Correct the release guide on when to move the accounting literal and the changelog compare link"
     },
+    "release-line-pre-derived-paths-tags-limit-20261126": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Record and document that maintenance lines start only from tags that carry the baseline reproduce job"
+    },
     "release-prep-tooling-leaves-lock-stale-and-overflows-changelog-20261101": {
       "claim": null,
       "needs": [],

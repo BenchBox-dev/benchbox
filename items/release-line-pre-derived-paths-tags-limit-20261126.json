@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "The owner's decision (keep the refusal) is recorded in context, quoted with its date and source (the owner's choice-dialog answer, 2026-11-25).",
+    "`docs/internal/release-guide.md`, in the maintenance-line section, states that lines start only from tags at or after `c160353cd9`, and why."
+  ],
+  "description": "#### Problem\n#4541 made `scripts/release_artifact_consumer.py` refuse to create a `release/X.Y.x` line whose `ci.yml` does not attest the carried `.github/review.yml` `evidence.derived_paths`. The check is `_verify_derived_paths_attested`, around lines 767 and 816–831.\n- Every existing tag predates that job; the latest is `v0.5.2rc3` (`6440800e8c`, 2026-11-18). So no maintenance line can be created from any of them.\n- No `release/*` branch exists today.\n- The owner chose to keep the refusal (no maintenance line from tags before the change, such as v0.5.1, and no stripping of `derived_paths`). The choice was the owner's answer in a choice dialog during the derived-path work, 2026-11-25, before #4541 was opened. It is not yet recorded in the tracker, in #4541's body or in the release docs; this item records it.\n\n#### Change\n1. Record the owner's choice here with its date.\n2. State the limit in `docs/internal/release-guide.md`, in the maintenance-line section starting at line 138 (\"A maintenance line ships a fix on an older minor…\"): a line may start only from a tag at or after `c160353cd9`, and the refusal message names the missing job.\n\n#### Decision gates\n- If a maintenance line from an older tag is ever needed, the owner chooses between stripping `derived_paths` during line creation and carrying the reproduce job. Code changes happen only after that choice.\n\n#### Guardrails\n- Make no code change under the current decision.\n- Never bypass the refusal by hand-editing a line's `review.yml`.\n\n#### Verification rubric\n- **Pass:** this item records the decision, and `docs/internal/release-guide.md` (maintenance-line section) states the limit and the oldest eligible commit.\n- **Fail:** a line created from an older tag without an owner decision.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4ee2124a787b6f05e0bc0950",
+      "at": "2026-11-28T13:03:28Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "932706b79abfe6fd2eb02409e971b3ad",
+      "session_id": "1d89ef118510408e88eb75fe7b796609"
+    }
+  ]
+}
