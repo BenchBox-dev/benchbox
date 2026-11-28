@@ -4,7 +4,7 @@
     "heavy-work.md forbids pattern kills of shared entry points (and AGENTS.md if the owner chooses).",
     "Receipts written 2026-11-25 12:30-14:00 checked; any passed receipt without test steps reported."
   ],
-  "context": "Filed 2026-11-26. Related: preflight-receipt-passes-when-killed-20261125, preflight-receipt-passed-without-tests-on-termination-20261123, local-review-rebuttal-needs-same-head-and-preflight-kill-20261111 (resumable preflight), pr-preflight-honours-heavy-admit-wait-20261124.",
+  "context": "Filed 2026-11-26. Related: preflight-receipt-passes-when-killed-20261125, preflight-receipt-passed-without-tests-on-termination-20261123, local-review-rebuttal-needs-same-head-and-preflight-kill-20261111 (resumable preflight), pr-preflight-honours-heavy-admit-wait-20261124.\n\nOwner decision 2026-11-26. G1: put the full rule in docs/agent/heavy-work.md, plus one line in AGENTS.md pointing to it. The receipt bug now lives only in preflight-receipt-passes-when-killed-20261125, because its two duplicates were merged into it and dropped on 2026-11-28; G2 refers to that item.",
   "description": "## Problem\nOn 2026-11-25, between about 13:00 and 13:30 local time, an agent clearing its own stuck preflight ran `pkill -f \"make pr-preflight\"`. The pattern matched every session's `make pr-preflight` on the host, so other sessions' preflights were killed. Nothing in docs/agent/heavy-work.md or the make targets offers a way to stop only the preflight started from one worktree, and nothing forbids pattern kills of shared entry points. Two open items make this worse: preflight-receipt-passes-when-killed-20261125 and preflight-receipt-passed-without-tests-on-termination-20261123 report that a killed preflight can write a passed receipt, so a killed run may have left a receipt that should not exist.\n\n## Change\n1. Add a make target that cancels only the preflight (and its host-lock wrapper and children) started from the current worktree, identified from the lock record or a per-worktree pid file, and records the receipt as failed.\n2. Add a rule to docs/agent/heavy-work.md: never stop shared entry points with pattern kills (pkill -f, killall); use the scoped target.\n3. Using the receipt location in docs/agent/preflight-receipt.md, check the receipts written on 2026-11-25 between 12:30 and 14:00 for passed receipts without test steps, and report them.\n\n## Decision gates\n- G1: the owner decides whether the rule is also added to AGENTS.md (an authority file kept deliberately compact) or stays in heavy-work.md.\n- G2: if the receipt fix in preflight-receipt-passes-when-killed-20261125 is not yet merged, the cancel target must still mark its receipt failed itself; do not depend on that item.\n\n## Verification rubric\nPass only if: a test runs two preflight-shaped processes from different worktrees and shows the target stops only its own, releases the host lock, leaves the other running, and records a failed receipt; the docs rule is merged; the receipt check result is recorded in context.\n\n## Guardrails\n- Never move, delete or recreate the lock file; never set BENCHBOX_SKIP_TEST_LOCK, BENCHBOX_HEAVY_ADMIT=force or BENCHBOX_HEAVY_WATCHDOG=off.\n- The target never signals processes outside the current worktree's process tree.\n- Write work: linked worktree, pinned human identity, no agent attribution, make pr-preflight, make pr-open, make pr-arm.",
   "sessions": [
     {
@@ -22,6 +22,14 @@
       "op": "update",
       "op_id": "8d33319d33f54f0e8f87f0670417a2f1",
       "session_id": "1f0f3dea42f44058a5594bfcbaa33b2f"
+    },
+    {
+      "actor": "mcp:mcp:joe@joe-mac-mini.local:259249b58788a610c8029065",
+      "at": "2026-11-28T13:23:46Z",
+      "client": "mcp",
+      "op": "update",
+      "op_id": "7c018f07f93d174f3f0599db2fe89255",
+      "session_id": "49b3af7b23b24d078d3824336f3bb7c4"
     }
   ]
 }
