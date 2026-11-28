@@ -1,4 +1,4 @@
 {
   "schema": 1,
-  "internal": "Add a dialect_utils entry point that lists the named parameters of parsed SQL, so callers bind parameters without parsing SQL themselves"
+  "internal": "Add a dialect_utils entry point that lists named SQL parameters for DuckDB and BigQuery"
 }

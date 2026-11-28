@@ -838,13 +838,18 @@ def placeholder_names(sql: str, dialect: str) -> list[str]:
 
     resolved = resolve_sql_dialect(dialect)
     exp = sqlglot.exp
-    bind_types = (exp.Placeholder, exp.Parameter) if resolved in ("bigquery", "sqlite") else (exp.Placeholder,)
+    if resolved == "duckdb":
+        bind_type = exp.Placeholder
+    elif resolved == "bigquery":
+        bind_type = exp.Parameter
+    else:
+        raise ValueError(f"Named SQL parameter discovery is not supported for {resolved}")
     return sorted(
         {
             bind.name
             for statement in sqlglot.parse(sql, read=resolved)
             if statement is not None
-            for bind in statement.find_all(*bind_types)
+            for bind in statement.find_all(bind_type)
             if isinstance(bind.this, (str, exp.Identifier, exp.Var))
             and not (isinstance(bind.this, str) and bind.this.isdecimal())
             and not isinstance(bind.parent, exp.Parameter)

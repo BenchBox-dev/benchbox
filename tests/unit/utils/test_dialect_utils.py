@@ -1099,9 +1099,12 @@ def test_doris_rollup_rewrite_preserves_with_clause_and_limit():
         ("SELECT ?, $1", "duckdb", []),
         ("DROP TABLE t", "duckdb", []),
         ("SELECT @RunKey, @`odd-name`, @@project_id", "bigquery", ["RunKey", "odd-name"]),
-        ("SELECT :name, @other", "sqlite", ["name", "other"]),
-        ("SELECT @user, @@version", "mysql", []),
     ],
 )
 def test_placeholder_names_come_from_the_parsed_statement(sql, dialect, names):
     assert placeholder_names(sql, dialect) == names
+
+
+def test_placeholder_names_refuses_unverified_dialects():
+    with pytest.raises(ValueError, match="sqlite"):
+        placeholder_names("SELECT $batch_id", "sqlite")
