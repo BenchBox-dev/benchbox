@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "Run the three-batch TPC-DI power path on DuckDB with visibility queries, a validity rule and an audit that evaluates every test after Batch 3; TPC-DI stays unavailable and no result reads PASSED"
+}

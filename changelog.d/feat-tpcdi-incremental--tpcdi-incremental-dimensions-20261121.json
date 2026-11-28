@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "Add the TPC-DI incremental update architecture and the Batch 2 and 3 updates of DimCustomer, DimAccount and Prospect on DuckDB, and require an active customer for Prospect.IsCustomer"
+}

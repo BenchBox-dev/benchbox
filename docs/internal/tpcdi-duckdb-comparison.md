@@ -295,6 +295,123 @@ from a copy of staging with the manifest check bypassed) each make the run
 FAILED and are refused by `publish_admission`; the same copy is refused by the
 manifest check when it is not bypassed.
 
+## Incremental updates of the dimension tables (2026-11-27)
+
+`phases.run_incremental_update(connection, staging, batch_id)` runs one
+incremental update (BatchID 2 or 3). It refuses to run unless the latest
+`DImessages` BatchID is the previous batch, loads only that batch's
+`BatchDate.txt`, `Prospect.csv`, `Customer.txt` and `Account.txt` into the raw
+tables (`ProspectRaw`, `CustomerRaw`, `AccountRaw`, each replaced by the batch),
+runs the DimCustomer, DimAccount and Prospect transformations and closes the
+phase with Appendix B. Each transformation filters its raw tables on the batch
+of its phase and runs as one transaction, so a failed step leaves no expired
+record behind. The transformations expire and insert; no column other than
+`IsCurrent` and `EndDate` of an existing record is written.
+
+Rules where BenchBox follows the specification and the Databricks project does not:
+
+- a change that comes only from `Prospect.csv` expires the current DimCustomer
+  record and inserts a new one, and the customer's current accounts follow it;
+- the last row of a customer or account in the CDC file decides its change
+  record, and the fields of an Account.txt row are copied as given;
+- Prospect rows are updated in place by `AgencyID` and new agencies inserted;
+  an agency missing from a later file is kept;
+- `Prospect.BatchID` is the batch that inserted the row or last changed one of
+  its values, and a row that is only seen again gets a new `SK_RecordDateID`;
+- `Prospect.IsCustomer` requires a current DimCustomer record whose status is
+  Active, in the historical load as well;
+- a customer made inactive makes its accounts inactive.
+
+The warehouses of the implementation that are on disk hold Batch 1 only, so the
+incremental dimension tables are not compared with them; the check is the
+official audit, run with `latest_batch=3` after both updates
+(`tests/integration/core/test_tpcdi_etl_incremental_dims_digen_output.py`).
+
+| Scale | Dimension audit rows not OK | DimCustomer rows added (Batch 2 / 3) | DimAccount rows added | Prospect rows inserted |
+|---|---|---|---|---|
+| 3 | 0 of 58 | 19 / 22 | 44 / 57 | 18 / 18 |
+| 5 | 0 of 58 | 32 / 37 | 69 / 79 | 29 / 30 |
+
+The three `<table> batches` rows are evaluable only after the audit counts every
+batch; the full power run below reads them as evaluable.
+
+## Incremental updates of the trade, cash, holding, watch and market tables
+
+`run_incremental_update` also loads `Trade.txt`, `CashTransaction.txt`,
+`HoldingHistory.txt`, `WatchHistory.txt` and `DailyMarket.txt` of the batch into
+their raw tables (each replaced by the batch) and runs DimTrade, FactCashBalances,
+FactHoldings, FactWatches and FactMarketHistory after the dimensions, in that
+order. Every raw-table read is filtered on the batch of the phase.
+
+- DimTrade takes the last row of each trade in CDC order as its current values.
+  A trade that is already in the table is updated; a trade with an `I` row that is
+  not yet in the table is inserted with the current security and account records.
+  An update never changes a surrogate key or the create date and time keys, but
+  sets `BatchID` to the batch of the update, so a trade created in Batch 1 and
+  closed in Batch 2 carries BatchID 2. The specification (4.6.7.2) fixes BatchID
+  at creation; Appendix A's `DimTrade date check` requires the later value
+  (departure `dimtrade-batchid-of-last-update`).
+- FactHoldings joins DimTrade on the trade identifier alone.
+- FactCashBalances adds the net of the batch's transactions to the latest balance
+  of the account, found through any surrogate key of the account, and is dated at
+  the batch date.
+- FactWatches inserts a row for each watch activated in the batch and sets the
+  removal date of an open row for a watch that is only cancelled, matched through
+  any customer and security record.
+- FactMarketHistory computes the 52-week values over the batch's rows and the rows
+  already in FactMarketHistory (symbol through DimSecurity, date through DimDate),
+  with the security, company and dividend of the current records.
+
+The warehouses of the implementation that are on disk hold Batch 1 only, so these
+tables are checked by the official audit run with `latest_batch=3`
+(`tests/integration/core/test_tpcdi_etl_incremental_facts_digen_output.py`).
+
+## Full three-batch power run (2026-11-28)
+
+`scripts/tpcdi/run_phases.py` now runs initialization, the historical load, both
+incremental updates with the visibility queries, and the audit through the DuckDB
+adapter, and prints the status, the audit failures, the validity reasons, the
+visibility gaps and the three timed rows. The CLI still refuses TPC-DI.
+
+The timed rows are `TDI_HISTORICAL` (historical completion record minus
+initialization), `TDI_INCREMENTAL_1` and `TDI_INCREMENTAL_2` (each from the previous
+phase's completion record), all differences of monotonic times read when Appendix B
+committed. The power-test duration spans initialization to the last update.
+
+Appendix C runs on a second session (a cursor of the DuckDB connection, opened on
+the main thread and used only by the visibility thread): Visibility_1 at the start of
+update 1, Visibility_2 every 60 seconds and once at the boundary between the
+updates, none after the last completion record, and a final Visibility_1 when the
+audit phase starts. A start-to-start gap (update 1 start, first Visibility_1, each
+Visibility_2, update 2 end) of more than 65 seconds (60 plus 5 seconds of lateness)
+is late. A transaction conflict on the visibility session is retried once and the
+retry is recorded; none occurred at scales 3 and 5.
+
+A run is not valid when a visibility query is missing, failed or late, or when an
+update's time, rounded up to a tenth of a second, is over 3600 seconds; it reads
+FAILED and the reasons are in `validation_details.tpcdi_audit.validity`. An update
+under 1800 seconds is valid and flagged `below_1800_seconds`. A valid run with no
+failed audit test reads NOT_VALIDATED; no TPC-DI result reads PASSED.
+
+The audit now counts every batch: the tests that need 3 batches or 4 completion
+records are evaluable when the latest batch is 3, and the whole-run sums have no
+rows for a later batch, so no test is excluded.
+
+| Scale | Audit rows OK | Excluded tests | Status | Historical load | Update 1 | Update 2 | Visibility gaps |
+|---|---|---|---|---|---|---|---|
+| 3 | 258 of 258 | 0 | NOT_VALIDATED, valid | 4.67 s | 0.49 s | 0.47 s | 0.01 s, 0.48 s, 0.47 s |
+| 5 | 258 of 258 | 0 | NOT_VALIDATED, valid | 7.26 s | 0.65 s | 0.60 s | 0.01 s, 0.64 s, 0.60 s |
+
+The 22 `Data visibility` audit rows have visibility messages to compare for the first
+time (Visibility_1 for Batches 1 and 3, Visibility_2 for Batch 2). Negative controls
+in `tests/integration/core/test_tpcdi_phases_digen_output.py` each make the run
+FAILED and are refused by `publish_admission`: an invalid trade type, a suppressed
+Batch 1 customer-tier alert, an extra Batch 2 customer-tier alert, one Trade row
+removed or the Batch 2 Customer file cut to one row in a copy of staging (manifest check
+bypassed), the incremental limit lowered to 0.001 s, Visibility_2 never run, and
+every gap made late. One missing Batch 2 Customer row is not caught: the audit
+requires at least the Audit table's row count and the prospect-only changes add rows.
+
 ## Results of the early run (2026-11-22)
 
 Staging by BenchBox at `24b7592956` with Zulu 8, DIGen 1.1.0, tools SHA-256

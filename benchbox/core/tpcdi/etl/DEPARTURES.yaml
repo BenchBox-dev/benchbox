@@ -12,6 +12,10 @@ departures:
       - benchbox/core/tpcdi/etl/historical/dim_security.sql
       - benchbox/core/tpcdi/etl/historical/financial.sql
       - benchbox/core/tpcdi/etl/historical/fact_market_history.sql
+      - benchbox/core/tpcdi/etl/incremental/ingest/trade.sql
+      - benchbox/core/tpcdi/etl/incremental/ingest/cash_transaction.sql
+      - benchbox/core/tpcdi/etl/incremental/ingest/daily_market.sql
+      - benchbox/core/tpcdi/etl/incremental/fact_market_history.sql
       - benchbox/core/tpcdi/etl/staging.py
     status: implemented
     approval: approved
@@ -31,12 +35,19 @@ departures:
     kind: changed
     clause: "4.3.5.5"
     project_behaviour: "The ingestion notebooks read Batch1 together with Batch2 and Batch3 (DailyMarket, Prospect, CashTransaction, BatchDate) and precompute work for later batches."
-    benchbox_behaviour: "Every ingestion statement names the Batch1 directory only; the batch number of each row comes from the path of the file it was read from."
+    benchbox_behaviour: "Each phase reads only the directory of its own batch (Batch1 for the historical load, BatchN for incremental update N); the batch number of each row comes from the path of the file it was read from, and every incremental transformation filters its raw tables on the batch of its phase."
     files:
       - benchbox/core/tpcdi/etl/ingest/batch_date.sql
       - benchbox/core/tpcdi/etl/ingest/prospect.sql
       - benchbox/core/tpcdi/etl/ingest/daily_market.sql
       - benchbox/core/tpcdi/etl/ingest/cash_transaction.sql
+      - benchbox/core/tpcdi/etl/incremental/ingest/customer.sql
+      - benchbox/core/tpcdi/etl/incremental/ingest/account.sql
+      - benchbox/core/tpcdi/etl/incremental/ingest/trade.sql
+      - benchbox/core/tpcdi/etl/incremental/ingest/cash_transaction.sql
+      - benchbox/core/tpcdi/etl/incremental/ingest/holding_history.sql
+      - benchbox/core/tpcdi/etl/incremental/ingest/watch_history.sql
+      - benchbox/core/tpcdi/etl/incremental/ingest/daily_market.sql
     status: implemented
     approval: approved
 
@@ -85,6 +96,11 @@ departures:
       - benchbox/core/tpcdi/etl/ingest/watch_history.sql
       - benchbox/core/tpcdi/etl/ingest/cash_transaction.sql
       - benchbox/core/tpcdi/etl/ingest/daily_market.sql
+      - benchbox/core/tpcdi/etl/incremental/ingest/trade.sql
+      - benchbox/core/tpcdi/etl/incremental/ingest/holding_history.sql
+      - benchbox/core/tpcdi/etl/incremental/ingest/watch_history.sql
+      - benchbox/core/tpcdi/etl/incremental/ingest/cash_transaction.sql
+      - benchbox/core/tpcdi/etl/incremental/ingest/daily_market.sql
     status: implemented
     approval: approved
 
@@ -116,6 +132,7 @@ departures:
     benchbox_behaviour: "Yield is the dividend divided by the closing price, multiplied by 100."
     files:
       - benchbox/core/tpcdi/etl/historical/fact_market_history.sql
+      - benchbox/core/tpcdi/etl/incremental/fact_market_history.sql
     status: implemented
     approval: approved
 
@@ -126,6 +143,7 @@ departures:
     benchbox_behaviour: "The 52-week high and low are taken over the dates after DM_DATE minus one year."
     files:
       - benchbox/core/tpcdi/etl/historical/fact_market_history.sql
+      - benchbox/core/tpcdi/etl/incremental/fact_market_history.sql
     status: implemented
     approval: approved
 
@@ -136,16 +154,18 @@ departures:
     benchbox_behaviour: "The earliest date on which the value occurs in the window is stored."
     files:
       - benchbox/core/tpcdi/etl/historical/fact_market_history.sql
+      - benchbox/core/tpcdi/etl/incremental/fact_market_history.sql
     status: implemented
     approval: approved
 
-  - id: dimtrade-batchid-fixed-at-creation
-    kind: changed
-    clause: "4.6.7.2"
-    project_behaviour: "DimTrade.BatchID is overwritten with the batch of the last update."
-    benchbox_behaviour: "DimTrade.BatchID keeps the batch that created the row."
-    files: []
-    status: pending
+  - id: dimtrade-batchid-of-last-update
+    kind: kept
+    clause: "4.6.7.2, 7.2.6.7"
+    project_behaviour: "DimTrade.BatchID is overwritten with the batch of the last update; every surrogate key and the create date and time keys stay as set when the trade was created."
+    benchbox_behaviour: "Kept. The specification (4.6.7.2) says BatchID is set when the record is created, but Appendix A's DimTrade date check, which the official audit requires to pass, expects a trade that was created in an earlier batch and closed in a later one to carry the later BatchID. A trade update therefore sets BatchID to the batch of the update and changes no SK_ field other than the close date and time keys."
+    files:
+      - benchbox/core/tpcdi/etl/incremental/dim_trade.sql
+    status: implemented
     approval: approved
 
   - id: prospect-status-messages
@@ -163,8 +183,9 @@ departures:
     clause: "4.6.14.2"
     project_behaviour: "The incremental Prospect transformation writes no status message to DImessages."
     benchbox_behaviour: "The incremental Prospect transformation writes its source, inserted and updated row counts to DImessages with the BatchID of its phase."
-    files: []
-    status: pending
+    files:
+      - benchbox/core/tpcdi/etl/incremental/prospect.sql
+    status: implemented
     approval: approved
 
   - id: answer-key-corrected-at-audit-load
@@ -181,10 +202,11 @@ departures:
     kind: changed
     clause: "4.5.3.3, 4.5.4.4, 4.5.4.5"
     project_behaviour: "Alerts for invalid SPRating, invalid customer tier and date of birth are written in one pass after Batch 3, read back from the finished dimension tables, with the time of that pass."
-    benchbox_behaviour: "The DimCompany and DimCustomer transformations write their alerts to DImessages from the source records they process, in the historical phase, with BatchID 1."
+    benchbox_behaviour: "The DimCompany and DimCustomer transformations write their alerts to DImessages from the source records they process, in the phase that processes them, with the BatchID of that phase."
     files:
       - benchbox/core/tpcdi/etl/historical/dim_company.sql
       - benchbox/core/tpcdi/etl/historical/dim_customer.sql
+      - benchbox/core/tpcdi/etl/incremental/dim_customer.sql
     status: implemented
     approval: approved
 
@@ -192,10 +214,11 @@ departures:
     kind: changed
     clause: "4.5.3.3, 4.5.4.4, 4.5.4.5"
     project_behaviour: "SPRating and date-of-birth alerts are made distinct, so a company or customer whose records repeat the same invalid value gets one alert; the tier alert is written once per customer from its last record."
-    benchbox_behaviour: "One alert is written for each CMP record with an invalid SPRating and for each NEW or UPDCUST action with an invalid tier or date of birth. A NEW action without a tier is invalid; an UPDCUST action without a tier changes nothing and raises no alert."
+    benchbox_behaviour: "One alert is written for each CMP record with an invalid SPRating and for each NEW or UPDCUST action with an invalid tier or date of birth. A NEW action without a tier is invalid; an UPDCUST action without a tier changes nothing and raises no alert. In an incremental update one alert is written for each Customer.txt row, I or U, because every CDC row is a full image: a row without a tier is invalid. One DimTrade alert is written for each Trade.txt row whose commission or fee exceeds the trade value."
     files:
       - benchbox/core/tpcdi/etl/historical/dim_company.sql
       - benchbox/core/tpcdi/etl/historical/dim_customer.sql
+      - benchbox/core/tpcdi/etl/incremental/dim_customer.sql
     status: implemented
     approval: approved
 
@@ -206,6 +229,7 @@ departures:
     benchbox_behaviour: "A date of birth is out of range when it is before the batch date minus 100 years, or after the batch date."
     files:
       - benchbox/core/tpcdi/etl/historical/dim_customer.sql
+      - benchbox/core/tpcdi/etl/incremental/dim_customer.sql
     status: implemented
     approval: approved
 
@@ -219,6 +243,8 @@ departures:
       - benchbox/core/tpcdi/etl/historical/dim_security.sql
       - benchbox/core/tpcdi/etl/historical/dim_customer.sql
       - benchbox/core/tpcdi/etl/historical/dim_account.sql
+      - benchbox/core/tpcdi/etl/incremental/dim_customer.sql
+      - benchbox/core/tpcdi/etl/incremental/dim_account.sql
     status: implemented
     approval: approved
 
@@ -231,6 +257,8 @@ departures:
       - benchbox/core/tpcdi/etl/historical/dim_company.sql
       - benchbox/core/tpcdi/etl/historical/dim_customer.sql
       - benchbox/core/tpcdi/etl/historical/dim_account.sql
+      - benchbox/core/tpcdi/etl/incremental/dim_customer.sql
+      - benchbox/core/tpcdi/etl/incremental/dim_account.sql
     status: implemented
     approval: approved
 
@@ -275,6 +303,7 @@ departures:
     benchbox_behaviour: "TaxRate is left-joined, so every customer record is kept and a missing rate stays NULL."
     files:
       - benchbox/core/tpcdi/etl/historical/dim_customer.sql
+      - benchbox/core/tpcdi/etl/incremental/dim_customer.sql
     status: implemented
     approval: approved
 
@@ -285,18 +314,21 @@ departures:
     benchbox_behaviour: "The country code is written only together with an area code; with no area code the phone number is the local number, followed by the extension."
     files:
       - benchbox/core/tpcdi/etl/ingest/customer_mgmt.sql
+      - benchbox/core/tpcdi/etl/incremental/ingest/customer.sql
     status: implemented
     approval: approved
 
   - id: prospect-demographics-matched-by-name-and-address
     kind: kept
     clause: "4.5.4, 4.5.15"
-    project_behaviour: "DimCustomer takes AgencyID, CreditRating, NetWorth and MarketingNameplate from the Batch 1 prospect file, and Prospect.IsCustomer is set from current DimCustomer records, both matched case-insensitively on first name, last name, both address lines and postal code."
-    benchbox_behaviour: "Kept. MarketingNameplate is computed once, when the prospect file is read."
+    project_behaviour: "DimCustomer takes AgencyID, CreditRating, NetWorth and MarketingNameplate from the prospect file, and Prospect.IsCustomer is set from current DimCustomer records, both matched case-insensitively on first name, last name, both address lines and postal code."
+    benchbox_behaviour: "Kept for DimCustomer, whose incremental records take the demographics from the prospect file of the batch first and from the Prospect table second. MarketingNameplate is computed once, when the prospect file is read. Prospect.IsCustomer is set as prospect-is-customer-needs-active-status says."
     files:
       - benchbox/core/tpcdi/etl/ingest/prospect.sql
       - benchbox/core/tpcdi/etl/historical/dim_customer.sql
       - benchbox/core/tpcdi/etl/historical/prospect.sql
+      - benchbox/core/tpcdi/etl/incremental/dim_customer.sql
+      - benchbox/core/tpcdi/etl/incremental/prospect.sql
     status: implemented
     approval: approved
 
@@ -307,6 +339,7 @@ departures:
     benchbox_behaviour: "PERatio divides the close by the sum of FI_BASIC_EPS over the company's Financial rows whose quarter starts in the four calendar quarters before the quarter of DM_DATE."
     files:
       - benchbox/core/tpcdi/etl/historical/fact_market_history.sql
+      - benchbox/core/tpcdi/etl/incremental/fact_market_history.sql
     status: implemented
     approval: approved
 
@@ -317,6 +350,7 @@ departures:
     benchbox_behaviour: "DimTrade joins StatusType and TradeType and stores ST_NAME and TT_NAME."
     files:
       - benchbox/core/tpcdi/etl/historical/dim_trade.sql
+      - benchbox/core/tpcdi/etl/incremental/dim_trade.sql
     status: implemented
     approval: approved
 
@@ -324,10 +358,12 @@ departures:
     kind: changed
     clause: "4.5.8.3, 4.5.8.4, 4.5.11.3"
     project_behaviour: "Commission, fee and missing-earnings alerts are written in one pass after Batch 3, read back from DimTrade and FactMarketHistory, distinct per trade or symbol, with the time of that pass."
-    benchbox_behaviour: "The DimTrade and FactMarketHistory transformations write one alert per source record they process, in the historical phase, with BatchID 1."
+    benchbox_behaviour: "The DimTrade and FactMarketHistory transformations write one alert per source record they process, in the phase that processes it, with the BatchID of that phase."
     files:
       - benchbox/core/tpcdi/etl/historical/dim_trade.sql
       - benchbox/core/tpcdi/etl/historical/fact_market_history.sql
+      - benchbox/core/tpcdi/etl/incremental/dim_trade.sql
+      - benchbox/core/tpcdi/etl/incremental/fact_market_history.sql
     status: implemented
     approval: approved
 
@@ -341,6 +377,8 @@ departures:
       - benchbox/core/tpcdi/etl/historical/fact_cash_balances.sql
       - benchbox/core/tpcdi/etl/historical/fact_holdings.sql
       - benchbox/core/tpcdi/etl/historical/fact_watches.sql
+      - benchbox/core/tpcdi/etl/incremental/dim_trade.sql
+      - benchbox/core/tpcdi/etl/incremental/fact_watches.sql
     status: implemented
     approval: approved
 
@@ -351,6 +389,7 @@ departures:
     benchbox_behaviour: "The placement date is the earliest ACTV record; the removal date is the latest CNCL record."
     files:
       - benchbox/core/tpcdi/etl/historical/fact_watches.sql
+      - benchbox/core/tpcdi/etl/incremental/fact_watches.sql
     status: implemented
     approval: approved
 
@@ -368,8 +407,136 @@ departures:
     kind: changed
     clause: "4.5.1, 4.6.1.3"
     project_behaviour: "An INACT action changes only the customer record; the customer's accounts keep the status of their own last account action."
-    benchbox_behaviour: "From the date of an INACT action every account record of the customer is Inactive, as the INACT action and Appendix A's DimAccount inactive customers check require."
+    benchbox_behaviour: "From the date of an INACT action every account record of the customer is Inactive, as the INACT action and Appendix A's DimAccount inactive customers check require. The incremental DimAccount applies the same rule: when the customer's new record is Inactive and its previous record was not, the customer's account records become Inactive."
     files:
       - benchbox/core/tpcdi/etl/historical/dim_account.sql
+      - benchbox/core/tpcdi/etl/incremental/dim_account.sql
+    status: implemented
+    approval: approved
+
+  - id: prospect-is-customer-needs-active-status
+    kind: changed
+    clause: "4.5.15, 4.6.14"
+    project_behaviour: "Prospect.IsCustomer is true when a current DimCustomer record matches the prospect by name and address, whatever the status of the customer."
+    benchbox_behaviour: "Prospect.IsCustomer is true only when the matching current DimCustomer record has the status Active, found through the StatusType code ACTV. The incremental transformation recomputes the flag for every prospect after the customer and account steps, including agencies that are absent from the batch's file."
+    files:
+      - benchbox/core/tpcdi/etl/historical/prospect.sql
+      - benchbox/core/tpcdi/etl/incremental/prospect.sql
+    status: implemented
+    approval: approved
+
+  - id: prospect-batchid-of-last-change
+    kind: kept
+    clause: "4.4.2, 4.6.14.1"
+    project_behaviour: "Prospect.BatchID is the batch that inserted the row or last changed one of its values; a row that is only seen again keeps its BatchID."
+    benchbox_behaviour: "Kept. A row that is only seen again gets the new SK_RecordDateID and keeps its BatchID and SK_UpdateDateID."
+    files:
+      - benchbox/core/tpcdi/etl/incremental/prospect.sql
+    status: implemented
+    approval: approved
+
+  - id: prospect-changes-add-customer-history
+    kind: changed
+    clause: "4.4.1, 4.6.4.3, 4.6.1.3"
+    project_behaviour: "A change that comes only from the Prospect file updates the current DimCustomer record in place."
+    benchbox_behaviour: "The current DimCustomer record is expired and a new record is inserted with the changed demographics, so one change record per customer is written per update and no history row is changed in place; the customer's current accounts follow to the new customer record."
+    files:
+      - benchbox/core/tpcdi/etl/incremental/dim_customer.sql
+      - benchbox/core/tpcdi/etl/incremental/dim_account.sql
+    status: implemented
+    approval: approved
+
+  - id: prospects-kept-and-updated-in-place
+    kind: changed
+    clause: "4.6.14.1, 4.6.4.3, 4.3.5.8"
+    project_behaviour: "Each batch rewrites the Prospect table from the batch's file, which drops the agencies that are missing from the file and clears the demographics of the customers that matched them."
+    benchbox_behaviour: "Prospect rows are updated in place by AgencyID and new agencies are inserted; no agency is removed and customers keep the latest demographics they had."
+    files:
+      - benchbox/core/tpcdi/etl/incremental/prospect.sql
+      - benchbox/core/tpcdi/etl/incremental/dim_customer.sql
+    status: implemented
+    approval: approved
+
+  - id: one-change-per-key-per-update
+    kind: changed
+    clause: "4.4.1.5, 4.6.1.2, 4.6.4.2"
+    project_behaviour: "Every CDC row of Customer.txt and Account.txt is applied."
+    benchbox_behaviour: "The last row of each customer, account or trade in the update, in CDC_DSN order, decides the single change record written for it."
+    files:
+      - benchbox/core/tpcdi/etl/incremental/dim_customer.sql
+      - benchbox/core/tpcdi/etl/incremental/dim_account.sql
+      - benchbox/core/tpcdi/etl/incremental/dim_trade.sql
+    status: implemented
+    approval: approved
+
+  - id: account-cdc-fields-copied
+    kind: changed
+    clause: "4.6.1.4"
+    project_behaviour: "A null CA_NAME, CA_TAX_ST or CA_B_ID in an Account.txt row falls back to the value of the account's previous record."
+    benchbox_behaviour: "The fields of the Account.txt row are copied as given."
+    files:
+      - benchbox/core/tpcdi/etl/incremental/dim_account.sql
+    status: implemented
+    approval: approved
+
+  - id: holdings-join-trade-by-id
+    kind: changed
+    clause: "4.6.9.2"
+    project_behaviour: "Incremental FactHoldings joins only the DimTrade rows whose BatchID is the current batch, which works because DimTrade.BatchID is overwritten."
+    benchbox_behaviour: "FactHoldings joins DimTrade on the trade identifier alone, so a holding whose trade was created in an earlier batch is loaded with that trade's close date and time."
+    files:
+      - benchbox/core/tpcdi/etl/incremental/fact_holdings.sql
+    status: implemented
+    approval: approved
+
+  - id: cash-balance-from-the-warehouse
+    kind: changed
+    clause: "4.3.5.5, 4.6.8.2"
+    project_behaviour: "Running cash balances for Batches 2 and 3 are precomputed in the historical phase from the later batches' CashTransaction files."
+    benchbox_behaviour: "The balance of an account in an update is the balance of its latest FactCashBalances row, found through any surrogate key of the account, plus the net of the update's transactions; SK_DateID is the batch date."
+    files:
+      - benchbox/core/tpcdi/etl/incremental/fact_cash_balances.sql
+    status: implemented
+    approval: approved
+
+  - id: fifty-two-week-from-warehouse-history
+    kind: changed
+    clause: "4.3.5.5, 4.6.10.1"
+    project_behaviour: "The 52-week windows of Batches 2 and 3 are precomputed in the historical phase over the DailyMarket files of all batches."
+    benchbox_behaviour: "The window of an update's row is taken over the update's own DailyMarket rows and the earlier rows read back from FactMarketHistory, whose security symbol and date are recovered through DimSecurity and DimDate."
+    files:
+      - benchbox/core/tpcdi/etl/incremental/fact_market_history.sql
+    status: implemented
+    approval: approved
+
+  - id: visibility-queries-run
+    kind: changed
+    clause: "7.3, 7.2.6.5"
+    project_behaviour: "The Databricks project never runs the Data Visibility queries; the DuckDB comparison project runs them once after Batch 1 and once after Batch 3."
+    benchbox_behaviour: "Appendix C runs on a second session while the incremental updates load: Visibility_1 at the start of the first update, Visibility_2 every 60 seconds and at the boundary between the updates, and a final Visibility_1 when the audit phase starts. Every start-to-start gap must be at most 65 seconds (60 seconds plus 5 seconds of lateness), and a missing, failed or late query makes the run FAILED."
+    files:
+      - benchbox/core/tpcdi/visibility.py
+      - benchbox/core/tpcdi/validity.py
+      - benchbox/core/tpcdi/platform_power.py
+    status: implemented
+    approval: approved
+
+  - id: phase-order-and-completion-records
+    kind: changed
+    clause: "7.2.2, 7.2.3.5, 7.2.4.2, 7.2.5.3"
+    project_behaviour: "Batch 2 starts from Batch 1's validation, and Batch 3's phase completion record is written before its validation."
+    benchbox_behaviour: "The phases run in strict sequence, and Appendix B then the phase completion record closes each phase: initialization, the historical load, incremental update 1 and incremental update 2. An update refuses to start unless the previous phase's completion record is the latest in DImessages."
+    files:
+      - benchbox/core/tpcdi/phases.py
+    status: implemented
+    approval: approved
+
+  - id: incremental-update-time-limit
+    kind: changed
+    clause: "7.2.2, 7.5.3.3"
+    project_behaviour: "The project applies no limit to the incremental updates."
+    benchbox_behaviour: "Each incremental update is timed from the completion record of the previous phase to its own, reported rounded up to a tenth of a second, and a run with an update over 3600 seconds is FAILED. An update under 1800 seconds is valid and flagged below_1800_seconds."
+    files:
+      - benchbox/core/tpcdi/validity.py
     status: implemented
     approval: approved

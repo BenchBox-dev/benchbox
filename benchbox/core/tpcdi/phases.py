@@ -1,13 +1,22 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 from benchbox.core.tpcdi.appendix import load_appendix_sql
-from benchbox.core.tpcdi.etl.historical import load_historical
-from benchbox.core.tpcdi.etl.staging import INGEST_STEPS, SOURCE_DIALECT, StepResult, execute_sql, load_batch1
+from benchbox.core.tpcdi.etl.historical import TransformStep, load_historical
+from benchbox.core.tpcdi.etl.incremental import INCREMENTAL_INGEST_STEPS, INCREMENTAL_STEPS, load_incremental
+from benchbox.core.tpcdi.etl.staging import (
+    INGEST_STEPS,
+    SOURCE_DIALECT,
+    IngestStep,
+    StepResult,
+    execute_sql,
+    load_batch,
+)
 from benchbox.core.tpcdi.schema import TPCDISchemaManager
 from benchbox.core.tpcdi.sources.digen import verify_staging
 from benchbox.utils.clock import mono_time
@@ -17,6 +26,7 @@ INITIALIZATION_PHASE = "initialization"
 HISTORICAL_PHASE = "historical_load"
 INITIALIZATION_BATCH = 0
 HISTORICAL_BATCH = 1
+INCREMENTAL_PHASES = {2: "incremental_update_1", 3: "incremental_update_2"}
 
 POWER_WITHOUT_INITIALIZATION_MESSAGE = (
     "TPC-DI times the historical load from the end of initialization. Run the load and power phases in one command."
@@ -93,7 +103,7 @@ def check_staging(staging_dir: Path | str, *, scale_factor: float) -> None:
 
 def run_initialization(connection: Any, *, platform: str = SOURCE_DIALECT) -> PhaseRecord:
     enter_run_phase(INITIALIZATION_PHASE)
-    for step in INGEST_STEPS:
+    for step in (*INGEST_STEPS, *INCREMENTAL_INGEST_STEPS):
         if not step.loads_into_existing_table:
             execute_sql(connection, f"DROP TABLE IF EXISTS {step.table}", platform)
     schema = TPCDISchemaManager()
@@ -111,9 +121,45 @@ def run_historical_load(
 ) -> PhaseRecord:
     enter_run_phase(HISTORICAL_PHASE)
     steps = (
-        *load_batch1(
-            connection, staging_dir, allow_third_party_extensions=allow_third_party_extensions, platform=platform
+        *load_batch(
+            connection,
+            staging_dir,
+            HISTORICAL_BATCH,
+            steps=INGEST_STEPS,
+            allow_third_party_extensions=allow_third_party_extensions,
+            platform=platform,
         ),
         *load_historical(connection, platform=platform),
     )
     return complete_phase(connection, HISTORICAL_PHASE, HISTORICAL_BATCH, platform, steps)
+
+
+def run_incremental_update(
+    connection: Any,
+    staging_dir: Path | str,
+    batch_id: int,
+    *,
+    platform: str = SOURCE_DIALECT,
+    ingest_steps: Sequence[IngestStep] = INCREMENTAL_INGEST_STEPS,
+    steps: Sequence[TransformStep] = INCREMENTAL_STEPS,
+) -> PhaseRecord:
+    name = INCREMENTAL_PHASES[batch_id]
+    enter_run_phase(name)
+    latest = latest_batch(connection, platform)
+    if latest != batch_id - 1:
+        raise PhaseOrderError(
+            f"The {name} phase needs the completion record of BatchID {batch_id - 1} as the latest in DImessages; "
+            f"the latest is {latest}"
+        )
+    results = (
+        *load_batch(
+            connection,
+            staging_dir,
+            batch_id,
+            steps=ingest_steps,
+            allow_third_party_extensions=False,
+            platform=platform,
+        ),
+        *load_incremental(connection, batch_id, platform=platform, steps=steps),
+    )
+    return complete_phase(connection, name, batch_id, platform, results)
