@@ -178,6 +178,36 @@
       "source": "src/incremental_batches/gold/FactMarketHistory Historical.sql",
       "kind": "adapted",
       "duckdb_implementation": "sequential/models/incremental/FactMarketHistory.sql"
+    },
+    {
+      "path": "benchbox/core/tpcdi/etl/incremental/ingest/customer.sql",
+      "source": "src/incremental_batches/silver/DimCustomer Incremental.sql",
+      "kind": "adapted",
+      "duckdb_implementation": "sequential/macros/tpcdi.sql"
+    },
+    {
+      "path": "benchbox/core/tpcdi/etl/incremental/ingest/account.sql",
+      "source": "src/incremental_batches/silver/DimAccount Incremental.sql",
+      "kind": "adapted",
+      "duckdb_implementation": "sequential/macros/tpcdi.sql"
+    },
+    {
+      "path": "benchbox/core/tpcdi/etl/incremental/dim_customer.sql",
+      "source": "src/incremental_batches/silver/DimCustomer Incremental.sql",
+      "kind": "rewritten",
+      "duckdb_implementation": "sequential/models/incremental/DimCustomer.sql"
+    },
+    {
+      "path": "benchbox/core/tpcdi/etl/incremental/dim_account.sql",
+      "source": "src/incremental_batches/silver/DimAccount Incremental.sql",
+      "kind": "rewritten",
+      "duckdb_implementation": "sequential/models/incremental/DimAccount.sql"
+    },
+    {
+      "path": "benchbox/core/tpcdi/etl/incremental/prospect.sql",
+      "source": "src/incremental_batches/silver/Prospect.sql",
+      "kind": "rewritten",
+      "duckdb_implementation": "sequential/models/incremental/Prospect.sql"
     }
   ]
 }

@@ -133,7 +133,9 @@ def loaded(request):
     before = staging_digests(source_dir)
     connection = duckdb.connect()
     TPCDISchemaManager().create_schema(connection, "duckdb")
-    results = staging.load_batch1(connection, source_dir, allow_third_party_extensions=True)
+    results = staging.load_batch(
+        connection, source_dir, 1, steps=staging.INGEST_STEPS, allow_third_party_extensions=True
+    )
     yield source_dir, connection, results, before
     connection.close()
 
@@ -194,6 +196,6 @@ def test_loading_without_third_party_extensions_refuses_on_real_output():
     connection = duckdb.connect()
     TPCDISchemaManager().create_schema(connection, "duckdb")
     with pytest.raises(ThirdPartyExtensionRequired, match="Allow third-party extensions"):
-        staging.load_batch1(connection, source_dir, allow_third_party_extensions=False)
+        staging.load_batch(connection, source_dir, 1, steps=staging.INGEST_STEPS, allow_third_party_extensions=False)
     assert connection.execute("SELECT count(*) FROM DimDate").fetchone() == (0,)
     connection.close()

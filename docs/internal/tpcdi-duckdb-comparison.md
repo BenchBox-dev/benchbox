@@ -295,6 +295,46 @@ from a copy of staging with the manifest check bypassed) each make the run
 FAILED and are refused by `publish_admission`; the same copy is refused by the
 manifest check when it is not bypassed.
 
+## Incremental updates of the dimension tables (2026-11-27)
+
+`phases.run_incremental_update(connection, staging, batch_id)` runs one
+incremental update (BatchID 2 or 3). It refuses to run unless the latest
+`DImessages` BatchID is the previous batch, loads only that batch's
+`BatchDate.txt`, `Prospect.csv`, `Customer.txt` and `Account.txt` into the raw
+tables (`ProspectRaw`, `CustomerRaw`, `AccountRaw`, each replaced by the batch),
+runs the DimCustomer, DimAccount and Prospect transformations and closes the
+phase with Appendix B. Each transformation filters its raw tables on the batch
+of its phase and runs as one transaction, so a failed step leaves no expired
+record behind. The transformations expire and insert; no column other than
+`IsCurrent` and `EndDate` of an existing record is written.
+
+Rules where BenchBox follows the specification and the Databricks project does not:
+
+- a change that comes only from `Prospect.csv` expires the current DimCustomer
+  record and inserts a new one, and the customer's current accounts follow it;
+- the last row of a customer or account in the CDC file decides its change
+  record, and the fields of an Account.txt row are copied as given;
+- Prospect rows are updated in place by `AgencyID` and new agencies inserted;
+  an agency missing from a later file is kept;
+- `Prospect.BatchID` is the batch that inserted the row or last changed one of
+  its values, and a row that is only seen again gets a new `SK_RecordDateID`;
+- `Prospect.IsCustomer` requires a current DimCustomer record whose status is
+  Active, in the historical load as well;
+- a customer made inactive makes its accounts inactive.
+
+The warehouses of the implementation that are on disk hold Batch 1 only, so the
+incremental dimension tables are not compared with them; the check is the
+official audit, run with `latest_batch=3` after both updates
+(`tests/integration/core/test_tpcdi_etl_incremental_dims_digen_output.py`).
+
+| Scale | Dimension audit rows not OK | DimCustomer rows added (Batch 2 / 3) | DimAccount rows added | Prospect rows inserted |
+|---|---|---|---|---|
+| 3 | 0 of 58 | 19 / 22 | 44 / 57 | 18 / 18 |
+| 5 | 0 of 58 | 32 / 37 | 69 / 79 | 29 / 30 |
+
+The three `<table> batches` rows are read as OK in that test although the audit
+marks them as not evaluable until the audit counts every batch.
+
 ## Results of the early run (2026-11-22)
 
 Staging by BenchBox at `24b7592956` with Zulu 8, DIGen 1.1.0, tools SHA-256
