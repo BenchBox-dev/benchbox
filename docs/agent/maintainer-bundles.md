@@ -72,18 +72,27 @@ was refreshed, the count was within a tolerance or range, or the query's count
 depends on the substitution parameters and the run used `--seed`. SQL and
 DataFrame runs follow the same rule.
 
-DataFrame combinations that validate row counts: TPC-H at SF 0.01, 0.1 and 1,
-seeded or not (a seeded run checks fixed-count queries exactly and range-checks
-the parameter-sensitive ones; a count inside a range is recorded as passed, and
-a loose-tolerance query whose count is not exact is recorded as a documented
-skip); SSB at the scale factors
-with recorded counts; TPC-DS at the scale factors with recorded subscale counts
-when the run uses the reference seed. DataFrame TPC-DS at SF 1 records
-`uncertain`: the SF 1 answer files hold the qualification parameters, and the
-SQL path also skips them unless exact mode is forced, so they cannot be matched
-to the dsqgen-bound parameters of a measured stream. A scale with no recorded
-reference records `no_reference`. Any other combination records `uncertain` or
-`not_run` and cannot be staged.
+Row-count references live in `benchbox/core/expected_results/reference_row_counts/`, one file per
+benchmark and scale factor, read through `row_count_references.py`. Each file lists every query for
+every recorded stream (TPC-H streams 0-2, TPC-DS streams 0-3, SSB stream 0) and records how it was
+made: data generator and stamp, data checksum, reference engines and versions, date and the
+agreement result. The TPC answer set is the reference for TPC-H at SF 1 stream 0; every other
+reference is labelled "agreement with <engine versions>" because no TPC answer exists for it.
+Validator output carries the reference kind (`reference_kind`, `reference_label`; DataFrame
+evidence lists `reference_kinds`). A reference is regenerated, never edited:
+`make row-count-references-regen BENCHMARK=<tpch|tpcds|ssb> SCALE=<scale factor> WORK_DIR=<durable directory>`
+(run SF 10 only through `make heavy-run`), then
+`uv run -- python scripts/generate_corpus_rule_data.py --write`. The generator stops and reports
+the query when DuckDB and DataFusion disagree on any query of any stream; it never omits a query.
+
+DataFrame combinations that validate row counts: TPC-H at every scale with a reference, seeded or
+not (a seeded run checks fixed-count queries exactly and range-checks the parameter-sensitive
+ones; a count inside a range is recorded as passed, and a loose-tolerance query whose count is
+not exact is recorded as a documented skip); SSB and TPC-DS at every scale with a reference. A
+TPC-DS row is checked against the counts of its own stream when the run uses the reference seed
+(`--seed` unset or 1); any other TPC-DS row records a documented skip. A scale with no recorded
+reference records `no_reference`. Any other combination records `uncertain` or `not_run` and
+cannot be staged.
 
 ## Guard refusals
 

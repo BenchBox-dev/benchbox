@@ -22,7 +22,7 @@ JOINORDER_QUERIES ?= _project/joinorder/build-inputs/queries
 JOINORDER_REFERENCE ?= _project/joinorder/reference_cardinalities.json
 
 DEVELOPMENT_TREE_ONLY_TARGETS := \
-	correctness-gate-digests-regen ledger-seed-gates ledger-seed-recut tpch-subscale-row-counts-regen \
+	correctness-gate-digests-regen ledger-seed-gates ledger-seed-recut row-count-references-regen \
 	cross-surface-baseline-autodetect \
 	oracle-coverage-map oracle-coverage-map-check review-backoff-reset omp-candidate-check review-infra cross-surface-applicability-report \
 	joinorder-verify-reference-results complexity-check complexity-report \

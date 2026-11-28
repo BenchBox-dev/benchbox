@@ -14,9 +14,7 @@ if str(CHECKOUT_ROOT) not in sys.path:
 
 from benchbox.core.benchmark_registry import get_scale_factor_rule, list_benchmark_ids
 from benchbox.core.expected_results import has_row_count_reference
-from benchbox.core.expected_results.loader import TPCH_SUBSCALE_ROW_COUNT_SCALE_FACTORS
-from benchbox.core.expected_results.ssb_results import SSB_EXPECTED_ROW_COUNTS
-from benchbox.core.expected_results.tpcds_results import TPCDS_SUBSCALE_ROW_COUNTS
+from benchbox.core.expected_results.row_count_references import REFERENCE_BENCHMARKS, reference_scales
 from benchbox.core.schemas import MIN_THROUGHPUT_STREAMS
 from benchbox.core.tpc_spec import min_streams_for_scale
 
@@ -32,11 +30,8 @@ def _scale_key(scale: float) -> str:
 
 
 def row_count_reference_scales() -> dict[str, list[float]]:
-    candidates = {
-        "tpch": {1.0, *map(float, TPCH_SUBSCALE_ROW_COUNT_SCALE_FACTORS)},
-        "tpcds": {1.0, *map(float, TPCDS_SUBSCALE_ROW_COUNTS)},
-        "ssb": {float(scale) for scale in SSB_EXPECTED_ROW_COUNTS},
-    }
+    candidates = {benchmark: set(reference_scales(benchmark)) for benchmark in REFERENCE_BENCHMARKS}
+    candidates["tpch"].add(1.0)
     return {
         benchmark: sorted(scale for scale in scales if has_row_count_reference(benchmark, scale))
         for benchmark, scales in sorted(candidates.items())

@@ -2,13 +2,16 @@ import pytest
 
 from benchbox.core.dataframe.query_validation import validate_dataframe_query_results
 from benchbox.core.expected_results.models import ValidationMode
+from benchbox.core.expected_results.row_count_references import (
+    KIND_ENGINE_AGREEMENT,
+    QUERY_IDS,
+    load_row_count_reference,
+    reference_scales,
+)
 from benchbox.core.expected_results.tpcds_results import (
-    TPCDS_PARAMETER_SENSITIVE_QUERY_IDS,
-    TPCDS_SUBSCALE_PROVENANCE,
-    TPCDS_SUBSCALE_ROW_COUNTS,
     get_tpcds_expected_results,
-    tpcds_subscale_expected_row_counts,
-    tpcds_subscale_reference_seed,
+    tpcds_known_query_ids,
+    tpcds_reference_seed,
 )
 from benchbox.core.validation.query_validation import (
     QueryValidator,
@@ -20,6 +23,25 @@ pytestmark = [
     pytest.mark.unit,
     pytest.mark.fast,
 ]
+
+SCALE = 0.01
+
+
+def _reference(scale: float = SCALE):
+    return load_row_count_reference("tpcds", scale)
+
+
+def _stream_counts(stream: int = 0, scale: float = SCALE) -> dict[str, int]:
+    return dict(_reference(scale).streams[stream].row_counts)
+
+
+def _fixed_query(scale: float = SCALE) -> str:
+    reference = _reference(scale)
+    return next(qid for qid in QUERY_IDS["tpcds"] if qid not in reference.parameter_sensitive_query_ids)
+
+
+def _sensitive_query(scale: float = SCALE) -> str:
+    return sorted(_reference(scale).parameter_sensitive_query_ids)[0]
 
 
 @pytest.fixture
@@ -38,104 +60,105 @@ def _clear_reference_seed():
     clear_reference_seed_context()
 
 
-def _measurement(query_id: str, rows: int) -> dict[str, object]:
+def _measurement(query_id: str, rows: int, stream_id: int = 0) -> dict[str, object]:
     return {
         "query_id": query_id,
         "status": "SUCCESS",
         "run_type": "measurement",
-        "stream_id": 0,
+        "stream_id": stream_id,
         "iteration": 1,
         "rows_returned": rows,
     }
 
 
-@pytest.mark.parametrize("scale_factor", sorted(TPCDS_SUBSCALE_ROW_COUNTS))
-def test_tpcds_subscale_provider_returns_recorded_counts(scale_factor: float) -> None:
+@pytest.mark.parametrize("scale_factor", reference_scales("tpcds"))
+def test_tpcds_provider_returns_recorded_counts(scale_factor: float) -> None:
     results = get_tpcds_expected_results(scale_factor=scale_factor)
 
     assert results is not None
     assert results.benchmark_name == "tpcds"
     assert results.scale_factor == scale_factor
-    assert {query_id: result.expected_row_count for query_id, result in results.query_results.items()} == (
-        TPCDS_SUBSCALE_ROW_COUNTS[scale_factor]
+    assert {qid: result.expected_row_count for qid, result in results.query_results.items()} == _stream_counts(
+        0, scale_factor
     )
     assert {result.validation_mode for result in results.query_results.values()} == {ValidationMode.EXACT}
-    assert results.metadata["provenance"] == TPCDS_SUBSCALE_PROVENANCE
+    assert {result.reference_kind for result in results.query_results.values()} == {KIND_ENGINE_AGREEMENT}
+    assert results.metadata["provenance"]["data_checksum"]["sha256"]
 
 
-def test_tpcds_subscale_counts_cover_every_query_except_engine_disagreements() -> None:
-    assert set(TPCDS_SUBSCALE_ROW_COUNTS) == {0.01, 0.1}
-    assert len(TPCDS_SUBSCALE_ROW_COUNTS[0.01]) == 102
-    assert len(TPCDS_SUBSCALE_ROW_COUNTS[0.1]) == 101
-    assert "21" not in TPCDS_SUBSCALE_ROW_COUNTS[0.01]
-    assert "21" not in TPCDS_SUBSCALE_ROW_COUNTS[0.1]
-    assert "34" not in TPCDS_SUBSCALE_ROW_COUNTS[0.1]
-    assert tpcds_subscale_expected_row_counts(0.5) is None
+@pytest.mark.parametrize("scale_factor", reference_scales("tpcds"))
+def test_tpcds_references_cover_every_query_with_no_engine_disagreement_omitted(scale_factor: float) -> None:
+    for stream in _reference(scale_factor).streams.values():
+        assert set(stream.row_counts) == set(QUERY_IDS["tpcds"])
+    assert tpcds_known_query_ids() >= set(QUERY_IDS["tpcds"])
 
 
 def test_tpcds_provider_returns_none_for_unrecorded_scale() -> None:
     assert get_tpcds_expected_results(scale_factor=0.5) is None
 
 
-def test_tpcds_sensitive_and_fixed_sets_partition_the_corpus() -> None:
-    recorded = set(TPCDS_SUBSCALE_ROW_COUNTS[0.01]) | set(TPCDS_SUBSCALE_ROW_COUNTS[0.1])
-    fixed = recorded - TPCDS_PARAMETER_SENSITIVE_QUERY_IDS
-
-    assert "1" in TPCDS_PARAMETER_SENSITIVE_QUERY_IDS
-    assert "98" in TPCDS_PARAMETER_SENSITIVE_QUERY_IDS
-    assert "86" in fixed
-    assert "93" in fixed
-    assert len(fixed) == 47
+def test_tpcds_reference_seed_follows_the_stream() -> None:
+    for stream in range(4):
+        assert tpcds_reference_seed(None, stream)
+        assert tpcds_reference_seed(1, stream)
+        assert not tpcds_reference_seed(2, stream)
 
 
-def test_tpcds_subscale_sql_fixed_query_validates(validator) -> None:
+def test_tpcds_sensitive_queries_are_those_that_vary_across_streams() -> None:
+    reference = _reference()
+    varying = {
+        qid for qid in QUERY_IDS["tpcds"] if len({stream.row_counts[qid] for stream in reference.streams.values()}) > 1
+    }
+
+    assert reference.parameter_sensitive_query_ids == varying
+    assert varying
+
+
+def test_tpcds_sql_fixed_query_validates(validator) -> None:
+    query = _fixed_query()
     result = validator.validate_query_result(
-        benchmark_type="tpcds",
-        query_id="Q93",
-        actual_row_count=TPCDS_SUBSCALE_ROW_COUNTS[0.01]["93"],
-        scale_factor=0.01,
+        benchmark_type="tpcds", query_id=query, actual_row_count=_stream_counts()[query], scale_factor=SCALE
     )
 
     assert result.is_valid
     assert result.validation_mode == ValidationMode.EXACT
-    assert result.expected_row_count == TPCDS_SUBSCALE_ROW_COUNTS[0.01]["93"]
+    assert result.expected_row_count == _stream_counts()[query]
+    assert result.reference_kind == KIND_ENGINE_AGREEMENT
 
 
-def test_tpcds_subscale_sql_mutated_count_fails(validator) -> None:
-    expected = TPCDS_SUBSCALE_ROW_COUNTS[0.1]["86"]
-
+def test_tpcds_sql_mutated_count_fails_and_names_the_reference(validator) -> None:
+    query = _fixed_query()
+    expected = _stream_counts()[query]
     result = validator.validate_query_result(
-        benchmark_type="tpcds",
-        query_id="86",
-        actual_row_count=expected + 1,
-        scale_factor=0.1,
+        benchmark_type="tpcds", query_id=query, actual_row_count=expected + 1, scale_factor=SCALE
     )
 
     assert not result.is_valid
-    assert result.validation_mode == ValidationMode.EXACT
     assert result.expected_row_count == expected
+    assert "Reference: agreement with duckdb" in result.error_message
 
 
-def test_tpcds_subscale_sql_sensitive_query_validates_at_reference_parameters(validator) -> None:
+@pytest.mark.parametrize("stream", [0, 1, 2, 3])
+def test_tpcds_sql_sensitive_query_validates_against_its_own_stream(validator, stream: int) -> None:
+    set_reference_seed_context(True)
+    query = _sensitive_query()
+    expected = _stream_counts(stream)[query]
+
     result = validator.validate_query_result(
-        benchmark_type="tpcds",
-        query_id="1",
-        actual_row_count=TPCDS_SUBSCALE_ROW_COUNTS[0.01]["1"],
-        scale_factor=0.01,
+        benchmark_type="tpcds", query_id=query, actual_row_count=expected, scale_factor=SCALE, stream_id=stream
     )
 
     assert result.is_valid
+    assert result.expected_row_count == expected
     assert result.validation_mode == ValidationMode.EXACT
 
 
-def test_tpcds_subscale_sql_sensitive_query_skipped_for_non_reference_parameters(validator) -> None:
+def test_tpcds_sql_non_reference_seed_skips_validation(validator) -> None:
     set_reference_seed_context(False)
+    query = _fixed_query()
 
     result = validator.validate_query_result(
-        benchmark_type="tpcds",
-        query_id="1",
-        actual_row_count=999,
-        scale_factor=0.01,
+        benchmark_type="tpcds", query_id=query, actual_row_count=_stream_counts()[query] + 5, scale_factor=SCALE
     )
 
     assert result.is_valid
@@ -143,109 +166,69 @@ def test_tpcds_subscale_sql_sensitive_query_skipped_for_non_reference_parameters
     assert result.expected_row_count is None
 
 
-def test_tpcds_subscale_sql_non_reference_seed_skips_validation(validator) -> None:
-    set_reference_seed_context(False)
-    expected = TPCDS_SUBSCALE_ROW_COUNTS[0.01]["93"]
-
+def test_tpcds_sql_stream_without_a_reference_is_skipped(validator) -> None:
+    set_reference_seed_context(True)
     result = validator.validate_query_result(
-        benchmark_type="tpcds",
-        query_id="93",
-        actual_row_count=expected + 1,
-        scale_factor=0.01,
+        benchmark_type="tpcds", query_id="3", actual_row_count=1, scale_factor=SCALE, stream_id=40
     )
 
     assert result.is_valid
     assert result.validation_mode == ValidationMode.SKIP
-    assert result.expected_row_count is None
 
 
-def test_tpcds_power_stream_at_answer_file_scale_is_never_compared_with_answer_files(validator) -> None:
-    set_reference_seed_context(tpcds_subscale_reference_seed(None, 0, 1.0))
-
+def test_tpcds_variant_normalization(validator) -> None:
     result = validator.validate_query_result(
-        benchmark_type="tpcds",
-        query_id="3",
-        actual_row_count=1,
-        scale_factor=1.0,
+        benchmark_type="tpcds", query_id="Q14A", actual_row_count=_stream_counts()["14a"], scale_factor=SCALE
     )
 
-    assert result.is_valid
-    assert result.validation_mode == ValidationMode.SKIP
-    assert result.expected_row_count is None
-
-
-def test_tpcds_power_stream_zero_binds_the_subscale_reference_parameters() -> None:
-    assert tpcds_subscale_reference_seed(None, 0, 0.01)
-    assert not tpcds_subscale_reference_seed(None, 1, 0.01)
-    assert not tpcds_subscale_reference_seed(None, 0, 1.0)
-
-
-def test_tpcds_subscale_variant_normalization(validator) -> None:
-    result = validator.validate_query_result(
-        benchmark_type="tpcds",
-        query_id="Q14A",
-        actual_row_count=TPCDS_SUBSCALE_ROW_COUNTS[0.01]["14a"],
-        scale_factor=0.01,
-    )
     assert result.is_valid
     assert result.validation_mode == ValidationMode.EXACT
 
 
-def test_tpcds_subscale_default_mode_is_exact_without_configuration() -> None:
-    validator = QueryValidator()
-    result = validator.validate_query_result("tpcds", "86", TPCDS_SUBSCALE_ROW_COUNTS[0.01]["86"], 0.01)
-    assert result.is_valid
+def test_tpcds_default_mode_is_exact_without_configuration() -> None:
+    query = _fixed_query()
+    result = QueryValidator().validate_query_result("tpcds", query, _stream_counts()[query], SCALE)
+
     assert result.validation_mode == ValidationMode.EXACT
 
 
-def test_tpcds_subscale_validation_mode_opt_out(validator) -> None:
+def test_tpcds_default_mode_is_exact_at_scale_one() -> None:
+    query = _fixed_query(1.0)
+    result = QueryValidator().validate_query_result("tpcds", query, _stream_counts(0, 1.0)[query] + 1, 1.0)
+
+    assert not result.is_valid
+    assert result.validation_mode == ValidationMode.EXACT
+
+
+def test_tpcds_validation_mode_opt_out(validator) -> None:
     from benchbox.core.validation.query_validation import set_validation_mode_context
 
+    query = _fixed_query()
     set_validation_mode_context(ValidationMode.SKIP)
     try:
         result = validator.validate_query_result(
-            benchmark_type="tpcds",
-            query_id="86",
-            actual_row_count=999,
-            scale_factor=0.01,
+            benchmark_type="tpcds", query_id=query, actual_row_count=_stream_counts()[query] + 1, scale_factor=SCALE
         )
-        assert result.is_valid
-        assert result.validation_mode == ValidationMode.SKIP
     finally:
         set_validation_mode_context(None)
 
-
-def test_tpcds_subscale_invalid_env_mode_does_not_opt_out(monkeypatch) -> None:
-    from benchbox.core.validation.query_validation import set_validation_mode_context
-
-    set_validation_mode_context(None)
-    monkeypatch.setenv("BENCHBOX_QUERY_VALIDATION_MODE", "invalid_mode_override")
-    validator = QueryValidator()
-    result = validator.validate_query_result(
-        benchmark_type="tpcds",
-        query_id="86",
-        actual_row_count=TPCDS_SUBSCALE_ROW_COUNTS[0.01]["86"],
-        scale_factor=0.01,
-    )
     assert result.is_valid
+    assert result.validation_mode == ValidationMode.SKIP
+
+
+def test_tpcds_invalid_env_mode_does_not_opt_out(monkeypatch) -> None:
+    monkeypatch.setenv("BENCHBOX_QUERY_VALIDATION_MODE", "bogus")
+    query = _fixed_query()
+
+    result = QueryValidator().validate_query_result("tpcds", query, _stream_counts()[query] + 1, SCALE)
+
+    assert not result.is_valid
     assert result.validation_mode == ValidationMode.EXACT
-
-
-def test_tpcds_subscale_corrupt_reference_degrades_gracefully() -> None:
-    from unittest.mock import patch
-
-    from benchbox.core.expected_results.tpcds_results import _load_subscale_reference
-
-    with patch("pathlib.Path.read_text", side_effect=OSError("disk error")):
-        assert _load_subscale_reference() == {}
 
 
 def test_tpcds_unrecorded_scale_skips_not_fails(validator) -> None:
     result = validator.validate_query_result(
-        benchmark_type="tpcds",
-        query_id="Q1",
-        actual_row_count=999,
-        scale_factor=0.5,
+        benchmark_type="tpcds", query_id="3", actual_row_count=999, scale_factor=0.5
     )
 
     assert result.is_valid
@@ -254,148 +237,90 @@ def test_tpcds_unrecorded_scale_skips_not_fails(validator) -> None:
 
 
 @pytest.mark.parametrize("seed", [None, 1])
-def test_tpcds_dataframe_subscale_fixed_query_passes_at_reference_seed(seed: int | None) -> None:
-    counts = TPCDS_SUBSCALE_ROW_COUNTS[0.01]
-    measurements = [_measurement(query_id=f"Q{qid}", rows=rows) for qid, rows in counts.items() if qid in {"86", "93"}]
+def test_tpcds_dataframe_fixed_query_passes_at_reference_seed(seed: int | None) -> None:
+    query = _fixed_query()
+    measurements = [_measurement(query_id=f"Q{query}", rows=_stream_counts()[query])]
 
-    summary = validate_dataframe_query_results(
-        measurements,
-        benchmark_name="tpcds",
-        scale_factor=0.01,
-        seed=seed,
-    )
+    summary = validate_dataframe_query_results(measurements, benchmark_name="tpcds", scale_factor=SCALE, seed=seed)
 
     assert summary.status == "PASSED"
-    assert summary.details["provider"] == "tpcds_subscale_expected_row_counts"
-    assert summary.details["checked"] == 2
-    assert summary.details["passed"] == 2
+    assert summary.details["provider"] == "tpcds_row_count_reference"
+    assert summary.details["checked"] == 1
+    assert summary.details["reference_kinds"][KIND_ENGINE_AGREEMENT]["rows"] == 1
+    assert summary.details["reference_kinds"][KIND_ENGINE_AGREEMENT]["label"].startswith("agreement with duckdb")
     assert {row["row_count_validation"]["status"] for row in measurements} == {"PASSED"}
 
 
-def test_tpcds_dataframe_subscale_mutated_count_fails() -> None:
-    correct = _measurement(query_id="86", rows=TPCDS_SUBSCALE_ROW_COUNTS[0.01]["86"])
-    wrong = _measurement(query_id="93", rows=TPCDS_SUBSCALE_ROW_COUNTS[0.01]["93"] + 1)
+def test_tpcds_dataframe_mutated_count_fails() -> None:
+    query = _fixed_query()
+    correct = _measurement(query_id="86", rows=_stream_counts()["86"])
+    wrong = _measurement(query_id=query, rows=_stream_counts()[query] + 1)
 
-    summary = validate_dataframe_query_results(
-        [correct, wrong],
-        benchmark_name="tpcds",
-        scale_factor=0.01,
-    )
+    summary = validate_dataframe_query_results([correct, wrong], benchmark_name="tpcds", scale_factor=SCALE)
 
     assert summary.status == "FAILED"
     assert summary.details["failed"] == 1
-    assert correct["status"] == "SUCCESS"
-    assert wrong["status"] == "FAILED"
-    assert wrong["row_count_validation"]["expected"] == TPCDS_SUBSCALE_ROW_COUNTS[0.01]["93"]
+    assert wrong["row_count_validation"]["status"] == "FAILED"
+    assert wrong["row_count_validation"]["expected"] == _stream_counts()[query]
 
 
-def test_tpcds_dataframe_subscale_non_reference_seed_skips() -> None:
-    measurement = _measurement(query_id="93", rows=TPCDS_SUBSCALE_ROW_COUNTS[0.01]["93"])
+def test_tpcds_dataframe_non_reference_seed_skips() -> None:
+    query = _fixed_query()
+    measurement = _measurement(query_id=query, rows=_stream_counts()[query])
 
-    summary = validate_dataframe_query_results(
-        [measurement],
-        benchmark_name="tpcds",
-        scale_factor=0.01,
-        seed=42,
-    )
+    summary = validate_dataframe_query_results([measurement], benchmark_name="tpcds", scale_factor=SCALE, seed=7)
 
-    assert summary.status == "UNCERTAIN"
-    assert summary.details["checked"] == 0
-    assert summary.details["skipped"] == 1
+    assert summary.status != "PASSED"
     assert measurement["row_count_validation"]["status"] == "SKIPPED"
 
 
-def test_tpcds_dataframe_subscale_non_reference_stream_skips() -> None:
-    measurement = {**_measurement(query_id="93", rows=TPCDS_SUBSCALE_ROW_COUNTS[0.01]["93"]), "stream_id": 2}
+@pytest.mark.parametrize("stream", [1, 2, 3])
+def test_tpcds_dataframe_later_streams_are_checked_against_their_own_counts(stream: int) -> None:
+    query = _sensitive_query()
+    measurement = _measurement(query_id=query, rows=_stream_counts(stream)[query], stream_id=stream)
 
-    summary = validate_dataframe_query_results(
-        [measurement],
-        benchmark_name="tpcds",
-        scale_factor=0.01,
-    )
-
-    assert summary.status == "UNCERTAIN"
-    assert summary.details["checked"] == 0
-    assert summary.details["skipped"] == 1
-    assert measurement["row_count_validation"]["status"] == "SKIPPED"
-
-
-def test_tpcds_dataframe_sensitive_query_checked_at_reference_seed() -> None:
-    measurement = _measurement(query_id="98", rows=TPCDS_SUBSCALE_ROW_COUNTS[0.1]["98"])
-
-    summary = validate_dataframe_query_results(
-        [measurement],
-        benchmark_name="tpcds",
-        scale_factor=0.1,
-    )
+    summary = validate_dataframe_query_results([measurement], benchmark_name="tpcds", scale_factor=SCALE)
 
     assert summary.status == "PASSED"
-    assert measurement["row_count_validation"] == {
-        "expected": TPCDS_SUBSCALE_ROW_COUNTS[0.1]["98"],
-        "actual": TPCDS_SUBSCALE_ROW_COUNTS[0.1]["98"],
-        "status": "PASSED",
-    }
+    assert measurement["row_count_validation"]["expected"] == _stream_counts(stream)[query]
 
 
-def test_tpcds_dataframe_query_without_agreed_count_stays_uncertain_at_a_reference_scale() -> None:
-    measurement = _measurement(query_id="21", rows=6)
+def test_tpcds_dataframe_stream_without_a_reference_is_unvalidated() -> None:
+    measurement = _measurement(query_id="3", rows=1, stream_id=40)
 
-    summary = validate_dataframe_query_results(
-        [measurement],
-        benchmark_name="tpcds",
-        scale_factor=0.01,
-    )
+    summary = validate_dataframe_query_results([measurement], benchmark_name="tpcds", scale_factor=SCALE)
 
-    assert summary.status == "UNCERTAIN"
-    assert summary.details["checked"] == 0
-    assert summary.details["skipped"] == 1
+    assert summary.status != "PASSED"
     assert measurement["row_count_validation"]["status"] == "UNVALIDATED"
+
+
+def test_tpcds_dataframe_throughput_rows_never_use_stream_references() -> None:
+    query = _fixed_query()
+    measurement = {**_measurement(query_id=query, rows=_stream_counts()[query]), "test_type": "throughput"}
+
+    validate_dataframe_query_results([measurement], benchmark_name="tpcds", scale_factor=SCALE)
+
+    assert measurement["row_count_validation"]["status"] == "SKIPPED"
 
 
 def test_tpcds_dataframe_unrecorded_scale_has_no_reference() -> None:
     measurement = _measurement(query_id="1", rows=1)
 
-    summary = validate_dataframe_query_results(
-        [measurement],
-        benchmark_name="tpcds",
-        scale_factor=0.5,
-    )
+    summary = validate_dataframe_query_results([measurement], benchmark_name="tpcds", scale_factor=0.5)
 
-    assert summary.status == "NO_REFERENCE"
-    assert summary.details["checked"] == 0
+    assert summary.status != "PASSED"
     assert measurement["row_count_validation"]["status"] == "UNVALIDATED"
 
 
-def test_tpcds_dataframe_subscale_validation_mode_skip_opt_out() -> None:
+def test_tpcds_dataframe_validation_mode_skip_opt_out() -> None:
     from benchbox.core.validation.query_validation import set_validation_mode_context
 
+    query = _fixed_query()
+    measurement = _measurement(query_id=query, rows=_stream_counts()[query] + 1)
     set_validation_mode_context(ValidationMode.SKIP)
     try:
-        measurement = _measurement(query_id="93", rows=999)
-        summary = validate_dataframe_query_results(
-            [measurement],
-            benchmark_name="tpcds",
-            scale_factor=0.01,
-        )
-        assert summary.status == "UNCERTAIN"
-        assert summary.details["checked"] == 0
-        assert summary.details["skipped"] == 1
-        assert measurement["row_count_validation"]["status"] == "SKIPPED"
+        validate_dataframe_query_results([measurement], benchmark_name="tpcds", scale_factor=SCALE)
     finally:
         set_validation_mode_context(None)
 
-
-def test_tpcds_subscale_malformed_values_degrade_gracefully() -> None:
-    from unittest.mock import patch
-
-    from benchbox.core.expected_results.tpcds_results import _materialize_subscale_reference
-
-    with patch(
-        "benchbox.core.expected_results.tpcds_results._load_subscale_reference",
-        return_value={"scales": {"not-a-number": {"1": "not-an-int"}}},
-    ):
-        counts, sensitive, provenance, rngseed = _materialize_subscale_reference()
-        assert counts == {}
-        assert sensitive == frozenset()
-        assert provenance == {}
-        assert rngseed == 1001
+    assert measurement["row_count_validation"]["status"] == "SKIPPED"

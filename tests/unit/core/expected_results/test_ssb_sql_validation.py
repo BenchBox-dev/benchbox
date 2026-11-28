@@ -1,7 +1,8 @@
 import pytest
 
 from benchbox.core.expected_results.models import ValidationMode
-from benchbox.core.expected_results.ssb_results import SSB_EXPECTED_ROW_COUNTS, get_ssb_expected_results
+from benchbox.core.expected_results.row_count_references import reference_scales
+from benchbox.core.expected_results.ssb_results import get_ssb_expected_results, ssb_expected_row_counts
 from benchbox.core.validation.query_validation import QueryValidator
 
 pytestmark = [
@@ -15,7 +16,7 @@ def validator():
     return QueryValidator()
 
 
-@pytest.mark.parametrize("scale_factor", sorted(SSB_EXPECTED_ROW_COUNTS))
+@pytest.mark.parametrize("scale_factor", reference_scales("ssb"))
 def test_ssb_provider_returns_recorded_counts(scale_factor: float) -> None:
     results = get_ssb_expected_results(scale_factor=scale_factor)
 
@@ -23,7 +24,7 @@ def test_ssb_provider_returns_recorded_counts(scale_factor: float) -> None:
     assert results.benchmark_name == "ssb"
     assert results.scale_factor == scale_factor
     assert {query_id: result.expected_row_count for query_id, result in results.query_results.items()} == (
-        SSB_EXPECTED_ROW_COUNTS[scale_factor]
+        ssb_expected_row_counts(scale_factor)
     )
     assert {result.validation_mode for result in results.query_results.values()} == {ValidationMode.EXACT}
 

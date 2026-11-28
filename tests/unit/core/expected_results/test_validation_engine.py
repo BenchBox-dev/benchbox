@@ -79,18 +79,20 @@ class TestQueryValidator:
         assert "'999'" in result.error_message
 
     def test_validate_tpcds_query(self):
+        from benchbox.core.expected_results.row_count_references import load_row_count_reference
+
+        recorded = load_row_count_reference("tpcds", 1.0).streams[0].row_counts["1"]
         validator = QueryValidator()
         result = validator.validate_query_result(
             benchmark_type="tpcds",
             query_id="1",
-            actual_row_count=101,
+            actual_row_count=recorded,
             scale_factor=1.0,
         )
         assert result.is_valid
-        assert result.validation_mode == ValidationMode.SKIP
-        assert result.actual_row_count == 101
-        assert result.warning_message is not None
-        assert "SKIP" in result.warning_message or "skip" in result.warning_message
+        assert result.validation_mode == ValidationMode.EXACT
+        assert result.actual_row_count == recorded
+        assert result.expected_row_count == recorded
 
 
 class TestParameterSensitiveValidation:

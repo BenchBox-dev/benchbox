@@ -469,12 +469,12 @@ class TestOutcomeDistinction:
 
     def test_non_reference_stream_keeps_stream_skip(self, policy_validator):
         result = policy_validator.validate_query_result(
-            benchmark_type="tpcds", query_id="1", actual_row_count=5, scale_factor=1.0, stream_id=2
+            benchmark_type="tpcds", query_id="1", actual_row_count=5, scale_factor=1.0, stream_id=40
         )
 
         assert result.is_valid
         assert result.validation_mode == ValidationMode.SKIP
-        assert "stream 2" in result.warning_message
+        assert "stream 40" in result.warning_message
 
     def test_sf1_fallback_failure_propagates_provider_outcome(self, fresh_registry):
 

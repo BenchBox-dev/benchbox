@@ -105,9 +105,15 @@ ledger-seed-recut:
 	uv run -- python scripts/publication/create_ledger_seed.py --accepted-ref origin/published-results
 	$(MAKE) ledger-seed-gates
 
-.PHONY: tpch-subscale-row-counts-regen
-tpch-subscale-row-counts-regen:
-	uv run -- python _project/scripts/generate_tpch_subscale_row_counts.py
+ROW_COUNT_REFERENCE_SCRIPT_tpch := generate_tpch_subscale_row_counts.py
+ROW_COUNT_REFERENCE_SCRIPT_tpcds := generate_tpcds_subscale_row_counts.py
+ROW_COUNT_REFERENCE_SCRIPT_ssb := generate_ssb_row_count_references.py
+
+.PHONY: row-count-references-regen
+row-count-references-regen:
+	@test -n "$(ROW_COUNT_REFERENCE_SCRIPT_$(BENCHMARK))" || { echo "usage: make row-count-references-regen BENCHMARK=<tpch|tpcds|ssb> SCALE=<scale factor> WORK_DIR=<durable directory>"; exit 2; }
+	@test -n "$(SCALE)" && test -n "$(WORK_DIR)" || { echo "SCALE and WORK_DIR are required"; exit 2; }
+	uv run -- python _project/scripts/$(ROW_COUNT_REFERENCE_SCRIPT_$(BENCHMARK)) --scale-factor $(SCALE) --work-dir $(WORK_DIR)
 
 .PHONY: test-local-matrix
 test-local-matrix:

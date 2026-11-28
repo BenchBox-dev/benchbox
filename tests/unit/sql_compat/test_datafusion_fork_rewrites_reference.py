@@ -4,7 +4,7 @@ from decimal import Decimal
 
 import pytest
 
-from benchbox.core.expected_results.loader import load_tpch_subscale_row_counts
+from benchbox.core.expected_results.row_count_references import load_row_count_reference
 from benchbox.core.tpch.benchmark import TPCHBenchmark
 from benchbox.core.tpch.schema import TABLES
 from benchbox.utils.dialect_utils import apply_rewrite
@@ -75,7 +75,7 @@ def test_fork_rewrites_match_the_tpch_reference_row_counts_and_the_unrewritten_q
     actual = [
         tuple(column[index].as_py() for column in batch.columns) for batch in batches for index in range(batch.num_rows)
     ]
-    expected_count = load_tpch_subscale_row_counts(scale_factor).row_counts[str(query_id)]
+    expected_count = load_row_count_reference("tpch", scale_factor).streams[0].row_counts[str(query_id)]
     assert len(actual) == expected_count
     expected = reference.execute(benchmark.get_query(query_id, dialect="duckdb")).fetchall()
     assert _comparable(actual) == _comparable(expected)

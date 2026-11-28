@@ -30,6 +30,8 @@ class ExpectedQueryResult:
     notes: str | None = None
     value_digest: str | None = None
     reference_parameters_only: bool = False
+    reference_kind: str | None = None
+    reference_label: str | None = None
 
     def __post_init__(self):
         if self.validation_mode == ValidationMode.EXACT:
@@ -200,6 +202,8 @@ class ValidationResult:
     difference: int | None = None
     difference_percent: float | None = None
     unvalidated: bool = False
+    reference_kind: str | None = None
+    reference_label: str | None = None
 
     def __post_init__(self):
         if self.expected_row_count is not None and self.actual_row_count is not None:

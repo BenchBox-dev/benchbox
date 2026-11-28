@@ -1,57 +1,93 @@
 {
+  "schema_version": 2,
   "benchmark": "tpch",
   "scale_factor": 0.1,
-  "reference_seed": null,
-  "query_parameters": "qgen -d (TPC-H default substitution parameters)",
-  "provenance": {
-    "data_generator": "_sources/tpc-h/dbgen (dbgen)",
-    "query_generator": "_sources/tpc-h/dbgen (qgen -d)",
-    "query_template_digest": {
-      "algorithm": "sha256 over path, NUL, contents for each template in order",
-      "templates": [
-        "queries/1.sql",
-        "queries/2.sql",
-        "queries/3.sql",
-        "queries/4.sql",
-        "queries/5.sql",
-        "queries/6.sql",
-        "queries/7.sql",
-        "queries/8.sql",
-        "queries/9.sql",
-        "queries/10.sql",
-        "queries/11.sql",
-        "queries/12.sql",
-        "queries/13.sql",
-        "queries/14.sql",
-        "queries/16.sql",
-        "queries/17.sql",
-        "queries/18.sql",
-        "queries/19.sql",
-        "queries/20.sql",
-        "queries/21.sql",
-        "queries/22.sql",
-        "variants/15a.sql"
-      ],
-      "sha256": "0037776cd2526cbef4a6adbf520cc378a9fd582976f8fc23e8b482809a966956"
+  "reference_kind": "engine_agreement",
+  "streams": {
+    "0": {
+      "query_parameters": "qgen -d (TPC-H default substitution parameters)",
+      "seed": null,
+      "row_counts": {
+        "1": 4,
+        "2": 44,
+        "3": 10,
+        "4": 5,
+        "5": 5,
+        "6": 1,
+        "7": 4,
+        "8": 2,
+        "9": 175,
+        "10": 20,
+        "11": 22,
+        "12": 2,
+        "13": 37,
+        "14": 1,
+        "15": 1,
+        "16": 2762,
+        "17": 1,
+        "18": 5,
+        "19": 1,
+        "20": 9,
+        "21": 47,
+        "22": 7
+      }
     },
-    "engines": {
-      "duckdb": "1.5.5",
-      "datafusion": "54.0.0"
+    "1": {
+      "query_parameters": "qgen -d (TPC-H default substitution parameters)",
+      "seed": null,
+      "row_counts": {
+        "1": 4,
+        "2": 44,
+        "3": 10,
+        "4": 5,
+        "5": 5,
+        "6": 1,
+        "7": 4,
+        "8": 2,
+        "9": 175,
+        "10": 20,
+        "11": 22,
+        "12": 2,
+        "13": 37,
+        "14": 1,
+        "15": 1,
+        "16": 2762,
+        "17": 1,
+        "18": 5,
+        "19": 1,
+        "20": 9,
+        "21": 47,
+        "22": 7
+      }
     },
-    "probe_seeds": [
-      1,
-      7,
-      42,
-      99,
-      123,
-      2024,
-      31337,
-      65537,
-      1000003,
-      17039360
-    ],
-    "phases": "generate,load,power",
-    "note": "Exact per-query row counts for TPC-H at a scale factor below 1, with qgen default substitution parameters (qgen -d, no seed). TPC publishes answer files only at SF 1, so these counts are a BenchBox reference: DuckDB returned exactly these counts in every iteration, and every other listed engine returned them too, on data from the bundled dbgen. parameter_sensitive_query_ids lists queries whose count changed under at least one probe seed or that are parameter-sensitive at SF 1; runs with other parameters skip them. Regenerate with `make tpch-subscale-row-counts-regen`; do not hand-edit."
+    "2": {
+      "query_parameters": "qgen -d (TPC-H default substitution parameters)",
+      "seed": null,
+      "row_counts": {
+        "1": 4,
+        "2": 44,
+        "3": 10,
+        "4": 5,
+        "5": 5,
+        "6": 1,
+        "7": 4,
+        "8": 2,
+        "9": 175,
+        "10": 20,
+        "11": 22,
+        "12": 2,
+        "13": 37,
+        "14": 1,
+        "15": 1,
+        "16": 2762,
+        "17": 1,
+        "18": 5,
+        "19": 1,
+        "20": 9,
+        "21": 47,
+        "22": 7
+      }
+    }
   },
   "parameter_sensitive_query_ids": [
     "2",
@@ -62,28 +98,90 @@
     "20",
     "21"
   ],
-  "row_counts": {
-    "1": 4,
-    "2": 44,
-    "3": 10,
-    "4": 5,
-    "5": 5,
-    "6": 1,
-    "7": 4,
-    "8": 2,
-    "9": 175,
-    "10": 20,
-    "11": 22,
-    "12": 2,
-    "13": 37,
-    "14": 1,
-    "15": 1,
-    "16": 2762,
-    "17": 1,
-    "18": 5,
-    "19": 1,
-    "20": 9,
-    "21": 47,
-    "22": 7
+  "provenance": {
+    "generator": {
+      "data_generator": "_sources/tpc-h/dbgen (dbgen) via the BenchBox TPC-H generate phase",
+      "query_generator": "_sources/tpc-h/dbgen (qgen) via TPCHBenchmark.get_query, per-engine dialect translation",
+      "query_template_digest": {
+        "algorithm": "sha256 over path, NUL, contents for each template in order",
+        "templates": [
+          "queries/1.sql",
+          "queries/2.sql",
+          "queries/3.sql",
+          "queries/4.sql",
+          "queries/5.sql",
+          "queries/6.sql",
+          "queries/7.sql",
+          "queries/8.sql",
+          "queries/9.sql",
+          "queries/10.sql",
+          "queries/11.sql",
+          "queries/12.sql",
+          "queries/13.sql",
+          "queries/14.sql",
+          "queries/16.sql",
+          "queries/17.sql",
+          "queries/18.sql",
+          "queries/19.sql",
+          "queries/20.sql",
+          "queries/21.sql",
+          "queries/22.sql",
+          "variants/15a.sql"
+        ],
+        "sha256": "0037776cd2526cbef4a6adbf520cc378a9fd582976f8fc23e8b482809a966956"
+      },
+      "data_stamp": {
+        "generator_version": "0.5.1",
+        "data_generation_version": 1,
+        "generator_binary_sha256": "281563c8b78ae427241ed722d861d33257946d18c32f472d25dc7dea2103d3ee",
+        "base_constants_hash": "a3d4867993df7a580ced7a429356856daff442d282b1d36b1f5ad79e3245d703"
+      }
+    },
+    "data_checksum": {
+      "algorithm": "sha256 over each table's decompressed shards in natural shard order, then over table name and digest; the dbgen_version table is excluded because it records the generation time",
+      "sha256": "e8039ef22ea5ce6840516bf2a77822fee376d0ebd832e7cc7b79ab30890a5d66",
+      "tables": {
+        "customer": "16ece524c820347cb1dead9c905b65156c755529a5a53bb13672c9358daade49",
+        "lineitem": "ee0a96ffebe62c1d8297b0ad389881330a425425efe8051263d63908f4eed48a",
+        "nation": "7d47bc9397da331054fa92b8fb92e4c074004bad72dcbb893012093218dccf6c",
+        "orders": "8a4d2e3be83b68e45f29bb3bb9c42dacabec61819f8695e6b045a0c6a4cbb67b",
+        "part": "7beb0cf5013f9066bdbd4ddba886bce2bfc08a156c786de3cda1204cb4332e7b",
+        "partsupp": "0a3026c320ddbdf62ac5d0cf9ca6541bd82f0225aa3be6f9cd0f1dffe3857fc4",
+        "region": "5a7c2fe9718db00ff5e5bc82a9ebfa8abc492cc75260d3c0ffb411974f235ab0",
+        "supplier": "3a83adcdf515ca1b15bfa60b5808b03d7432b19e8b778572a97f3d0d86e1ae39"
+      }
+    },
+    "engines": {
+      "duckdb": "2.0.0",
+      "datafusion": "55.0.0"
+    },
+    "generated_on": "2026-11-23",
+    "agreement": {
+      "result": "identical",
+      "engines": [
+        "duckdb",
+        "datafusion"
+      ],
+      "streams": [
+        0,
+        1,
+        2
+      ],
+      "queries_per_stream": 22,
+      "rule": "every query on every stream returned the same row count on every listed engine, on data with one checksum",
+      "probe_seeds": [
+        1,
+        7,
+        42,
+        99,
+        123,
+        2024,
+        31337,
+        65537,
+        1000003,
+        17039360
+      ]
+    },
+    "regenerate": "make row-count-references-regen BENCHMARK=tpch SCALE=<scale factor> WORK_DIR=<durable directory>"
   }
 }
