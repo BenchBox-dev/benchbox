@@ -52558,7 +52558,7 @@
       "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "dropped",
       "title": "Fork: a version whose source commit never got push runs can never be delivered, and the recovery is undocumented"
     },
     "sqlglot-fork-f0-base-and-manifest": {
