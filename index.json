@@ -40517,6 +40517,13 @@
       "status": "done",
       "title": "Fix Windows nightly: worktree-claim tests assert native paths but scripts emit MSYS paths"
     },
+    "no-manual-install-prerequisites-20261128": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Enforce that BenchBox never requires a manual software install before a run can proceed"
+    },
     "non-dataframe-test-coverage": {
       "claim": null,
       "needs": [

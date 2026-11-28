@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "No shipped path requires the user to install other software manually before it can proceed.",
+    "A guard fails when a new manual-install prerequisite is added.",
+    "TPC-DI data generation obtains its Java runtime without a manual install, or TPC-DI stays unavailable until it does."
+  ],
+  "context": "Raised by the owner while deciding whether the TPC-DI appendix SQL ships in the wheel (decision R2: ship it). It directly affects reopening TPC-DI, whose data generator needs Java 8.",
+  "description": "## Owner instruction (2026-11-28)\n\"file a follow up for enforce that we NEVER ship anything in benchbox that forces the user to install other software manually before proceeding\"\n\n## Problem\nSome shipped paths stop until the user installs other software by hand. Known case: TPC-DI data generation runs the TPC's DIGen, which needs a Java 8 runtime the user must install (the TPC-DI tools bundle and DIGen source under `benchbox/core/tpcdi/`); the TPC-DI reopening is about to make that path a user path. Other benchmarks and platforms may have similar prerequisites (native tools, system libraries, servers).\n\n## Change\n1. Inventory every shipped path that requires software outside the installed Python packages before it can proceed, with the file and the check that enforces it.\n2. For each: provide it automatically (a managed, pinned download or bundled runtime with checksum verification, consistent with existing binary handling), or make the path not shipped/unavailable until it can be provided.\n3. Add a guard (test or lint) that fails when a new shipped path introduces a manual-install prerequisite.\n\n## Open points for the owner\nWhether a managed download at first use (with checksum and licence notice) counts as automatic; how this applies to platforms whose server the user runs themselves.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d9c82d4657b7a4cbcbfb0e73",
+      "at": "2026-11-28T14:33:36Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "32c5f5ab73fd40778e9db099a16ccd4e",
+      "session_id": "cf74886b085549ef9de2b13963b10382"
+    }
+  ]
+}
