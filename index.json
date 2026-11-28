@@ -54736,17 +54736,12 @@
       "title": "TPC-DI step 18: milestone report and owner stop"
     },
     "tpcdi-15-delete-old-generator-and-etl-20261120": {
-      "claim": {
-        "expires_at": "2026-11-29T02:16:26Z",
-        "generation": "03ac40a412a44b4095cfc6d1d5d6c8bf",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d9c82d4657b7a4cbcbfb0e73"
-      },
+      "claim": null,
       "needs": [
         "tpcdi-14-milestone-report-owner-stop-20261120"
       ],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "TPC-DI step 19: delete the old generator and its direct load"
     },
     "tpcdi-16-generator-incremental-batches-20261120": {
