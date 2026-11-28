@@ -17378,6 +17378,7 @@
     },
     "tpcdi-incremental": {
       "accepted_members": {
+        "tpcdi-17-duckdb-incremental-and-full-audit-20261120": "ec4c2b6889178ad63da91fcddc2ec43a295c2746",
         "tpcdi-incremental-dimensions-20261121": "86ec6bd28315eabfd8fd7a83d8492a180af89bc8",
         "tpcdi-incremental-facts-20261121": "00d06973a80233feed7ce5bac0cbd6cd07527d03"
       },
@@ -17386,6 +17387,27 @@
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
       "integrated_members": {
+        "tpcdi-17-duckdb-incremental-and-full-audit-20261120": {
+          "accepted_head": "ec4c2b6889178ad63da91fcddc2ec43a295c2746",
+          "changed_files": [
+            "benchbox/core/tpcdi/audit.py",
+            "benchbox/core/tpcdi/benchmark.py",
+            "benchbox/core/tpcdi/etl/DEPARTURES.yaml",
+            "benchbox/core/tpcdi/platform_power.py",
+            "benchbox/core/tpcdi/validity.py",
+            "benchbox/core/tpcdi/visibility.py",
+            "changelog.d/feat-tpcdi-incremental--tpcdi-17-duckdb-incremental-and-full-audit-20261120.json",
+            "docs/internal/tpc-measured-intervals.md",
+            "docs/internal/tpcdi-duckdb-comparison.md",
+            "scripts/tpcdi/run_phases.py",
+            "tests/integration/core/test_tpcdi_phases_digen_output.py",
+            "tests/unit/core/tpcdi/test_phases_and_audit.py",
+            "tests/unit/core/tpcdi/test_validity.py",
+            "tests/unit/core/tpcdi/test_visibility.py"
+          ],
+          "integration_head": "0326a218a423a65c9298f3e1e03019ab8d7df0bf",
+          "integration_seq": 4
+        },
         "tpcdi-incremental-dimensions-20261121": {
           "accepted_head": "86ec6bd28315eabfd8fd7a83d8492a180af89bc8",
           "changed_files": [
@@ -17443,7 +17465,7 @@
         }
       },
       "integration_branch": "feat/tpcdi-incremental",
-      "integration_head": "d66fe5f7d688680c0caf3ba9ad5cc0d7b78c3f38",
+      "integration_head": "0326a218a423a65c9298f3e1e03019ab8d7df0bf",
       "integration_log": [
         {
           "at": "2026-11-28T02:18:52Z",
@@ -17488,6 +17510,15 @@
           "op_id": "5cc9c3bb18834e44a9bccd39d9a492ad",
           "previous_head": "6dfd689c02b9b3d014805cb37f2a28128fd3cc2a",
           "seq": 3
+        },
+        {
+          "at": "2026-11-28T13:10:47Z",
+          "head": "0326a218a423a65c9298f3e1e03019ab8d7df0bf",
+          "kind": "prepare",
+          "member": "tpcdi-17-duckdb-incremental-and-full-audit-20261120",
+          "op_id": "cad5a8cabc4e4238814c3412d5556706",
+          "previous_head": "d66fe5f7d688680c0caf3ba9ad5cc0d7b78c3f38",
+          "seq": 4
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpcdi-incremental",
@@ -55785,17 +55816,12 @@
       "title": "TPC-DI step 16: generator and audit recount for the two incremental batches"
     },
     "tpcdi-17-duckdb-incremental-and-full-audit-20261120": {
-      "claim": {
-        "expires_at": "2026-11-29T13:02:59Z",
-        "generation": "59ab391a2fe841f7a11becbb4cc87568",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d9c82d4657b7a4cbcbfb0e73"
-      },
+      "claim": null,
       "needs": [
         "tpcdi-incremental-facts-20261121"
       ],
       "priority": "medium-high",
-      "status": "active",
+      "status": "open",
       "title": "TPC-DI step 24: visibility queries, the full audit and the validity rule on DuckDB"
     },
     "tpcdi-18-metric-bundle-and-reopen-duckdb-20261120": {

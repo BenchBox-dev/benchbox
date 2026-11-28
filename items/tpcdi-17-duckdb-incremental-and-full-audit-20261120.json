@@ -13,6 +13,108 @@
   },
   "context": "Step of the TPC-DI plan based on shannon-barrow/databricks-tpc-di. The full plan (inventory of the project, the 34 departures from the specification with file and line, target architecture, step list) is the description of tpcdi-plan-databricks-base-20261121; every owner decision is quoted on tpcdi-correction-plan-20261120. Read both before starting. Item ids keep the number they were created with; the step number in the title is the order. File paths and line numbers in the plan were read on 2026-11-21 and must be re-read before editing.\n\n2026-11-22 AMENDMENT (owner-approved: \"amend the plan and the remaining items ... so each one uses the standard path named in the audit\"). This note supersedes any conflicting wording in this item's Change, gates and rubric. Standard paths: query/audit/ETL SQL reaches a platform only through `translate_sql_query` (benchbox/utils/dialect_utils.py); a construct the translator lacks is a named fork rewrite called through `apply_rewrite`, never a text replacement or a per-platform alternative statement; statements are split with `split_sql_statements`; what the translator did is recorded in the standard `execution.translation` block; new SQL text gets a golden-corpus area. Benchmark-scoped column-type/emission choices are `Phase.SCHEMA_EMIT` rules plus `translate_ddl(type_map=...)`; adapter CREATE TABLE rewrites are `DDL_OPTIMIZE`. Reuse existing helpers before writing new ones (AGENTS.md). Audit reference: the leader's divergence audit (2026-11-22). Specific to this item: Same as the historical audit: appendix via translate_sql_query, outcomes in execution.translation, single audit-result location.\n\n2026-11-26 owner decisions for batch tpcdi-incremental (choice form, verbatim answers {\"d1\": \"move-on-update\", \"d2\": \"fork-exact\", \"d5\": \"last-change\", \"d89\": \"65s-failed\"}). Design: leader session file incremental-design.md (read-only research).\nD1: DimTrade.BatchID is set to the batch that last updated the trade; every SK_* and SK_CreateDateID stay from creation. Replaces the approved row dimtrade-batchid-fixed-at-creation and the acceptance line \"A trade's BatchID never changes after creation\"; recorded as a kept project behaviour citing Appendix A \"DimTrade date check\" (tpcdi_audit.sql:974-1003), which fails for Batch 1 with BatchID fixed (138 SF3 trades created in Batch 1 close in Batch 2).\nD2: Yield and PERatio become exact through a named fork rewrite exact_decimal_quotients in benchbox-sqlglot (exact scaled-integer division, half away from zero), released and adopted by a serial PR before tpcdi-17 starts; fixture of exact ties plus 10,000 seeded pairs. (Casting operands to a wide DECIMAL has no effect: DuckDB 2.0.0 divides DECIMAL by DECIMAL in DOUBLE.)\nD5: Prospect.BatchID is the batch that inserted the row or last changed a value; an unchanged reappearance keeps BatchID and gets a new SK_RecordDateID.\nD8/D9: a visibility query is late when any start-to-start gap exceeds 65 s; a run that is not valid (missing or late visibility, update over 3600 s) is FAILED with reasons in a validity block; under 1800 s valid and flagged.\nWithout a stop (spec wins): D3 Prospect-only changes expire and re-insert DimCustomer and cascade to accounts; D4 agencies missing from a later Prospect file are kept; D6 Prospect.IsCustomer requires Status ACTIVE (both phases); D7 INACT makes the customer's accounts inactive (both phases); D10 timed rows TDI_HISTORICAL, TDI_INCREMENTAL_1, TDI_INCREMENTAL_2.",
   "description": "## Problem\nThe specification requires visibility queries during the incremental updates (Clause 7.3) and a full audit after them. The Databricks project never runs the visibility queries, so the audit's visibility tests pass with no rows; the audit cannot detect their absence.\n\n## Owner decisions (choice dialogs, 2026-11-20 and 2026-11-21)\n- 2026-11-20: visibility queries run on a separate session every 60 seconds and at phase boundaries.\n- 2026-11-21: allowed lateness per interval: 5 seconds.\n- 2026-11-20: enforce the 3600-second limit on each incremental update.\n- 2026-11-21, audit SQL: \"Ship the official TPC text from the archive you supply, unmodified; only the substitutions the specification allows, recorded in the result.\"\n- 2026-11-21, DIGen answer-key errors: \"Correct only those attributes when loading the audit table, from an independent recount that shares no code with the ETL; list each correction in the result; never edit generated files.\"\n- 2026-11-21: where the project and the specification differ, \"The specification wins without asking. Every difference, and any behaviour of the project that is kept, goes in a catalogue I approve at the milestone stop. A difference from the DuckDB implementation not in the catalogue is a finding that blocks the step.\"\n\n## Change\nAdd `visibility.py`: a runner on a second connection (`open_stream_connection`) that runs `tpcdi_visibility_1` within 5 minutes of the start of the first incremental update, `tpcdi_visibility_2` every 60 seconds and at each phase boundary, and the final `tpcdi_visibility_1` in the audit phase, recording the monotonic time of each. Extend the power harness to run both incremental updates, each ending with Appendix B and its completion record, then the full Appendix A. BenchBox itself requires visibility evidence: a run with missing or late visibility executions is not valid, whatever the audit says. An incremental update over 3600 seconds makes the run not valid. Status after a full pass stays not validated until the reopening step.\n\n## Decision gates\nFirst a short probe: can DuckDB take inserts into DImessages from the second connection while the first runs a transformation? If not, describe the alternative in the pull request before arming. The test hook that forces an update past 3600 seconds is test-only (not a CLI option or environment variable a user can set); show its name in the pull request.\n\n## Verification rubric\nPass, at scales 3 and 5 through `make heavy-run`, evidence kept: the full official audit is all OK (every test, none excluded); the recorded visibility times show the first within 300 seconds of the first update's start, no gap above 65 seconds, an execution at every boundary and the final one present; a run with the runner disabled is not valid (test); a forced update over 3600 seconds is not valid and `publish_admission` refuses it (test); negative control: one change row removed from a copy of Batch 2 makes the audit fail; comparison with the DuckDB implementation over all three batches shows no unlisted difference, output attached; no result reads PASSED; `make pr-preflight` passes.\n\n## Guardrails (owner, 2026-11-20 and 2026-11-21)\n- The agent never posts a stand-in review, closes and reopens a pull request to restart CI, uses `--no-verify`, force-pushes, rewrites an author, or deletes anything under `~/Developer/benchmark_runs`.\n- Arming: `make pr-arm` once; one more attempt only when the refusal named a cause, the agent reported it and the cause is cleared; never a third without asking. `make pr-rerun` at most once and only for a job the runner never ran or cancelled, never for a failed test.\n- Review threads: reply; resolve only after the bot's review of the new head does not raise the finding again.\n- Subagents are read-only. No file edit by script; use the edit tool. Do not edit a pull request description while its CI is starting; post a comment.\n- Any limit, default, threshold, status token, message, label text or name (option, configuration key, result field, file name, test hook) the owner has not already chosen is chosen by the implementer following existing BenchBox conventions and the specification, and is listed in the pull request (owner, 2026-11-21: no stop for these). Texts the owner has chosen (see tpcdi-correction-plan-20261120) are used verbatim.\n- A blocked step stops this item; no workaround. No live cloud run. Heavy work only through `make heavy-run`. Delivery follows the batch plan on tpcdi-correction-plan-20261120: a batch member ends at a landing report and its batch has one final pull request; a serial item has its own pull request.\n- From the quarantine step until the reopening step, no TPC-DI entry point may produce a result that reads PASSED or is admitted for publication.\n- Sources. SQL derived from the Databricks project (`src/incremental_batches/**` at commit 8e0f944, treated as MIT on the owner's instruction) may be committed only after the provenance step has merged, only under `benchbox/core/tpcdi/etl/`, with every file listed in `PROVENANCE.json` and with all comments removed.\n- TPC and bankmark files (DIGen, PDGF, dictionaries, configuration, EULA, appendix SQL) come only from the official archive the owner supplies, are committed unmodified and only in `_sources/tpc-di/`, `benchbox/_binaries/tpc-di/` and `benchbox/_binaries/tpc-di/tools/`. Never copy from the Databricks project or the DuckDB implementation: their copies of the tools or the tools zip, DIGen output, generated reference files, audit snapshots, their copy or rewrite of the appendix SQL, or any generator code (`src/tools/**`). Never commit DIGen output.\n- The specification wins over the Databricks project without asking. Each behaviour of the project that is kept and each change made to follow the specification is one row in `benchbox/core/tpcdi/etl/DEPARTURES.yaml`, which the owner approves at the milestone stop.\n- Owner, 2026-11-21: \"The specification wins without asking. Every difference, and any behaviour of the project that is kept, goes in a catalogue I approve at the milestone stop. A difference from the DuckDB implementation not in the catalogue is a finding that blocks the step.\" The catalogue is `DEPARTURES.yaml`; every entry of the comparison's expected-differences list must cite a catalogue row. After the milestone stop, a new catalogue row in which BenchBox follows the specification is listed in the pull request; a row that would keep behaviour of the Databricks project that departs from the specification stops for the owner's approval (owner, 2026-11-21).\n- The agent never contacts bankmark, the TPC or the Databricks project's author.\n- Staging files produced by DIGen are never edited. The official audit, validation and visibility SQL is never edited in the repository.",
+  "prepared": {
+    "accepted_head": "ec4c2b6889178ad63da91fcddc2ec43a295c2746",
+    "batch_id": "tpcdi-incremental",
+    "changed_files": [
+      "benchbox/core/tpcdi/audit.py",
+      "benchbox/core/tpcdi/benchmark.py",
+      "benchbox/core/tpcdi/etl/DEPARTURES.yaml",
+      "benchbox/core/tpcdi/platform_power.py",
+      "benchbox/core/tpcdi/validity.py",
+      "benchbox/core/tpcdi/visibility.py",
+      "changelog.d/feat-tpcdi-incremental--tpcdi-17-duckdb-incremental-and-full-audit-20261120.json",
+      "docs/internal/tpc-measured-intervals.md",
+      "docs/internal/tpcdi-duckdb-comparison.md",
+      "scripts/tpcdi/run_phases.py",
+      "tests/integration/core/test_tpcdi_phases_digen_output.py",
+      "tests/unit/core/tpcdi/test_phases_and_audit.py",
+      "tests/unit/core/tpcdi/test_validity.py",
+      "tests/unit/core/tpcdi/test_visibility.py"
+    ],
+    "integration_head": "0326a218a423a65c9298f3e1e03019ab8d7df0bf",
+    "integration_seq": 4,
+    "member_id": "tpcdi-17-duckdb-incremental-and-full-audit-20261120",
+    "overlaps": [
+      {
+        "kind": "member",
+        "member": "tpcdi-incremental-dimensions-20261121",
+        "paths": [
+          "benchbox/core/tpcdi/etl/DEPARTURES.yaml",
+          "docs/internal/tpcdi-duckdb-comparison.md"
+        ]
+      },
+      {
+        "kind": "member",
+        "member": "tpcdi-incremental-facts-20261121",
+        "paths": [
+          "benchbox/core/tpcdi/etl/DEPARTURES.yaml",
+          "docs/internal/tpcdi-duckdb-comparison.md"
+        ]
+      }
+    ],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "ac01dcf1153ec701e1216a95c849d134d1ad1106a5ce16366a75605ee68c9f87",
+    "source_base": "d66fe5f7d688680c0caf3ba9ad5cc0d7b78c3f38",
+    "source_revision": "ec4c2b6889178ad63da91fcddc2ec43a295c2746",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-tpcdi-i-17",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/integration/core/test_tpcdi_etl_historical_digen_output.py",
+        "tests/integration/core/test_tpcdi_etl_incremental_dims_digen_output.py",
+        "tests/integration/core/test_tpcdi_etl_incremental_facts_digen_output.py",
+        "tests/integration/core/test_tpcdi_phases_digen_output.py",
+        "tests/system/test_module_size_thresholds.py",
+        "tests/unit/cli/test_output_control_static.py",
+        "tests/unit/cli/test_shipped_docs_urls.py",
+        "tests/unit/core/ai_primitives/test_benchmark.py",
+        "tests/unit/core/test_benchmark_output_root_propagation.py",
+        "tests/unit/core/test_tpcdi_quarantine.py",
+        "tests/unit/core/tpcdi/test_appendix.py",
+        "tests/unit/core/tpcdi/test_digen_source.py",
+        "tests/unit/core/tpcdi/test_etl_staging.py",
+        "tests/unit/core/tpcdi/test_phases_and_audit.py",
+        "tests/unit/core/tpcdi/test_schema_spec.py",
+        "tests/unit/core/tpcdi/test_tpcdi_no_values_row_source.py",
+        "tests/unit/core/tpcdi/test_validity.py",
+        "tests/unit/core/tpcdi/test_visibility.py",
+        "tests/unit/core/tpchavoc/test_tpchavoc_vacuity_guard.py",
+        "tests/unit/core/tuning/test_sort_evidence_attested.py",
+        "tests/unit/core/write_primitives/test_benchmark_execution.py",
+        "tests/unit/core/write_primitives/test_write_primitives_benchmark_coverage.py",
+        "tests/unit/platforms/test_credential_error_messages.py",
+        "tests/unit/platforms/test_duckdb_adapter.py",
+        "tests/unit/platforms/test_duckdb_sorted_loading.py",
+        "tests/unit/scripts/test_inert_paths.py::test_checked_in_readers_match_the_rebuilt_index",
+        "tests/unit/scripts/test_tpcdi_run_phases.py",
+        "tests/unit/test_standardized_benchmark_apis.py"
+      ],
+      "review": {
+        "base_sha": "d66fe5f7d688680c0caf3ba9ad5cc0d7b78c3f38",
+        "head_sha": "ec4c2b6889178ad63da91fcddc2ec43a295c2746",
+        "head_tree": "4e59ee995aace30fe6ba088b5d06b16d308ed860",
+        "outcome": "clear",
+        "patch_digest": "a77168c0cdcdcaa4b46d2413009e7c20",
+        "reason": "decided SHIP WITH FIXES with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "7c9ec9c8031fc8acad33bf5687d29b15a2955fdf"
+      },
+      "revision": "ec4c2b6889178ad63da91fcddc2ec43a295c2746",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a2d9b179a7e76625f10f9840",
@@ -77,6 +179,15 @@
       "generation": "59ab391a2fe841f7a11becbb4cc87568",
       "op": "take",
       "op_id": "4cc287d160dd43269da16d010c8f0ada",
+      "session_id": "cf74886b085549ef9de2b13963b10382"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d9c82d4657b7a4cbcbfb0e73",
+      "at": "2026-11-28T13:10:47Z",
+      "client": "omp-coding-agent",
+      "generation": "59ab391a2fe841f7a11becbb4cc87568",
+      "op": "prepare",
+      "op_id": "cad5a8cabc4e4238814c3412d5556706",
       "session_id": "cf74886b085549ef9de2b13963b10382"
     }
   ]
