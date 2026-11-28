@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
-from collections import defaultdict
+from collections import Counter, defaultdict
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
@@ -21,15 +22,28 @@ if str(CHECKOUT_ROOT) not in sys.path:
     sys.path.insert(0, str(CHECKOUT_ROOT))
 
 from _project.scripts.explorer_pipeline import pipeline as explorer_pipeline, transformer as explorer_transformer
-from _project.scripts.explorer_pipeline.models import ManifestEntry, canonical_benchmark_slug, canonical_phase
+from _project.scripts.explorer_pipeline.models import (
+    ManifestEntry,
+    canonical_benchmark_slug,
+    canonical_phase,
+    ranking_exclusion_reason,
+)
 from _project.scripts.explorer_pipeline.ranking import rank_platforms
-from benchbox.core.results import comparison_identity, corpus_rule
+from benchbox.core.results import comparison_identity, corpus_rule, corpus_score
 from benchbox.validation.bundle import discover_bundles
 
 CLI_DESCRIPTION = (
     "Record or check the outcome of every committed result bundle as the Explorer pipeline emits it and as the "
     "corpus rule computes it, so a code change that moves a stored result fails visibly."
 )
+
+RULE_LANE_PHASES = {
+    corpus_rule.LANE_COMBINED: "combined",
+    corpus_rule.LANE_POWER_ONLY: "power",
+    corpus_rule.LANE_SUBSCALE: "power",
+    corpus_rule.LANE_OWN: "power",
+    corpus_rule.LANE_THROUGHPUT: "throughput",
+}
 
 Outcome = dict[str, Any]
 Snapshot = dict[str, Outcome]
@@ -99,6 +113,88 @@ def _rank_cohorts(accum: dict[CohortKey, list[tuple[ManifestEntry, Any]]]) -> di
     return ranks
 
 
+def _rule_lane_score(item: _Loaded, lane: str) -> float | None:
+    if lane == corpus_rule.LANE_THROUGHPUT:
+        return corpus_score.throughput_at_size(item.data)
+    if lane == corpus_rule.LANE_COMBINED:
+        return corpus_score.combined_score(item.data)
+    if lane == corpus_rule.LANE_OWN:
+        return item.entry.display_geomean_ms
+    return corpus_score.power_at_size(item.data)
+
+
+def _rule_lane_key(item: _Loaded, lane: str) -> CohortKey:
+    phase = RULE_LANE_PHASES[lane]
+    streams = corpus_rule.throughput_stream_count(item.data) if lane == corpus_rule.LANE_THROUGHPUT else None
+    return (item.slug, item.entry.scale_factor, phase, streams)
+
+
+def _rule_lane_reason(item: _Loaded, score: float | None) -> str | None:
+    reason = ranking_exclusion_reason(item.entry, "display_geomean_ms")
+    if reason not in (None, "missing_primary_metric"):
+        return reason
+    if score is None:
+        return "missing_primary_metric"
+    if not math.isfinite(score) or score <= 0:
+        return "non_positive_primary_metric"
+    return None
+
+
+def _competition_rank(score: float, scored: list[float], lower_is_better: bool) -> int:
+    return 1 + sum((other < score) if lower_is_better else (other > score) for other in scored)
+
+
+def _majority_query_set(query_sets: list[frozenset[str]]) -> frozenset[str] | None:
+    counts = Counter(query_sets)
+    if not counts:
+        return None
+    query_set, count = counts.most_common(1)[0]
+    return query_set if count > len(query_sets) - count else None
+
+
+def _rule_ranks(
+    loaded: list[_Loaded], outcomes: Mapping[str, corpus_rule.Outcome]
+) -> tuple[dict[tuple[CohortKey, str], Outcome], dict[str, dict[str, CohortKey]]]:
+    cohorts: dict[CohortKey, list[tuple[str, float | None, str | None, frozenset[str]]]] = defaultdict(list)
+    lower_is_better: dict[CohortKey, bool] = {}
+    keys: dict[str, dict[str, CohortKey]] = {}
+    for item in loaded:
+        keys[item.name] = {}
+        for lane in outcomes[item.name].lanes:
+            key = _rule_lane_key(item, lane)
+            keys[item.name][lane] = key
+            score = _rule_lane_score(item, lane)
+            cohorts[key].append(
+                (
+                    item.entry.result_id,
+                    score,
+                    _rule_lane_reason(item, score),
+                    frozenset(timing.query_id for timing in item.detail.display_timings),
+                )
+            )
+            lower_is_better[key] = lane == corpus_rule.LANE_OWN
+    ranks: dict[tuple[CohortKey, str], Outcome] = {}
+    for key, members in cohorts.items():
+        shared = _majority_query_set([query_set for _, _, reason, query_set in members if reason is None])
+        members = [
+            (result_id, score, reason or (None if query_set == shared else "mismatched_query_set"), query_set)
+            for result_id, score, reason, query_set in members
+        ]
+        scored = [score for _, score, reason, _ in members if reason is None and score is not None]
+        for result_id, score, reason, _ in members:
+            ranked = reason is None and score is not None
+            ranks[(key, result_id)] = {
+                "cohort": cohort_label(key),
+                "rank": _competition_rank(score, scored, lower_is_better[key])
+                if ranked and score is not None
+                else None,
+                "total": len(scored),
+                "score": _round(score),
+                "exclusion_reason": reason,
+            }
+    return ranks, keys
+
+
 def _identity(item: _Loaded) -> Outcome:
     entry = item.entry
     version = comparison_identity.resolve_comparison_version(item.data)
@@ -132,7 +228,7 @@ def _rule(
     item: _Loaded,
     outcome: corpus_rule.Outcome,
     ranks: Mapping[tuple[CohortKey, str], Outcome],
-    keys: Mapping[str | None, CohortKey],
+    keys: Mapping[str, CohortKey],
 ) -> Outcome:
     return {
         "class": outcome.class_name,
@@ -170,18 +266,25 @@ def compute_snapshot(bundles_dir: Path) -> Snapshot:
             accum[key].append((lane_entry, item.detail))
     ranks = _rank_cohorts(accum)
 
+    outcomes = {
+        item.name: corpus_rule.derive_outcome(
+            corpus_rule.facts_from_result(
+                item.data,
+                known_defects=corpus_rule.sidecar_known_defects(item.path),
+                validation_status=item.entry.validation_status,
+                failed_queries=item.entry.failed_query_count,
+            )
+        )
+        for item in loaded
+    }
+    rule_ranks, rule_keys = _rule_ranks(loaded, outcomes)
+
     snapshot: Snapshot = {}
     for item in loaded:
-        facts = corpus_rule.facts_from_result(
-            item.data,
-            known_defects=corpus_rule.sidecar_known_defects(item.path),
-            validation_status=item.entry.validation_status,
-            failed_queries=item.entry.failed_query_count,
-        )
         snapshot[item.name] = {
             "identity": _identity(item),
             "today": _today(item, ranks, keys[item.name]),
-            "rule": _rule(item, corpus_rule.derive_outcome(facts), ranks, keys[item.name]),
+            "rule": _rule(item, outcomes[item.name], rule_ranks, rule_keys[item.name]),
         }
     for name, problem in skipped.items():
         snapshot[name] = {"identity": None, "today": {"skipped": problem}, "rule": {"skipped": problem}}

@@ -71,6 +71,8 @@ file	_project/scripts/explorer_pipeline/models.py
 file	_project/scripts/explorer_pipeline/pipeline.py
 file	_project/scripts/explorer_pipeline/ranking.py
 file	_project/scripts/explorer_pipeline/transformer.py
+file	_project/scripts/explorer_pipeline/corpus_outcome.py
+file	_project/scripts/explorer_pipeline/medians.py
 file	_project/scripts/explorer_pipeline/duckdb_builder.py
 file	_project/scripts/explorer_pipeline/compare_math.py
 file	_project/scripts/explorer_pipeline/browser_fixtures.py

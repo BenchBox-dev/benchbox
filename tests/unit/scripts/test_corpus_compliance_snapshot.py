@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import dataclasses
 
 import corpus_compliance_snapshot as script
 import pytest
@@ -69,6 +70,38 @@ def test_a_drifted_today_outcome_fails_and_names_the_result(recorded, computed) 
     assert "today outcome" in problems[0]
     assert script.REGENERATE_COMMAND in problems[0]
     assert _changed_files(problems) == {name}
+
+
+def test_the_pipeline_rank_equals_the_rules_own_rank_for_every_stored_result(computed) -> None:
+    ranked = 0
+    for name, entry in computed.items():
+        if "skipped" in entry["today"]:
+            continue
+        ranked += entry["today"]["rank"] is not None
+        assert "rank changes" not in "".join(row["reason"] for row in script.differences({name: entry})), name
+    assert ranked
+
+
+def test_a_pipeline_misranking_shows_as_a_difference_from_the_rule(computed, monkeypatch) -> None:
+    original = script.rank_platforms
+
+    def misranked(summary):
+        cohort = original(summary)
+        rows = [dataclasses.replace(row, rank=None if row.rank is None else row.rank + 1) for row in cohort.rows]
+        return dataclasses.replace(cohort, rows=rows)
+
+    monkeypatch.setattr(script, "rank_platforms", misranked)
+    skewed = script.compute_snapshot(BUNDLES)
+
+    changed = {
+        name
+        for name, entry in skewed.items()
+        if "skipped" not in entry["today"] and entry["today"]["rank"] != computed[name]["today"]["rank"]
+    }
+    assert changed
+    for name in changed:
+        assert skewed[name]["rule"]["ranks"] == computed[name]["rule"]["ranks"]
+    assert {row["path"] for row in script.differences(skewed)} >= changed
 
 
 def test_a_drifted_rule_outcome_fails_and_names_the_result(recorded) -> None:

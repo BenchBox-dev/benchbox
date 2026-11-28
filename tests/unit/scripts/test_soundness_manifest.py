@@ -88,6 +88,8 @@ pytestmark = [
         "_project/scripts/explorer_pipeline/pipeline.py",
         "_project/scripts/explorer_pipeline/ranking.py",
         "_project/scripts/explorer_pipeline/transformer.py",
+        "_project/scripts/explorer_pipeline/corpus_outcome.py",
+        "_project/scripts/explorer_pipeline/medians.py",
         "_project/scripts/explorer_pipeline/duckdb_builder.py",
         "_project/scripts/explorer_pipeline/compare_math.py",
         "_project/scripts/explorer_pipeline/browser_fixtures.py",
