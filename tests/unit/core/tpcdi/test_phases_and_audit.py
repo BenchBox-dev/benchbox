@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import threading
 from datetime import datetime
 from pathlib import Path
 
 import pytest
 
 from benchbox.core.publishing.admission import publish_admission
-from benchbox.core.tpcdi import audit, benchmark as benchmark_module, phases
+from benchbox.core.tpcdi import audit, benchmark as benchmark_module, phases, platform_power
 from benchbox.core.tpcdi.audit import AuditOutcome, AuditResult, audit_test_specs, is_evaluable
 from benchbox.core.tpcdi.benchmark import TPCDIBenchmark
 from benchbox.core.tpcdi.etl import staging
@@ -15,6 +16,8 @@ from benchbox.core.tpcdi.phases import POWER_WITHOUT_INITIALIZATION_MESSAGE, Pha
 from benchbox.core.tpcdi.platform_power import execute_tpcdi_power_test
 from benchbox.core.tpcdi.schema import TPCDISchemaManager
 from benchbox.core.tpcdi.sources.recount import Difference
+from benchbox.core.tpcdi.validity import Validity, combined_status
+from benchbox.core.tpcdi.visibility import VisibilityEvidence, VisibilityExecution, evaluate_visibility
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast, pytest.mark.tpcdi]
 
@@ -47,6 +50,9 @@ class DuckDBTarget:
     def get_target_dialect(self) -> str:
         return "duckdb"
 
+    def new_stream_connection(self, connection, *, benchmark_type=None):
+        return connection.cursor()
+
 
 class XmlReadingTarget(DuckDBTarget):
     allow_third_party_extensions = True
@@ -71,6 +77,36 @@ def outcome_with(results: tuple[AuditResult, ...]) -> AuditOutcome:
 
 def record(name: str, batch: int, second: int) -> PhaseRecord:
     return PhaseRecord(name, batch, datetime(2026, 11, 25, 12, 0, second), float(second))
+
+
+def validity_with(*reasons: str) -> Validity:
+    return Validity((), VisibilityEvidence((), (), reasons, 60.0, 5.0), reasons)
+
+
+class StubRunner:
+    def __init__(self, audit_error: str | None = None):
+        self.events: list[str] = []
+        self.audit_error = audit_error
+
+    def run_audit_query(self) -> None:
+        self.events.append("audit query")
+
+    def close(self) -> None:
+        self.events.append("close")
+
+    def evidence(self, *, iu1_start: float, iu2_end: float) -> VisibilityEvidence:
+        def execution(kind: str, trigger: str, start: float, error: str | None = None) -> VisibilityExecution:
+            return VisibilityExecution(kind, trigger, start, start + 0.1, datetime(2026, 11, 25), error)
+
+        return evaluate_visibility(
+            [
+                execution("Visibility_1", "phase_start", iu1_start + 0.5),
+                execution("Visibility_2", "boundary", 20.0),
+                execution("Visibility_1", "audit", iu2_end + 1, self.audit_error),
+            ],
+            iu1_start=iu1_start,
+            iu2_end=iu2_end,
+        )
 
 
 def test_tests_that_fix_the_batch_count_are_found_in_the_shipped_audit_sql():
@@ -109,6 +145,21 @@ def test_status_is_failed_only_for_an_evaluable_test_that_is_not_ok():
     assert outcome_with((passing, excluded)).status == "NOT_VALIDATED"
     assert outcome_with((passing, excluded, failing)).status == "FAILED"
     assert outcome_with((passing, excluded)).excluded_tests == ("DimTrade batches",)
+
+
+@pytest.mark.parametrize(
+    ("latest", "expected"),
+    [(1, False), (2, False), (3, True)],
+)
+def test_the_tests_counting_batches_are_evaluable_only_after_the_last_batch(latest, expected):
+    spec = audit_test_specs()["DimTrade batches"]
+    assert is_evaluable(spec, None, latest, set()) is expected
+
+
+def test_a_late_visibility_gap_makes_a_clean_audit_failed():
+    passing = AuditResult("DimTrade row count", 1, "OK", "", True)
+    assert combined_status(outcome_with((passing,)), validity_with()) == "NOT_VALIDATED"
+    assert combined_status(outcome_with((passing,)), validity_with("a gap was late")) == "FAILED"
 
 
 def test_loading_the_audit_table_applies_and_lists_each_answer_key_correction(tmp_path, monkeypatch):
@@ -219,7 +270,10 @@ def test_the_result_carries_the_audit_block_and_its_status(tmp_path):
     benchmark = TPCDIBenchmark(scale_factor=3, output_dir=tmp_path)
     failing = AuditResult("DimTrade Type", None, "Bad value", "", True)
     benchmark.record_power_phases(
-        record(phases.INITIALIZATION_PHASE, 0, 1), (record(phases.HISTORICAL_PHASE, 1, 9),), outcome_with((failing,))
+        record(phases.INITIALIZATION_PHASE, 0, 1),
+        (record(phases.HISTORICAL_PHASE, 1, 9),),
+        outcome_with((failing,)),
+        validity_with(),
     )
 
     result = benchmark.create_enhanced_benchmark_result(
@@ -238,7 +292,10 @@ def test_a_failed_run_stays_failed_and_the_audit_outcome_is_used_once(tmp_path):
     benchmark = TPCDIBenchmark(scale_factor=3, output_dir=tmp_path)
     passing = AuditResult("DimTrade row count", 1, "OK", "", True)
     benchmark.record_power_phases(
-        record(phases.INITIALIZATION_PHASE, 0, 1), (record(phases.HISTORICAL_PHASE, 1, 9),), outcome_with((passing,))
+        record(phases.INITIALIZATION_PHASE, 0, 1),
+        (record(phases.HISTORICAL_PHASE, 1, 9),),
+        outcome_with((passing,)),
+        validity_with(),
     )
 
     failed = benchmark.create_enhanced_benchmark_result("DuckDB", [], validation_status="FAILED")
@@ -266,7 +323,10 @@ def test_the_audit_never_softens_a_non_clean_status(tmp_path, incoming, audit_fa
     benchmark = TPCDIBenchmark(scale_factor=3, output_dir=tmp_path)
     result = AuditResult("DimTrade Type", None, "Bad value" if audit_failing else "OK", "", True)
     benchmark.record_power_phases(
-        record(phases.INITIALIZATION_PHASE, 0, 1), (record(phases.HISTORICAL_PHASE, 1, 9),), outcome_with((result,))
+        record(phases.INITIALIZATION_PHASE, 0, 1),
+        (record(phases.HISTORICAL_PHASE, 1, 9),),
+        outcome_with((result,)),
+        validity_with(),
     )
 
     assert benchmark.create_enhanced_benchmark_result("DuckDB", [], validation_status=incoming).validation_status == (
@@ -282,17 +342,97 @@ def test_the_power_test_completes_with_the_audit_and_the_measured_interval(tmp_p
         lambda _connection, _staging, *, latest_batch, platform: audited.append(latest_batch) or outcome_with(()),
     )
     benchmark = TPCDIBenchmark(scale_factor=3, output_dir=tmp_path)
-    initialization, historical = record(phases.INITIALIZATION_PHASE, 0, 1), record(phases.HISTORICAL_PHASE, 1, 9)
+    initialization = record(phases.INITIALIZATION_PHASE, 0, 1)
+    historical, first, second = (record("historical_load", 1, 9), record("iu1", 2, 20), record("iu2", 3, 30))
+    runner = StubRunner()
 
     assert benchmark.complete_power_test(DuckDBTarget(), None) is None
-    benchmark.record_measured_phases(initialization, (historical,))
+    benchmark.record_measured_phases(initialization, (historical, first, second), runner)
     timing = benchmark.complete_power_test(DuckDBTarget(), None)
 
-    assert audited == [1]
-    assert timing == (initialization.completed_at.isoformat(), historical.completed_at.isoformat(), 8000)
+    assert audited == [3]
+    assert runner.events == ["audit query", "close"]
+    assert timing == (initialization.completed_at.isoformat(), second.completed_at.isoformat(), 29000)
     assert benchmark.complete_power_test(DuckDBTarget(), None) is None
     result = benchmark.create_enhanced_benchmark_result("DuckDB", [], validation_status="PASSED")
-    assert result.validation_details["tpcdi_audit"]["status"] == "NOT_VALIDATED"
+    block = result.validation_details["tpcdi_audit"]
+    assert block["status"] == "NOT_VALIDATED"
+    assert block["validity"]["valid"] is True
+    assert [entry["batch_id"] for entry in block["phases"]] == [0, 1, 2, 3]
+    assert [update["batch_id"] for update in block["validity"]["incremental_updates"]] == [2, 3]
+
+
+def test_the_audit_visibility_query_failing_makes_the_run_failed(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        benchmark_module, "run_audit", lambda _connection, _staging, *, latest_batch, platform: outcome_with(())
+    )
+    benchmark = TPCDIBenchmark(scale_factor=3, output_dir=tmp_path)
+    runner = StubRunner(audit_error="boom")
+    benchmark.record_measured_phases(
+        record(phases.INITIALIZATION_PHASE, 0, 1),
+        (record("historical_load", 1, 9), record("iu1", 2, 20), record("iu2", 3, 30)),
+        runner,
+    )
+    benchmark.complete_power_test(DuckDBTarget(), None)
+
+    result = benchmark.create_enhanced_benchmark_result("DuckDB", [], validation_status="PASSED")
+
+    assert result.validation_status == "FAILED"
+    block = result.validation_details["tpcdi_audit"]["validity"]
+    assert block["valid"] is False
+    assert any("Visibility_1" in reason for reason in block["reasons"])
+    assert publish_admission(result, "unofficial-research").allowed is False
+
+
+def test_the_power_path_runs_both_incremental_updates_and_names_the_timed_rows(tmp_path, monkeypatch):
+    calls: list[str] = []
+    monkeypatch.setattr(
+        platform_power,
+        "run_historical_load",
+        lambda *_args, **_kwargs: calls.append("historical") or record("historical_load", 1, 9),
+    )
+    monkeypatch.setattr(
+        platform_power,
+        "run_incremental_update",
+        lambda _connection, _staging, batch_id, **_kwargs: (
+            calls.append(f"incremental {batch_id}") or record(f"iu{batch_id}", batch_id, 9 + 11 * (batch_id - 1))
+        ),
+    )
+    benchmark = TPCDIBenchmark(scale_factor=3, output_dir=tmp_path)
+    benchmark._initialization = record(phases.INITIALIZATION_PHASE, 0, 1)
+    connection = warehouse()
+
+    rows = execute_tpcdi_power_test(DuckDBTarget(), benchmark, connection, {}, console=Console())
+
+    assert calls == ["historical", "incremental 2", "incremental 3"]
+    assert [row["query_id"] for row in rows] == ["TDI_HISTORICAL", "TDI_INCREMENTAL_1", "TDI_INCREMENTAL_2"]
+    assert [row["execution_time_seconds"] for row in rows] == [8.0, 11.0, 11.0]
+    assert [row["position"] for row in rows] == [1, 2, 3]
+    measured = benchmark._measured_phases
+    assert measured is not None
+    (_, phases_run, runner) = measured
+    assert [phase.batch_id for phase in phases_run] == [1, 2, 3]
+    kinds = [execution.kind for execution in runner.executions]
+    assert kinds[0] == "Visibility_1"
+    assert "Visibility_2" in kinds
+    runner.close()
+
+
+def test_a_failure_in_an_incremental_update_stops_the_visibility_thread(tmp_path, monkeypatch):
+    monkeypatch.setattr(platform_power, "run_historical_load", lambda *_a, **_k: record("historical_load", 1, 9))
+
+    def failing_update(*_args, **_kwargs):
+        raise RuntimeError("update failed")
+
+    monkeypatch.setattr(platform_power, "run_incremental_update", failing_update)
+    benchmark = TPCDIBenchmark(scale_factor=3, output_dir=tmp_path)
+    benchmark._initialization = record(phases.INITIALIZATION_PHASE, 0, 1)
+
+    with pytest.raises(RuntimeError, match="update failed"):
+        execute_tpcdi_power_test(DuckDBTarget(), benchmark, warehouse(), {}, console=Console())
+
+    assert benchmark._measured_phases is None
+    assert not any(thread.name == "tpcdi-visibility" for thread in threading.enumerate())
 
 
 def test_the_staging_directory_defaults_to_the_digen_output_and_can_be_named(tmp_path):

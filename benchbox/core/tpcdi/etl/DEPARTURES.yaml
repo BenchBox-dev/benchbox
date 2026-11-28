@@ -508,3 +508,35 @@ departures:
       - benchbox/core/tpcdi/etl/incremental/fact_market_history.sql
     status: implemented
     approval: approved
+
+  - id: visibility-queries-run
+    kind: changed
+    clause: "7.3, 7.2.6.5"
+    project_behaviour: "The Databricks project never runs the Data Visibility queries; the DuckDB comparison project runs them once after Batch 1 and once after Batch 3."
+    benchbox_behaviour: "Appendix C runs on a second session while the incremental updates load: Visibility_1 at the start of the first update, Visibility_2 every 60 seconds and at the boundary between the updates, and a final Visibility_1 when the audit phase starts. Every start-to-start gap must be at most 65 seconds (60 seconds plus 5 seconds of lateness), and a missing, failed or late query makes the run FAILED."
+    files:
+      - benchbox/core/tpcdi/visibility.py
+      - benchbox/core/tpcdi/validity.py
+      - benchbox/core/tpcdi/platform_power.py
+    status: implemented
+    approval: approved
+
+  - id: phase-order-and-completion-records
+    kind: changed
+    clause: "7.2.2, 7.2.3.5, 7.2.4.2, 7.2.5.3"
+    project_behaviour: "Batch 2 starts from Batch 1's validation, and Batch 3's phase completion record is written before its validation."
+    benchbox_behaviour: "The phases run in strict sequence, and Appendix B then the phase completion record closes each phase: initialization, the historical load, incremental update 1 and incremental update 2. An update refuses to start unless the previous phase's completion record is the latest in DImessages."
+    files:
+      - benchbox/core/tpcdi/phases.py
+    status: implemented
+    approval: approved
+
+  - id: incremental-update-time-limit
+    kind: changed
+    clause: "7.2.2, 7.5.3.3"
+    project_behaviour: "The project applies no limit to the incremental updates."
+    benchbox_behaviour: "Each incremental update is timed from the completion record of the previous phase to its own, reported rounded up to a tenth of a second, and a run with an update over 3600 seconds is FAILED. An update under 1800 seconds is valid and flagged below_1800_seconds."
+    files:
+      - benchbox/core/tpcdi/validity.py
+    status: implemented
+    approval: approved

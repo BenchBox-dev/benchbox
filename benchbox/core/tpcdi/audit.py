@@ -16,6 +16,7 @@ AUDIT_PHASE = "audit"
 AUDIT_FILE_PATTERN = "*_audit.csv"
 OK_RESULT = "OK"
 FAILED_STATUS = "FAILED"
+FINAL_BATCH = 3
 
 _COMMENT = re.compile(r"/\*.*?\*/", re.DOTALL)
 _UNION = re.compile(r"\bunion\b", re.IGNORECASE)
@@ -146,7 +147,7 @@ def is_evaluable(spec: AuditTestSpec | None, batch: int | None, latest_batch: in
     if spec.per_batch:
         return batch is not None and batch <= latest_batch
     if spec.counts_every_batch:
-        return False
+        return latest_batch == FINAL_BATCH
     return not any(summed in later for summed in spec.summed)
 
 

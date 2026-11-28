@@ -15,7 +15,8 @@ from benchbox.utils.dialect_utils import sql_translation_context, summarize_sql_
 
 def parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Run TPC-DI initialization, the historical load and the audit on DuckDB in one invocation."
+        description="Run TPC-DI initialization, the historical load, both incremental updates with visibility "
+        "queries, and the audit on DuckDB in one invocation."
     )
     parser.add_argument("--scale-factor", type=int, required=True)
     parser.add_argument("--staging", type=Path, required=True, help="DIGen output directory with its manifest")
@@ -57,9 +58,14 @@ def main(argv: list[str] | None = None) -> int:
     summary = run(args)
     args.output.write_text(json.dumps(summary, indent=2, default=str) + "\n", encoding="utf-8")
     audit = summary["validation_details"]["tpcdi_audit"]
-    print(
-        f"status {summary['validation_status']}; failures {[t for t in audit['tests'] if t['evaluable'] and t['result'] != 'OK']}"
-    )
+    failures = [t for t in audit["tests"] if t["evaluable"] and t["result"] != "OK"]
+    print(f"status {summary['validation_status']}; audit failures {failures}")
+    validity = audit.get("validity")
+    if validity is not None:
+        print(f"valid {validity['valid']}; reasons {validity['reasons']}")
+        print(f"visibility gaps {[round(gap['seconds'], 3) for gap in validity['visibility']['gaps']]}")
+    for row in summary.get("query_results", []):
+        print(f"timed row {row['query_id']}: {row['execution_time_seconds']:.3f} s")
     return 1 if normalize_validation_status(summary["validation_status"]) in CLI_FAILURE_VALIDATION_STATUSES else 0
 
 
