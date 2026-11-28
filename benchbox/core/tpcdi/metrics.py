@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
-from benchbox.core.tpc_disclaimer import derived_results_disclaimer
+from benchbox.core.results.corpus_rule import derived_results_disclaimer
 from benchbox.utils.printing import emit
 
 from ._legacy_etl import ETLResult

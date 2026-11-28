@@ -287,7 +287,7 @@ class TestTimingEligibilityContract:
 
     def test_partial_unknown_query_set_still_uses_summary_denominator(self, tmp_path: Path) -> None:
         bundle = copy.deepcopy(MINIMAL_BUNDLE)
-        bundle["benchmark"]["id"] = "custom"
+        bundle["benchmark"]["id"] = "amplab"
         bundle["summary"]["queries"] = {"total": 5, "passed": 1, "failed": 0}
         bundle["queries"] = [{"id": "Q1", "ms": 1.0, "run_type": "measurement", "status": "SUCCESS"}]
 

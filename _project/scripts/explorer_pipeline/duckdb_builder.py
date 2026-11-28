@@ -9,15 +9,20 @@ from pathlib import Path
 from typing import Any
 
 from _project.scripts.explorer_pipeline.contract import (
+    CORPUS_RESULT_COLUMNS,
+    EXPLORER_CORPUS_READ_MODEL_VERSION,
     EXPLORER_HARDWARE_READ_MODEL_VERSION,
     EXPLORER_QPH_READ_MODEL_VERSION,
     EXPLORER_READ_MODEL_VERSION,
     EXPLORER_TRANSLATOR_READ_MODEL_VERSION,
     HARDWARE_RESULT_COLUMNS,
+    IDENTITY_MEDIAN_COLUMNS,
     QPH_RESULT_COLUMNS,
+    RESULT_LANE_SCORE_COLUMNS,
     SELECTABLE_READ_MODEL_VERSIONS,
     TRANSLATOR_RESULT_COLUMNS,
 )
+from _project.scripts.explorer_pipeline.medians import IdentityMedian, cohort_key_text
 from _project.scripts.explorer_pipeline.models import (
     BenchmarkSummary,
     DetailResult,
@@ -83,6 +88,10 @@ def _finite_float_or_none(entry: ManifestEntry, key: str, value: Any) -> float |
     if not math.isfinite(parsed):
         raise ValueError(f"{entry.result_id}: normalized_cost.{key} must be finite; got {value!r}")
     return parsed
+
+
+def _finite_or_none(value: float | None) -> float | None:
+    return value if value is not None and math.isfinite(value) else None
 
 
 def _required_cost_string(entry: ManifestEntry, value: Any, key: str) -> str:
@@ -263,6 +272,7 @@ class DuckDBSnapshotBuilder:
         bundle_url_prefix: str,
         output_path: Path,
         read_model_version: int = EXPLORER_READ_MODEL_VERSION,
+        medians: list[IdentityMedian] | None = None,
     ) -> None:
         if read_model_version not in SELECTABLE_READ_MODEL_VERSIONS:
             raise ValueError(
@@ -285,12 +295,7 @@ class DuckDBSnapshotBuilder:
                 self._create_schema(con, read_model_version)
                 self._create_metadata(con, read_model_version)
                 self._populate_supporting_tables(con, entries, details_map)
-                cohort_ranking_reasons = {
-                    row.result_id: row.ranking_exclusion_reason
-                    for _, summary in summaries
-                    for row in summary.platforms
-                    if row.ranking_exclusion_reason is not None
-                }
+                cohort_ranking_reasons = self._result_ranking_reasons(summaries)
                 self._populate_results(con, entries, details_map, prefix, cohort_ranking_reasons, read_model_version)
                 self._populate_result_basis_availability(con, entries, details_map)
                 self._populate_query_display_timings(con, entries, details_map)
@@ -301,11 +306,26 @@ class DuckDBSnapshotBuilder:
                 self._populate_cohort_metadata(con, meta, summaries, entries_by_result)
                 self._populate_meta_leaderboard(con, meta)
                 self._populate_short_ids(con, short_id_map)
+                if read_model_version >= EXPLORER_CORPUS_READ_MODEL_VERSION:
+                    self._populate_result_lane_scores(con, entries)
+                    self._populate_identity_medians(con, medians or [])
             os.replace(candidate_path, output_path)
         finally:
             self._cleanup_candidate(candidate_path)
 
         logger.info("Built full DuckDB browser store (%d results) at %s", len(entries), output_path)
+
+    @staticmethod
+    def _result_ranking_reasons(summaries: list[tuple[_SummaryKey, BenchmarkSummary]]) -> dict[str, str]:
+        rows_by_result: dict[str, list[str | None]] = {}
+        for _, summary in summaries:
+            for row in summary.platforms:
+                rows_by_result.setdefault(row.result_id, []).append(row.ranking_exclusion_reason)
+        return {
+            result_id: next(reason for reason in reasons if reason is not None)
+            for result_id, reasons in rows_by_result.items()
+            if all(reason is not None for reason in reasons)
+        }
 
     @staticmethod
     def _candidate_path(output_path: Path) -> Path:
@@ -442,6 +462,7 @@ class DuckDBSnapshotBuilder:
             + self._translator_ddl(read_model_version)
             + self._qph_ddl(read_model_version)
             + self._hardware_ddl(read_model_version)
+            + self._corpus_ddl(read_model_version)
             + """
             )
         """
@@ -527,7 +548,7 @@ class DuckDBSnapshotBuilder:
                 r.benchmark_support_status,
                 r.throughput_at_size,
                 r.stream_count,
-                r.power_score_source,{self._hardware_view_columns(read_model_version)}
+                r.power_score_source,{self._hardware_view_columns(read_model_version)}{self._corpus_view_columns(read_model_version)}
                 e.os,
                 e.arch,
                 e.cpu_count,
@@ -631,6 +652,7 @@ class DuckDBSnapshotBuilder:
                 stream_count                 INTEGER,
                 power_score_source           VARCHAR"""
             + self._qph_ddl(read_model_version)
+            + self._corpus_ranking_ddl(read_model_version)
             + """,
                 PRIMARY KEY (benchmark, scale_factor, phase, result_id)
             )
@@ -754,6 +776,21 @@ class DuckDBSnapshotBuilder:
                 result_id  VARCHAR  NOT NULL UNIQUE
             )
         """)
+        if read_model_version >= EXPLORER_CORPUS_READ_MODEL_VERSION:
+            con.execute(
+                "CREATE TABLE result_lane_scores ("
+                "result_id VARCHAR NOT NULL, lane VARCHAR NOT NULL, score DOUBLE, score_source VARCHAR NOT NULL, "
+                "PRIMARY KEY (result_id, lane))"
+            )
+            con.execute(
+                "CREATE TABLE identity_medians ("
+                "cohort_key VARCHAR NOT NULL, lane VARCHAR NOT NULL, platform_id VARCHAR NOT NULL, "
+                "variant_id VARCHAR NOT NULL, comparison_version VARCHAR NOT NULL, "
+                "version_is_release BOOLEAN NOT NULL, run_count INTEGER NOT NULL, median_score DOUBLE, "
+                "spread DOUBLE, is_leaderboard_version BOOLEAN NOT NULL, rank INTEGER, "
+                "total_in_cohort INTEGER NOT NULL, ranking_exclusion_reason VARCHAR, "
+                "PRIMARY KEY (cohort_key, lane, variant_id, comparison_version))"
+            )
 
     @staticmethod
     def _translator_values(entry: ManifestEntry, read_model_version: int) -> tuple:
@@ -816,6 +853,85 @@ class DuckDBSnapshotBuilder:
         if read_model_version < EXPLORER_HARDWARE_READ_MODEL_VERSION:
             return ""
         return "".join(f"\n                r.{name}," for name, _ in HARDWARE_RESULT_COLUMNS)
+
+    @staticmethod
+    def _corpus_ddl(read_model_version: int) -> str:
+        if read_model_version < EXPLORER_CORPUS_READ_MODEL_VERSION:
+            return ""
+        return "".join(f",\n                {name:<20} {dtype}" for name, dtype in CORPUS_RESULT_COLUMNS)
+
+    @staticmethod
+    def _corpus_view_columns(read_model_version: int) -> str:
+        if read_model_version < EXPLORER_CORPUS_READ_MODEL_VERSION:
+            return ""
+        return "".join(f"\n                r.{name}," for name, _ in CORPUS_RESULT_COLUMNS)
+
+    @staticmethod
+    def _corpus_ranking_ddl(read_model_version: int) -> str:
+        if read_model_version < EXPLORER_CORPUS_READ_MODEL_VERSION:
+            return ""
+        return (
+            ",\n                cohort_key           VARCHAR  NOT NULL"
+            ",\n                lane                 VARCHAR"
+            ",\n                comparison_version   VARCHAR  NOT NULL"
+        )
+
+    @staticmethod
+    def _corpus_ranking_values(key: _SummaryKey, row: PlatformRow, read_model_version: int) -> tuple:
+        if read_model_version < EXPLORER_CORPUS_READ_MODEL_VERSION:
+            return ()
+        return (cohort_key_text(key), row.lane, row.comparison_version)
+
+    @staticmethod
+    def _corpus_values(entry: ManifestEntry, read_model_version: int) -> tuple:
+        if read_model_version < EXPLORER_CORPUS_READ_MODEL_VERSION:
+            return ()
+        return (
+            entry.corpus_class,
+            json.dumps(entry.corpus_lanes),
+            json.dumps(entry.corpus_labels),
+            entry.comparison_identity,
+            entry.comparison_version,
+            entry.version_is_release,
+            entry.observed_engine,
+            entry.row_count_evidence_label,
+            entry.iteration_label,
+        )
+
+    @staticmethod
+    def _populate_result_lane_scores(con: Any, entries: list[ManifestEntry]) -> None:
+        rows = [
+            (entry.result_id, lane_score.lane, _finite_or_none(lane_score.score), lane_score.score_source)
+            for entry in entries
+            for lane_score in entry.lane_scores
+        ]
+        if rows:
+            placeholders = ", ".join("?" * len(RESULT_LANE_SCORE_COLUMNS))
+            con.executemany(f"INSERT INTO result_lane_scores VALUES ({placeholders})", rows)
+
+    @staticmethod
+    def _populate_identity_medians(con: Any, medians: list[IdentityMedian]) -> None:
+        rows = [
+            (
+                median.cohort_key,
+                median.lane,
+                median.platform_id,
+                median.variant_id,
+                median.comparison_version,
+                median.version_is_release,
+                median.run_count,
+                _finite_or_none(median.median_score),
+                _finite_or_none(median.spread),
+                median.is_leaderboard_version,
+                median.rank,
+                median.total_in_cohort,
+                median.ranking_exclusion_reason,
+            )
+            for median in medians
+        ]
+        if rows:
+            placeholders = ", ".join("?" * len(IDENTITY_MEDIAN_COLUMNS))
+            con.executemany(f"INSERT INTO identity_medians VALUES ({placeholders})", rows)
 
     def _create_metadata(self, con: Any, read_model_version: int = EXPLORER_READ_MODEL_VERSION) -> None:
         con.execute("""
@@ -985,6 +1101,7 @@ class DuckDBSnapshotBuilder:
                     *self._translator_values(entry, read_model_version),
                     *self._qph_values(entry, read_model_version),
                     *self._hardware_values(entry, read_model_version),
+                    *self._corpus_values(entry, read_model_version),
                 )
             )
         if rows:
@@ -1112,7 +1229,8 @@ class DuckDBSnapshotBuilder:
         read_model_version: int = EXPLORER_READ_MODEL_VERSION,
     ) -> None:
         rows: list[tuple] = []
-        for (benchmark, scale_factor, phase, stream_count), summary in summaries:
+        for key, summary in summaries:
+            benchmark, scale_factor, phase, stream_count = key
             ranked = rank_platforms(summary)
 
             for ranked_row in ranked.rows:
@@ -1174,6 +1292,7 @@ class DuckDBSnapshotBuilder:
                         stream_count,
                         platform_row.power_score_source,
                         *self._qph_values(platform_row, read_model_version),
+                        *self._corpus_ranking_values(key, platform_row, read_model_version),
                     )
                 )
         if rows:

@@ -255,10 +255,188 @@ metrics:
   - table: results
     column: compliance_class
     kind: derived
-    canonical_ref: "_project.scripts.explorer_pipeline.transformer._compliance_class"
+    canonical_ref: "_project.scripts.explorer_pipeline.corpus_outcome.compliance_class"
     tolerance: 0
     display_surfaces: [benchmark_index]
-    notes: "Enum: official | unofficial_subscale | unofficial_nonstandard | null"
+    notes: "The informational stamp the writer would record for the rule's class (official, unofficial_subscale, unofficial_nonstandard or null); never read from the file"
+
+  - table: results
+    column: corpus_class
+    kind: derived
+    canonical_ref: "_project.scripts.explorer_pipeline.corpus_outcome.corpus_columns"
+    tolerance: 0
+    display_surfaces: [benchmark_index, result_detail]
+    notes: "Class the corpus rule derives from the facts in the result file; vocabulary is the rule's CLASS_* constants"
+
+  - table: results
+    column: corpus_lanes
+    kind: derived
+    canonical_ref: "_project.scripts.explorer_pipeline.corpus_outcome.corpus_columns"
+    tolerance: 0
+    display_surfaces: [benchmark_index, result_detail]
+    notes: "JSON array of the rule's lanes for the result; empty when the result is shown and not ranked"
+
+  - table: results
+    column: corpus_labels
+    kind: derived
+    canonical_ref: "_project.scripts.explorer_pipeline.corpus_outcome.corpus_columns"
+    tolerance: 0
+    display_surfaces: [benchmark_index, result_detail]
+    notes: "JSON array of the label sentences the rule attaches, in display order"
+
+  - table: results
+    column: comparison_identity
+    kind: derived
+    canonical_ref: "_project.scripts.explorer_pipeline.corpus_outcome.corpus_columns"
+    tolerance: 0
+    display_surfaces: [benchmark_index, compare, result_detail]
+    notes: "variant_id and comparison version as one display string"
+
+  - table: results
+    column: comparison_version
+    kind: derived
+    canonical_ref: "_project.scripts.explorer_pipeline.corpus_outcome.corpus_columns"
+    tolerance: 0
+    display_surfaces: [benchmark_index, compare, result_detail]
+    notes: "Version resolved from the comparison-version table; 'version not recorded' when none resolves"
+
+  - table: results
+    column: version_is_release
+    kind: derived
+    canonical_ref: "_project.scripts.explorer_pipeline.corpus_outcome.corpus_columns"
+    tolerance: 0
+    display_surfaces: [benchmark_index, result_detail]
+    notes: "False for a pre-release, a development build and an unrecorded version"
+
+  - table: results
+    column: observed_engine
+    kind: derived
+    canonical_ref: "_project.scripts.explorer_pipeline.corpus_outcome.corpus_columns"
+    tolerance: 0
+    display_surfaces: [result_detail]
+    notes: "platform.execution_engine.observed as recorded; null when the file does not record it"
+
+  - table: results
+    column: row_count_evidence_label
+    kind: derived
+    canonical_ref: "_project.scripts.explorer_pipeline.corpus_outcome.corpus_columns"
+    tolerance: 0
+    display_surfaces: [benchmark_index, result_detail]
+    notes: "The rule's row-count label when the rule attaches it; null otherwise"
+
+  - table: results
+    column: iteration_label
+    kind: derived
+    canonical_ref: "_project.scripts.explorer_pipeline.corpus_outcome.corpus_columns"
+    tolerance: 0
+    display_surfaces: [benchmark_index, result_detail]
+    notes: "'Single iteration' when fewer than three measured iterations back the timings; null otherwise"
+
+  - table: result_lane_scores
+    column: score
+    kind: derived
+    canonical_ref: "_project.scripts.explorer_pipeline.transformer.BundleTransformer.lane_entry"
+    tolerance: 1.0e-9
+    display_surfaces: [benchmark_index, result_detail]
+    notes: "Primary metric of the lane's cohort, computed from timings; one row per lane the rule assigns"
+
+  - table: result_lane_scores
+    column: score_source
+    kind: derived
+    canonical_ref: "_project.scripts.explorer_pipeline.transformer.BundleTransformer.to_manifest_entry"
+    tolerance: 0
+    display_surfaces: [benchmark_index, result_detail]
+    notes: "The rule's score source for the result's class"
+
+  - table: identity_medians
+    column: median_score
+    kind: derived
+    canonical_ref: "_project.scripts.explorer_pipeline.medians.build_identity_medians"
+    tolerance: 1.0e-9
+    display_surfaces: [home, benchmark_index]
+    notes: "Lane score computed from the per-query median times of the identity's ranked runs"
+
+  - table: identity_medians
+    column: run_count
+    kind: derived
+    canonical_ref: "_project.scripts.explorer_pipeline.medians.build_identity_medians"
+    tolerance: 0
+    display_surfaces: [benchmark_index]
+    notes: "Number of ranked runs behind the median"
+
+  - table: identity_medians
+    column: spread
+    kind: derived
+    canonical_ref: "_project.scripts.explorer_pipeline.medians.build_identity_medians"
+    tolerance: 1.0e-9
+    display_surfaces: [benchmark_index]
+    notes: "(highest run score - lowest run score) / median_score; zero for a single run"
+
+  - table: identity_medians
+    column: is_leaderboard_version
+    kind: derived
+    canonical_ref: "_project.scripts.explorer_pipeline.medians.build_identity_medians"
+    tolerance: 0
+    display_surfaces: [home, benchmark_index]
+    notes: "True for the newest released version of the platform and variant that has a ranked result"
+
+  - table: identity_medians
+    column: rank
+    kind: derived
+    canonical_ref: "_project.scripts.explorer_pipeline.medians.rank_leaderboard_versions"
+    tolerance: 0
+    display_surfaces: [home, benchmark_index, compare]
+    notes: >
+      1-based rank of the median row among the leaderboard-version medians of its cohort and lane, by
+      primary_metric direction; equal scores share a rank and the next rank skips (1, 1, 3). Null when
+      the row is not ranked; ranking_exclusion_reason says why.
+
+  - table: identity_medians
+    column: total_in_cohort
+    kind: derived
+    canonical_ref: "_project.scripts.explorer_pipeline.medians.rank_leaderboard_versions"
+    tolerance: 0
+    display_surfaces: [home, benchmark_index, compare]
+    notes: >
+      Number of leaderboard-version medians with a score in the row's cohort and lane. Ranks run from 1
+      to this number; below ranking.MINIMUM_RANKED_COHORT (2) no row in the cohort and lane is ranked.
+
+  - table: identity_medians
+    column: ranking_exclusion_reason
+    kind: derived
+    canonical_ref: "_project.scripts.explorer_pipeline.medians.rank_leaderboard_versions"
+    tolerance: 0
+    display_surfaces: [home, benchmark_index, compare]
+    notes: >
+      Null for a ranked row. Otherwise no_median_score (no ranked run behind the row),
+      not_leaderboard_version (an older or pre-release version of the identity), or below_cohort_minimum
+      (fewer leaderboard-version medians in the cohort and lane than the minimum).
+
+  - table: benchmark_rankings
+    column: cohort_key
+    kind: derived
+    canonical_ref: "_project.scripts.explorer_pipeline.medians.cohort_key_text"
+    tolerance: 0
+    display_surfaces: [benchmark_index, compare]
+    notes: >
+      Same value as identity_medians.cohort_key for the run's cohort. A run row joins its median row on
+      (cohort_key, lane, variant_id, comparison_version).
+
+  - table: benchmark_rankings
+    column: lane
+    kind: derived
+    canonical_ref: "_project.scripts.explorer_pipeline.transformer.BundleTransformer.lane_entries"
+    tolerance: 0
+    display_surfaces: [benchmark_index, compare]
+    notes: "Rule lane the run ranks in for this cohort; null when the rule places the run in no lane"
+
+  - table: benchmark_rankings
+    column: comparison_version
+    kind: derived
+    canonical_ref: "_project.scripts.explorer_pipeline.corpus_outcome.corpus_columns"
+    tolerance: 0
+    display_surfaces: [benchmark_index, compare]
+    notes: "Same value as results.comparison_version; part of the key that joins a run row to its median row"
 
   - table: results
     column: is_ranking_eligible
@@ -465,8 +643,8 @@ metrics:
     tolerance: 1.0e-2
     display_surfaces: [home]
     notes: >
-      Mean rank across all cohorts in which this platform appeared with a non-null
-      rank. Rounded to 2 decimal places. Cohorts where metric_value is null are
+      Mean rank across all cohorts in which this platform's leaderboard version appeared
+      with a non-null median rank. Rounded to 2 decimal places. Cohorts where metric_value is null are
       excluded from the average (not penalized).
 
   - table: meta_leaderboard

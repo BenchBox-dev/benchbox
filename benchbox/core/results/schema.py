@@ -1780,6 +1780,26 @@ RECORDED_COMPLIANCE_CLASS_BY_RULE_CLASS = {
 }
 
 
+def recorded_compliance_class(
+    outcome: corpus_rule.Outcome,
+    facts: corpus_rule.Facts,
+    *,
+    requested_class: str | None,
+    validation_status: str | None,
+) -> str | None:
+    if facts.gateway_routed:
+        return NONSTANDARD_COMPLIANCE_CLASS
+    recorded = RECORDED_COMPLIANCE_CLASS_BY_RULE_CLASS.get(outcome.class_name)
+    if recorded == OFFICIAL_COMPLIANCE_CLASS and not (
+        requested_class == OFFICIAL_COMPLIANCE_CLASS
+        and str(validation_status or "").strip().lower() == "passed"
+        and not facts.validation_failed
+        and outcome.held_reason is None
+    ):
+        return None
+    return recorded
+
+
 def _recorded_compliance_class(
     result: BenchmarkResults, phases_block: Mapping[str, Any], queries: list[dict[str, Any]]
 ) -> str | None:
@@ -1794,16 +1814,12 @@ def _recorded_compliance_class(
             "summary": {"validation": validation or None},
         }
     )
-    if facts.gateway_routed:
-        return NONSTANDARD_COMPLIANCE_CLASS
-    recorded = RECORDED_COMPLIANCE_CLASS_BY_RULE_CLASS.get(corpus_rule.derive_outcome(facts).class_name)
-    if recorded == OFFICIAL_COMPLIANCE_CLASS and not (
-        result_compliance_class(result) == OFFICIAL_COMPLIANCE_CLASS
-        and validation == "passed"
-        and not facts.validation_failed
-    ):
-        return None
-    return recorded
+    return recorded_compliance_class(
+        corpus_rule.derive_outcome(facts),
+        facts,
+        requested_class=result_compliance_class(result),
+        validation_status=validation,
+    )
 
 
 def _build_tpc_metrics(result: BenchmarkResults, compliance_class: str | None) -> dict[str, Any] | None:

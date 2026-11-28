@@ -56,7 +56,7 @@ def test_malformed_observation_does_not_reject_the_bundle() -> None:
 
 
 @pytest.mark.parametrize("name", sorted(OBSERVATIONS))
-def test_observed_engine_does_not_change_the_emitted_read_model(name: str, tmp_path: Path) -> None:
+def test_observed_engine_reaches_only_the_observed_engine_column(name: str, tmp_path: Path) -> None:
     emitted = {}
     for label, observation in (("with", OBSERVATIONS[name]), ("without", None)):
         path = tmp_path / label / "tpch_duckdb_sf0.1_20260315.json"
@@ -67,4 +67,8 @@ def test_observed_engine_does_not_change_the_emitted_read_model(name: str, tmp_p
             transformer.to_manifest_entry(path, result_id="fixed").model_dump(mode="json"),
             transformer.to_detail_result(path, result_id="fixed").model_dump(mode="json"),
         )
+    observed = emitted["with"][0].pop("observed_engine")
+    assert emitted["without"][0].pop("observed_engine") is None
     assert emitted["with"] == emitted["without"]
+    recorded = OBSERVATIONS[name]["observed"]
+    assert observed == (None if recorded == "not_captured" else recorded)

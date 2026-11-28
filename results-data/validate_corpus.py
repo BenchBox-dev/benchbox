@@ -24,7 +24,6 @@ DOCUMENTED_SHALLOW_COHORTS = {
     ("read_primitives", "0.01"): frozenset({"clickhouse-local^container", "datafusion"}),
     ("read_primitives", "0.1"): frozenset({"clickhouse-local^container", "datafusion"}),
     ("tpcds_obt", "1.0"): frozenset({"datafusion", "duckdb"}),
-    ("tpch", "1.0"): frozenset({"duckdb"}),
     ("tpchavoc", "0.01"): frozenset({"datafusion"}),
     ("tpchavoc", "0.1"): frozenset({"datafusion"}),
     ("tpchavoc", "1.0"): frozenset({"datafusion"}),
@@ -815,25 +814,7 @@ def lane_cohort_key(payload: dict, lane: str) -> CohortKey:
     return (benchmark_id, scale)
 
 
-UNPUBLISHED_RANKINGS_PATH = pathlib.Path(__file__).resolve().parents[1] / "scripts" / "unpublished_rule_rankings.txt"
-
-
-def unpublished_rule_rankings(path: pathlib.Path = UNPUBLISHED_RANKINGS_PATH) -> frozenset[str]:
-    try:
-        return frozenset(path.read_text(encoding="utf-8").split())
-    except OSError as exc:
-        raise CorpusReadError(f"ERROR reading unpublished rule rankings {path}: {exc}") from exc
-
-
-def _unpublished(bundle: pathlib.Path, listed: frozenset[str]) -> bool:
-    text = bundle.as_posix()
-    return any(text == entry or text.endswith(f"/{entry}") for entry in listed)
-
-
-def cohort_platforms(
-    bundles: list[pathlib.Path], unpublished: frozenset[str] | None = None
-) -> dict[CohortKey, set[str]]:
-    listed = unpublished_rule_rankings() if unpublished is None else unpublished
+def cohort_platforms(bundles: list[pathlib.Path]) -> dict[CohortKey, set[str]]:
     cohorts: collections.defaultdict[CohortKey, set[str]] = collections.defaultdict(set)
     for bundle in bundles:
         payload = _load_bundle(bundle)
@@ -848,7 +829,7 @@ def cohort_platforms(
         if _declares_execution_class(payload, bundle):
             _comparison_identity(bundle, payload)
         lanes = bundle_lanes(payload, bundle)
-        if not lanes or _unpublished(bundle, listed):
+        if not lanes:
             cohorts[_cohort_key(payload)]
             continue
         identity = _comparison_identity(bundle, payload).cohort_key

@@ -90,7 +90,7 @@ CLASS_WORDS = {
     CLASS_PARTIAL: "Partial run: not every required phase ran",
     CLASS_POWER_ONLY: "Power test only",
     CLASS_THROUGHPUT_ONLY: "Throughput test only",
-    CLASS_SUBSCALE: "Scale below the TPC minimum",
+    CLASS_SUBSCALE: "Subscale",
 }
 NONSTANDARD_SCALE_LABEL = "Non-standard scale: compared only at the same scale"
 ROW_COUNTS_NOT_CHECKED_LABEL = "Row counts not checked"
@@ -101,6 +101,13 @@ HELD_LABELS = {
     HELD_KNOWN_DEFECT: "Not ranked: known defect",
     HELD_FAILED_VALIDATION: "Not ranked: validation did not pass",
 }
+
+
+def derived_results_disclaimer(benchmark: str) -> str:
+    return (
+        f"Derived from {benchmark}. These results do not comply with the {benchmark} Specification "
+        f"and must not be compared with official {benchmark} results."
+    )
 
 
 @dataclass(frozen=True)
@@ -381,7 +388,7 @@ def _labels(row: Row, benchmark: str | None, data: Mapping[str, Any]) -> tuple[s
     labels: list[str] = []
     base = benchmark if benchmark in BENCHMARK_LABELS else data["tpc_derived_benchmarks"].get(benchmark)
     if row.lanes and base in BENCHMARK_LABELS:
-        labels.append(f"Derived from {BENCHMARK_LABELS[base]}, not an official TPC result")
+        labels.append(derived_results_disclaimer(BENCHMARK_LABELS[base]))
         if row.class_name in CLASS_WORDS:
             labels.append(CLASS_WORDS[row.class_name])
     if row.class_name == CLASS_NONSTANDARD_SCALE:

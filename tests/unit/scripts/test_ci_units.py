@@ -39,7 +39,6 @@ def needed(paths: list[str], rules: dict[str, list[str]]) -> set[str]:
         (["_project/scripts/explorer_pipeline/pipeline.py"], {"explorer", "results-data", "tooling"}),
         (["results-data/bundles/x.json"], {"explorer", "results-data"}),
         (["scripts/stage_seed_corpus_bundle.py"], {"results-data", "tooling"}),
-        (["scripts/unpublished_rule_rankings.txt"], {"results-data", "tooling"}),
         (["docs/guides/intro.md"], {"docs"}),
         (["docs/conf.py"], {"core", "docs"}),
         (["scripts/check_windows_antipatterns.py"], {"tooling"}),

@@ -258,10 +258,16 @@ def test_every_ranked_tpc_row_carries_the_derived_wording_and_the_class_in_words
         if facts.benchmark in REGISTERED_TPC:
             ranked += 1
             label = "TPC-H" if facts.benchmark == "tpch" else "TPC-DS"
-            assert outcome.labels[0] == f"Derived from {label}, not an official TPC result"
+            assert outcome.labels[0] == (
+                f"Derived from {label}. These results do not comply with the {label} Specification "
+                f"and must not be compared with official {label} results."
+            )
             assert outcome.labels[1] == rule.CLASS_WORDS[outcome.class_name]
         elif facts.benchmark == "tpch_skew":
-            assert outcome.labels == ("Derived from TPC-H, not an official TPC result",)
+            assert outcome.labels == (
+                "Derived from TPC-H. These results do not comply with the TPC-H Specification "
+                "and must not be compared with official TPC-H results.",
+            )
         else:
             assert outcome.labels == ()
     assert ranked

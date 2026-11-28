@@ -130,7 +130,16 @@ CREATE TABLE IF NOT EXISTS results (
     service_size         VARCHAR,
     known_defect_reason  VARCHAR,
     benchbox_version     VARCHAR,
-    benchbox_version_basis VARCHAR
+    benchbox_version_basis VARCHAR,
+    corpus_class         VARCHAR,
+    corpus_lanes         VARCHAR,
+    corpus_labels        VARCHAR,
+    comparison_identity  VARCHAR,
+    comparison_version   VARCHAR,
+    version_is_release   BOOLEAN,
+    observed_engine      VARCHAR,
+    row_count_evidence_label VARCHAR,
+    iteration_label      VARCHAR
 );
 
 CREATE TABLE IF NOT EXISTS query_display_timings (
@@ -245,6 +254,15 @@ SELECT
     r.known_defect_reason,
     r.benchbox_version,
     r.benchbox_version_basis,
+    r.corpus_class,
+    r.corpus_lanes,
+    r.corpus_labels,
+    r.comparison_identity,
+    r.comparison_version,
+    r.version_is_release,
+    r.observed_engine,
+    r.row_count_evidence_label,
+    r.iteration_label,
     e.os,
     e.arch,
     e.cpu_count,
@@ -327,6 +345,9 @@ CREATE TABLE IF NOT EXISTS benchmark_rankings (
     qphds_at_size                DOUBLE,
     load_scope                   VARCHAR,
     transactional_steps          VARCHAR,
+    cohort_key                   VARCHAR  NOT NULL,
+    lane                         VARCHAR,
+    comparison_version           VARCHAR  NOT NULL,
     PRIMARY KEY (benchmark, scale_factor, phase, result_id)
 );
 
@@ -441,4 +462,29 @@ CREATE TABLE IF NOT EXISTS meta_leaderboard (
 CREATE TABLE IF NOT EXISTS short_ids (
     short_id   VARCHAR  PRIMARY KEY,
     result_id  VARCHAR  NOT NULL UNIQUE
+);
+
+CREATE TABLE IF NOT EXISTS result_lane_scores (
+    result_id    VARCHAR  NOT NULL,
+    lane         VARCHAR  NOT NULL,
+    score        DOUBLE,
+    score_source VARCHAR  NOT NULL,
+    PRIMARY KEY (result_id, lane)
+);
+
+CREATE TABLE IF NOT EXISTS identity_medians (
+    cohort_key             VARCHAR  NOT NULL,
+    lane                   VARCHAR  NOT NULL,
+    platform_id            VARCHAR  NOT NULL,
+    variant_id             VARCHAR  NOT NULL,
+    comparison_version     VARCHAR  NOT NULL,
+    version_is_release     BOOLEAN  NOT NULL,
+    run_count              INTEGER  NOT NULL,
+    median_score           DOUBLE,
+    spread                 DOUBLE,
+    is_leaderboard_version BOOLEAN  NOT NULL,
+    rank                   INTEGER,
+    total_in_cohort        INTEGER  NOT NULL,
+    ranking_exclusion_reason VARCHAR,
+    PRIMARY KEY (cohort_key, lane, variant_id, comparison_version)
 );

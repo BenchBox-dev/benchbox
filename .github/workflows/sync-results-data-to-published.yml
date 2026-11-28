@@ -23,7 +23,6 @@ on:
       - "benchbox/core/results/subscale_policy.py"
       - "benchbox/core/results/timing_fields.py"
       - "scripts/generate_corpus_inventory.py"
-      - "scripts/unpublished_rule_rankings.txt"
   workflow_dispatch:
 
 permissions:

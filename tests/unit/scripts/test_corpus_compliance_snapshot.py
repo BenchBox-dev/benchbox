@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import copy
+import dataclasses
+import json
 
 import corpus_compliance_snapshot as script
 import pytest
 
 from benchbox.core.results import corpus_rule, corpus_score
+from tests.unit.scripts.explorer_pipeline.conftest import combined_bundle
 
 pytestmark = [
     pytest.mark.unit,
@@ -21,8 +24,17 @@ def recorded() -> script.Snapshot:
     return script.load_snapshot(SNAPSHOT)
 
 
+@pytest.fixture(scope="module")
+def computed() -> script.Snapshot:
+    return script.compute_snapshot(BUNDLES)
+
+
 def _changed_files(problems: list[str]) -> set[str]:
     return {line.split(":", 1)[0].strip() for line in problems if line.startswith("  ")}
+
+
+def test_committed_corpus_matches_the_snapshot(recorded, computed) -> None:
+    assert script.compare(recorded, computed) == []
 
 
 def test_every_stored_result_has_identity_today_and_rule_outcomes(recorded) -> None:
@@ -31,23 +43,107 @@ def test_every_stored_result_has_identity_today_and_rule_outcomes(recorded) -> N
         assert set(entry) == {"identity", "today", "rule"}
         if "skipped" in entry["today"]:
             continue
-        assert {"class", "cohort", "rank", "total", "score"} <= set(entry["today"])
+        assert {"class", "score_source", "ranks"} <= set(entry["today"])
+        for rank in entry["today"]["ranks"].values():
+            assert {"cohort", "rank", "total", "score", "exclusion_reason"} <= set(rank)
         assert {"class", "lanes", "score_source", "labels", "public_admission", "maintainer_admission"} <= set(
             entry["rule"]
         )
         assert entry["rule"]["class"] != corpus_rule.CLASS_UNDETERMINED or entry["rule"]["missing_facts"]
 
 
-def test_a_drifted_today_outcome_fails_and_names_the_result(recorded) -> None:
-    drifted = copy.deepcopy(recorded)
-    name = next(name for name, entry in drifted.items() if entry["today"].get("rank") is not None)
-    drifted[name]["today"]["rank"] += 1
+def test_the_published_outcome_is_the_rule_outcome_for_every_stored_result(recorded) -> None:
+    for name, entry in recorded.items():
+        today, rule = entry["today"], entry["rule"]
+        if "skipped" in today:
+            continue
+        assert today["class"] == rule["class"], name
+        if rule["lanes"]:
+            assert today["ranks"].keys() == rule["ranks"].keys(), name
+        assert not script.differences({name: entry}), name
+
+
+def test_a_drifted_today_outcome_fails_and_names_the_result(recorded, computed) -> None:
+    drifted = copy.deepcopy(computed)
+    name = next(
+        name
+        for name, entry in drifted.items()
+        if any(rank["rank"] is not None for rank in entry["today"].get("ranks", {}).values())
+    )
+    lane = next(lane for lane, rank in drifted[name]["today"]["ranks"].items() if rank["rank"] is not None)
+    drifted[name]["today"]["ranks"][lane]["rank"] += 1
 
     problems = script.compare(recorded, drifted)
 
     assert "today outcome" in problems[0]
     assert script.REGENERATE_COMMAND in problems[0]
     assert _changed_files(problems) == {name}
+
+
+def _partial_run(tmp_path, throughput_ms: dict[str, float]) -> script.Snapshot:
+    bundles = tmp_path / "bundles"
+    bundles.mkdir(parents=True)
+    for platform, qph in throughput_ms.items():
+        data = combined_bundle(f"platform-{platform}", qph=qph)
+        data["run"]["id"] = platform
+        data["phases"]["throughput_test"].pop("refresh_stream")
+        (bundles / f"{platform}.json").write_text(json.dumps(data), encoding="utf-8")
+    return script.compute_snapshot(bundles)
+
+
+def test_the_pipeline_rank_equals_the_rules_own_rank_for_every_lane_of_every_result(computed, tmp_path) -> None:
+    two_lane = _partial_run(tmp_path / "any", {"a": 250.0, "b": 300.0})
+    assert {len(entry["rule"]["ranks"]) for entry in two_lane.values()} == {2}
+    ranked = 0
+    for snapshot in (computed, two_lane):
+        for name, entry in snapshot.items():
+            if "skipped" in entry["today"]:
+                continue
+            ranked += sum(rank["rank"] is not None for rank in entry["today"]["ranks"].values())
+            assert script.differences({name: entry}) == [], name
+    assert ranked
+
+
+def _misrank(monkeypatch, metric: str) -> None:
+    original = script.rank_platforms
+
+    def misranked(summary):
+        cohort = original(summary)
+        if cohort.primary_metric != metric:
+            return cohort
+        rows = [dataclasses.replace(row, rank=None if row.rank is None else row.rank + 1) for row in cohort.rows]
+        return dataclasses.replace(cohort, rows=rows)
+
+    monkeypatch.setattr(script, "rank_platforms", misranked)
+
+
+def test_a_pipeline_misranking_shows_as_a_difference_from_the_rule(computed, monkeypatch) -> None:
+    _misrank(monkeypatch, "display_geomean_ms")
+    skewed = script.compute_snapshot(BUNDLES)
+
+    changed = {
+        name
+        for name, entry in skewed.items()
+        if "skipped" not in entry["today"] and entry["today"]["ranks"] != computed[name]["today"]["ranks"]
+    }
+    assert changed
+    for name in changed:
+        assert skewed[name]["rule"]["ranks"] == computed[name]["rule"]["ranks"]
+    assert {row["path"] for row in script.differences(skewed)} == changed
+
+
+def test_a_misranked_secondary_lane_shows_as_a_difference_from_the_rule(monkeypatch, tmp_path) -> None:
+    expected = _partial_run(tmp_path / "clean", {"a": 250.0, "b": 300.0})
+    _misrank(monkeypatch, "throughput_at_size")
+
+    skewed = _partial_run(tmp_path / "skewed", {"a": 250.0, "b": 300.0})
+
+    for name, entry in skewed.items():
+        assert entry["today"]["ranks"]["power_only"] == expected[name]["today"]["ranks"]["power_only"]
+        assert entry["rule"]["ranks"] == expected[name]["rule"]["ranks"]
+    rows = script.differences(skewed)
+    assert {row["path"] for row in rows} == set(skewed)
+    assert all("throughput: rank changes" in row["reason"] and "power_only" not in row["reason"] for row in rows)
 
 
 def test_a_drifted_rule_outcome_fails_and_names_the_result(recorded) -> None:
