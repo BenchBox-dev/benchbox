@@ -5,6 +5,7 @@
     "After the next scheduled run, at most one fast-tier and one medium-shard refresh PR are open. #3927 and #4003 (or whatever is stale at that time) are closed with a supersede comment.",
     "Decision gate: if closing needs a token scope the workflow lacks, stop and ask the owner. Do not widen permissions beyond pull-requests: write."
   ],
+  "context": "2026-11-26:\n- The medium-shard half landed in #4091 (2026-11-11). Run 45871080395 closed #4476 as superseded by #4547.\n- The fast-tier job still only fails when an earlier refresh is open (workflow lines 287–294), so a 2026-11-30 run with #4548 open will leave two fast-tier refresh pull requests.\n- A fast-tier refresh pull request into which a human merged develop (as planned for #4548) has a non-bot commit, so this item's close rule would not close it.\n- Landing #4548 is tracked on `fast-baseline-refresh-4548-land-and-weekly-repeat-20261126`.",
   "description": "Problem. .github/workflows/fast-duration-baseline-refresh.yml opens a PR on a dated branch (chore/fast-baseline-<date>-<n>, chore/medium-durations-<date>-<n>). It only skips creation when that same branch already has an open PR, so earlier weeks' PRs stay open. On 2026-11-10 the open medium-shard refreshes were #3927 (11-02), #4003 (11-07) and #4065 (11-09), plus #4066 for the fast tier. #3928, the fast-tier refresh, sat unmerged with merge conflicts for five days. Meanwhile develop gained about 2,000 fast tests, every PR's core check ended would-block, and arming stopped repo-wide until an owner stand-in landed a fresh refresh (#4004). Stale refresh PRs cannot merge (they conflict) and hide which one is current.\n\nChange. When the workflow opens a refresh PR, close every older open PR of the same kind (matched by branch prefix) with a comment naming the new PR. Keep the newest. Never close a PR with a non-bot author or with commits added after creation.\n\nGuardrails: work in a linked worktree (make worktree-create); never edit the primary clone; stage paths explicitly; no explanatory comments or docstrings (make comment-policy-check); heavy work only via make heavy-run, never forcing admission; never bypass a required check, ruleset, hold label or review gate; re-read cited files on current origin/develop first. Never auto-merge refresh PRs and never post review stand-ins; those stay owner-only.",
   "links": [
     ".github/workflows/fast-duration-baseline-refresh.yml",
@@ -20,6 +21,14 @@
       "op": "create",
       "op_id": "e8375681282a40f089a1d8cbbf5b44cb",
       "session_id": "32045bbba1554b198973ff9701611e85"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4ee2124a787b6f05e0bc0950",
+      "at": "2026-11-28T13:03:55Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "31e119d275bf6ce1a049e3628d1cfa3b",
+      "session_id": "1d89ef118510408e88eb75fe7b796609"
     }
   ]
 }
