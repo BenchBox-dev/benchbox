@@ -5,9 +5,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from benchbox._vendor import sqlglot
 from benchbox.utils.clock import elapsed_seconds, mono_time
-from benchbox.utils.dialect_utils import split_sql_statements, translate_sql_query
+from benchbox.utils.dialect_utils import placeholder_names, split_sql_statements, translate_sql_query
 from benchbox.utils.duckdb_extensions import THIRD_PARTY_EXTENSION_OPTION, install_webbed
 
 if TYPE_CHECKING:
@@ -115,11 +114,7 @@ def _count(connection: Any, table: str) -> int:
 
 
 def statement_parameters(statement: str, platform: str, parameters: dict[str, Any]) -> dict[str, Any]:
-    names = {
-        placeholder.name
-        for placeholder in sqlglot.parse_one(statement, read=platform).find_all(sqlglot.exp.Placeholder)
-    }
-    return {name: parameters[name] for name in sorted(names)}
+    return {name: parameters[name] for name in placeholder_names(statement, platform)}
 
 
 def _execute_statements(connection: Any, statements: Sequence[str], platform: str, parameters: dict[str, Any]) -> None:
