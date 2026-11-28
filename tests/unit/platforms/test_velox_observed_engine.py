@@ -34,9 +34,10 @@ def velox_adapter():
             "pyspark.sql.types": MagicMock(),
         },
     ):
-        from benchbox.platforms.velox import VeloxAdapter
+        import benchbox.platforms.velox as velox_module
 
-        yield VeloxAdapter(gluten_jar_path="/opt/gluten.jar")
+        with patch.object(velox_module, "SparkSession", MagicMock()):
+            yield velox_module.VeloxAdapter(gluten_jar_path="/opt/gluten.jar")
 
 
 def _spark_returning(plan_by_query: dict[str, str]) -> MagicMock:
