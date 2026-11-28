@@ -44,6 +44,19 @@ _DUCKDB_SCAN_NODE = "Custom Scan (DuckDBScan)"
 _POSTGRES_PLAN_NODE = re.compile(r"\(cost=\S+ rows=\d+ width=\d+\)")
 
 
+_TRANSACTION_IDLE = 0
+_TRANSACTION_INTRANS = 2
+_TRANSACTION_INERROR = 3
+_OBSERVATION_SAVEPOINT = "benchbox_engine_observation"
+
+
+def _transaction_status(connection: Any) -> int | None:
+    try:
+        return int(connection.info.transaction_status)
+    except (AttributeError, TypeError, ValueError):
+        return None
+
+
 def classify_explain_plan(plan_text: str) -> str | None:
     lines = [line for line in plan_text.splitlines() if line.strip()]
     if not lines:
@@ -57,6 +70,7 @@ def classify_explain_plan(plan_text: str) -> str | None:
 
 class PgDuckDBAdapter(PostgreSQLAdapter):
     OBSERVED_ENGINE_SOURCE = "explain"
+    OBSERVATION_AT_RUN_END = True
     execution_partitioning_supported = True
     post_load_index_cluster_supported = True
     supports_refresh_functions = False
@@ -87,15 +101,28 @@ class PgDuckDBAdapter(PostgreSQLAdapter):
         return result
 
     def observe_execution_engine(self, lazy: QueryObservationTarget) -> str | None:
-        cursor = lazy.connection.cursor()
+        connection = lazy.connection
+        status = _transaction_status(connection)
+        if status == _TRANSACTION_INERROR:
+            raise RuntimeError("the connection's transaction is aborted")
+        cursor = connection.cursor()
+        savepoint = status == _TRANSACTION_INTRANS
         try:
-            cursor.execute(f"EXPLAIN {lazy.query}")
-            plan_text = "\n".join(str(row[0]) for row in cursor.fetchall())
-        except Exception:
-            lazy.connection.rollback()
-            raise
+            if savepoint:
+                cursor.execute(f"SAVEPOINT {_OBSERVATION_SAVEPOINT}")
+            try:
+                cursor.execute(f"EXPLAIN {lazy.query}")
+                plan_text = "\n".join(str(row[0]) for row in cursor.fetchall())
+            except Exception:
+                if savepoint:
+                    cursor.execute(f"ROLLBACK TO SAVEPOINT {_OBSERVATION_SAVEPOINT}")
+                raise
+            if savepoint:
+                cursor.execute(f"RELEASE SAVEPOINT {_OBSERVATION_SAVEPOINT}")
         finally:
             cursor.close()
+            if status == _TRANSACTION_IDLE and _transaction_status(connection) != _TRANSACTION_IDLE:
+                connection.rollback()
         observed = classify_explain_plan(plan_text)
         if observed is None:
             raise ObservationNotRecognizedError("EXPLAIN output not recognized")
@@ -318,7 +345,7 @@ class PgDuckDBAdapter(PostgreSQLAdapter):
         platform_info["configuration"]["postgres_scan_threads"] = self.postgres_scan_threads
         platform_info["configuration"]["deployment_mode"] = self.deployment_mode
         platform_info["configuration"]["execution_engine"] = self.finalize_query_engine_observation(
-            asdict(self._engine_receipt)
+            asdict(self._engine_receipt), connection
         )
 
         if connection:

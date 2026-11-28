@@ -2643,7 +2643,9 @@ class DatabricksAdapter(PlatformAdapter):
         metrics = getattr(info, "metrics", None)
         return metrics is not None and metrics.total_time_ms is not None
 
-    def observe_run_end_targets(self, targets: Sequence[QueryObservationTarget]) -> list[str | None]:
+    def observe_run_end_targets(
+        self, targets: Sequence[QueryObservationTarget], connection: Any = None
+    ) -> list[str | None]:
         statement_ids = [statement_id for target in targets for statement_id in target.statement_ids]
         if not statement_ids:
             return [None for _ in targets]

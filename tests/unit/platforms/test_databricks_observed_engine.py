@@ -198,3 +198,15 @@ def test_the_timed_query_execution_records_its_statement_ids(monkeypatch, adapte
 
     assert result["status"] == "SUCCESS"
     assert _receipt(adapter)["observed"] == "photon"
+
+
+def test_observation_state_does_not_leak_between_runs(monkeypatch, adapter):
+    _serve(monkeypatch, adapter, ["photon_run", "photon_zero_with_tasks"])
+    adapter.record_query_engine_observation(None, "select 1", "q1", [FIXTURE["photon_run"]["query_id"]])
+    assert _receipt(adapter)["observed"] == "photon"
+
+    adapter._reset_run_scoped_state()
+    adapter.open_engine_observation_window()
+    adapter.record_query_engine_observation(None, "select 2", "q2", [FIXTURE["photon_zero_with_tasks"]["query_id"]])
+
+    assert _receipt(adapter)["observed"] == "standard"

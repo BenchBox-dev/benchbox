@@ -105,6 +105,7 @@ class VeloxAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecutio
     driver_isolation_capability = DriverIsolationCapability.NOT_FEASIBLE
 
     OBSERVED_ENGINE_SOURCE = "explain"
+    OBSERVATION_AT_RUN_END = True
 
     _requires_csv_extension: bool = False
 
@@ -297,7 +298,9 @@ class VeloxAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecutio
             applied_class=None,
             resolution="platform_default",
         )
-        platform_info["configuration"]["execution_engine"] = self.finalize_query_engine_observation(asdict(receipt))
+        platform_info["configuration"]["execution_engine"] = self.finalize_query_engine_observation(
+            asdict(receipt), connection
+        )
         return platform_info
 
     def observe_execution_engine(self, lazy: QueryObservationTarget) -> str | None:

@@ -160,3 +160,35 @@ def test_timed_query_execution_records_its_own_plan(velox_adapter):
 
     assert result["status"] == "SUCCESS"
     assert _platform_receipt(velox_adapter, None)["observed"] == "velox"
+
+
+def test_a_timed_phase_issues_no_explain_between_timed_queries(velox_adapter):
+    spark = _spark_returning({"select 1": PLANS["offloaded"], "select 2": PLANS["offloaded"]})
+    result_df = MagicMock()
+    result_df.collect.return_value = [(1,)]
+    result_df.schema = MagicMock()
+    execute = spark.sql.side_effect
+    spark.sql.side_effect = lambda statement: execute(statement) if statement.startswith("EXPLAIN") else result_df
+    spark.catalog = MagicMock()
+    velox_adapter.disable_cache = False
+
+    velox_adapter.execute_query(spark, "select 1", "q1")
+    velox_adapter.execute_query(spark, "select 2", "q2")
+
+    assert not [call for call in spark.sql.call_args_list if call.args[0].startswith("EXPLAIN")]
+    receipt = _platform_receipt(velox_adapter, spark)
+    assert receipt["observed"] == "velox"
+    explained = [call.args[0] for call in spark.sql.call_args_list if call.args[0].startswith("EXPLAIN EXTENDED")]
+    assert explained == ["EXPLAIN EXTENDED select 1", "EXPLAIN EXTENDED select 2"]
+
+
+def test_observation_state_does_not_leak_between_runs(velox_adapter):
+    spark = _spark_returning({"select 1": PLANS["offloaded"], "select 2": PLANS["vanilla"]})
+    velox_adapter.record_query_engine_observation(spark, "select 1", "q1")
+    _platform_receipt(velox_adapter, spark)
+
+    velox_adapter._reset_run_scoped_state()
+    velox_adapter.open_engine_observation_window()
+    velox_adapter.record_query_engine_observation(spark, "select 2", "q2")
+
+    assert _platform_receipt(velox_adapter, spark)["observed"] == "standard"

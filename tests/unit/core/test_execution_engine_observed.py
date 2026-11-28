@@ -11,6 +11,7 @@ from benchbox.core.execution_engine import (
     ExecutionEngineReceipt,
     ObservationNotRecognizedError,
     summarize_observed_engines,
+    unmeasured_statements,
 )
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
@@ -91,7 +92,7 @@ class _PerQueryObserver(ExecutionEngineHook):
 class _RunEndObserver(_PerQueryObserver):
     OBSERVATION_AT_RUN_END = True
 
-    def observe_run_end_targets(self, targets):
+    def observe_run_end_targets(self, targets, connection=None):
         return [self.answers.get(target.statement_ids[0]) for target in targets]
 
 
@@ -153,3 +154,32 @@ def test_a_declared_gap_overrides_recorded_observations():
 
     done = _finalize(_Gapped({"q1": "fast"}), ["q1"])
     assert (done["observed"], done["observed_reason"]) == (NOT_CAPTURED, "no evidence available")
+
+
+def test_warmup_and_setup_statements_are_not_counted():
+    observer = _RunEndObserver({"q1": "fast", "q2": "slow", "q3": "fast"})
+    observer.reset_query_engine_observation()
+    observer.record_query_engine_observation(object(), "select 0", "setup", ["setup"])
+    observer.open_engine_observation_window()
+    with unmeasured_statements():
+        observer.record_query_engine_observation(object(), "select 2", "q2", ["q2"])
+    observer.record_query_engine_observation(object(), "select 1", "q1", ["q1"])
+    observer.close_engine_observation_window()
+    observer.record_query_engine_observation(object(), "select 3", "q3", ["q3"])
+
+    done = observer.finalize_query_engine_observation(_recorded())
+
+    assert (done["observed"], done["observed_reason"]) == ("fast", None)
+    assert [target.query_id for target in observer._engine_targets] == ["q1"]
+
+
+def test_observation_state_is_reset_for_each_run():
+    observer = _PerQueryObserver({"q1": RuntimeError("boom"), "q2": ObservationNotRecognizedError("x")})
+    observer.record_query_engine_observation(object(), "select 1", "q1")
+    observer.record_query_engine_observation(object(), "select 2", "q2")
+
+    observer.reset_query_engine_observation()
+    done = observer.finalize_query_engine_observation(_recorded())
+
+    assert done["observed_reason"] == "no query completed"
+    assert observer._unrecognized_observations == 0

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass, field, replace
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Literal
@@ -133,9 +135,33 @@ class QueryObservationTarget:
     evidence: Any = None
 
 
+_UNMEASURED_STATEMENTS: ContextVar[bool] = ContextVar("benchbox_unmeasured_statements", default=False)
+
+
+@contextmanager
+def unmeasured_statements() -> Iterator[None]:
+    token = _UNMEASURED_STATEMENTS.set(True)
+    try:
+        yield
+    finally:
+        _UNMEASURED_STATEMENTS.reset(token)
+
+
 class ExecutionEngineHook:
     OBSERVED_ENGINE_SOURCE: ObservedSource = "none"
     OBSERVATION_AT_RUN_END: bool = False
+
+    def reset_query_engine_observation(self) -> None:
+        self._engine_targets = []
+        self._engine_observations = []
+        self._unrecognized_observations = 0
+        self._engine_measured_phase_open = False
+
+    def open_engine_observation_window(self) -> None:
+        self._engine_measured_phase_open = True
+
+    def close_engine_observation_window(self) -> None:
+        self._engine_measured_phase_open = False
 
     def engine_observation_gap(self) -> str | None:
         return None
@@ -148,20 +174,21 @@ class ExecutionEngineHook:
     ) -> None:
         if self.OBSERVED_ENGINE_SOURCE == "none" or self.engine_observation_gap() is not None:
             return
+        if _UNMEASURED_STATEMENTS.get() or not getattr(self, "_engine_measured_phase_open", True):
+            return
         target = QueryObservationTarget(connection, query, query_id, tuple(statement_ids))
         if self.OBSERVATION_AT_RUN_END:
-            targets = getattr(self, "_engine_targets", None)
-            if targets is None:
-                targets = self._engine_targets = []
-            targets.append(target)
+            self.__dict__.setdefault("_engine_targets", []).append(target)
             return
-        observations = getattr(self, "_engine_observations", None)
-        if observations is None:
-            observations = self._engine_observations = []
-        observations.append(self._observe_target(target))
+        self.__dict__.setdefault("_engine_observations", []).append(self._observe_target(target))
 
-    def observe_run_end_targets(self, targets: Sequence[QueryObservationTarget]) -> list[str | None]:
-        return [self._observe_target(target) for target in targets]
+    def observe_run_end_targets(
+        self, targets: Sequence[QueryObservationTarget], connection: Any = None
+    ) -> list[str | None]:
+        return [
+            self._observe_target(target if connection is None else replace(target, connection=connection))
+            for target in targets
+        ]
 
     def _observe_target(self, target: QueryObservationTarget) -> str | None:
         from benchbox.core.results.timer_scope import outside_query_timer
@@ -176,12 +203,12 @@ class ExecutionEngineHook:
             logger.debug("Engine observation failed: %s", exc)
         return None
 
-    def finalize_query_engine_observation(self, receipt: Mapping[str, Any]) -> dict[str, Any]:
+    def finalize_query_engine_observation(self, receipt: Mapping[str, Any], connection: Any = None) -> dict[str, Any]:
         recorded = dict(receipt)
         if self.OBSERVED_ENGINE_SOURCE == "none":
             return recorded
         if self.OBSERVATION_AT_RUN_END:
-            self._engine_observations = self.observe_run_end_targets(getattr(self, "_engine_targets", []))
+            self._engine_observations = self.observe_run_end_targets(getattr(self, "_engine_targets", []), connection)
         observations = getattr(self, "_engine_observations", [])
         gap = self.engine_observation_gap()
         summary = summarize_observed_engines(
@@ -236,4 +263,5 @@ __all__ = [
     "resolve_requested",
     "summarize_observed_engines",
     "supported_execution_engines",
+    "unmeasured_statements",
 ]

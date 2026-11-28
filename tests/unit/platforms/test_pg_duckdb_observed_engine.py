@@ -75,7 +75,7 @@ def test_unrecognized_plan_is_reported_and_the_transaction_is_left_usable(adapte
         adapter.observe_execution_engine(QueryObservationTarget(connection, "select 1", "q1"))
     with pytest.raises(RuntimeError):
         adapter.observe_execution_engine(QueryObservationTarget(connection, "select 2", "q2"))
-    connection.rollback.assert_called_once()
+    connection.rollback.assert_not_called()
 
 
 def test_run_record_names_the_engine_each_timed_query_was_routed_to(adapter):
@@ -118,3 +118,103 @@ def test_a_successful_timed_query_is_observed_and_a_failed_one_is_not(adapter, m
     adapter.execute_query(connection, "select 2", "q2")
 
     assert adapter.get_platform_info(None)["configuration"]["execution_engine"]["observed"] == "duckdb"
+
+
+class _RecordingConnection:
+    def __init__(self, status: int, failing: tuple[str, ...] = ()):
+        self.statements: list[str] = []
+        self.rollbacks = 0
+        self.status = status
+        self.failing = failing
+        self.info = type("Info", (), {})()
+        self.info.transaction_status = status
+
+    def cursor(self):
+        connection = self
+
+        class Cursor:
+            def execute(self, statement):
+                connection.statements.append(statement)
+                if statement.startswith("EXPLAIN") and any(token in statement for token in connection.failing):
+                    connection.info.transaction_status = 3
+                    raise RuntimeError("explain refused")
+                if statement.startswith("ROLLBACK TO SAVEPOINT"):
+                    connection.info.transaction_status = 2
+                if statement.startswith("EXPLAIN") and connection.status == 0:
+                    connection.info.transaction_status = 2
+                self.rows = [(line,) for line in PLANS["duckdb"]]
+
+            def fetchall(self):
+                return self.rows
+
+            def close(self):
+                pass
+
+        return Cursor()
+
+    def rollback(self):
+        self.rollbacks += 1
+        self.info.transaction_status = 0
+
+
+def test_a_timed_phase_issues_no_explain_between_timed_queries(adapter, monkeypatch):
+    monkeypatch.setattr(
+        postgresql_module.PostgreSQLAdapter, "execute_query", lambda self, *args, **kwargs: {"status": "SUCCESS"}
+    )
+    connection = _RecordingConnection(status=2)
+
+    for index in range(3):
+        adapter.execute_query(connection, f"select {index}", f"q{index}")
+
+    assert connection.statements == []
+    receipt = adapter.get_platform_info(connection)["configuration"]["execution_engine"]
+    assert [s for s in connection.statements if s.startswith("EXPLAIN")] == [f"EXPLAIN select {i}" for i in range(3)]
+    assert receipt["observed"] == "duckdb"
+
+
+def test_a_failed_observation_leaves_the_open_transaction_intact(adapter):
+    connection = _RecordingConnection(status=2, failing=("select 1",))
+    adapter.record_query_engine_observation(connection, "select 1", "q1")
+    adapter.record_query_engine_observation(connection, "select 2", "q2")
+
+    receipt = adapter.get_platform_info(connection)["configuration"]["execution_engine"]
+
+    assert connection.rollbacks == 0
+    assert connection.info.transaction_status == 2
+    assert "ROLLBACK TO SAVEPOINT benchbox_engine_observation" in connection.statements
+    assert (receipt["observed"], receipt["observed_source"]) == (NOT_CAPTURED, "none")
+    assert receipt["observed_reason"]
+
+
+def test_an_observation_never_runs_in_an_aborted_transaction(adapter):
+    connection = _RecordingConnection(status=3)
+    adapter.record_query_engine_observation(connection, "select 1", "q1")
+
+    receipt = adapter.get_platform_info(connection)["configuration"]["execution_engine"]
+
+    assert not [s for s in connection.statements if s.startswith(("EXPLAIN", "SAVEPOINT"))]
+    assert receipt["observed"] == NOT_CAPTURED
+
+
+def test_an_observation_outside_a_transaction_leaves_no_transaction_behind(adapter):
+    connection = _RecordingConnection(status=0)
+    adapter.record_query_engine_observation(connection, "select 1", "q1")
+
+    adapter.get_platform_info(connection)
+
+    assert connection.info.transaction_status == 0
+
+
+def test_observation_state_does_not_leak_between_runs(adapter):
+    first = _RecordingConnection(status=2, failing=("select 1",))
+    adapter.record_query_engine_observation(first, "select 1", "q1")
+    adapter.get_platform_info(first)
+
+    adapter._reset_run_scoped_state()
+    adapter.open_engine_observation_window()
+    second = _RecordingConnection(status=2)
+    adapter.record_query_engine_observation(second, "select 2", "q2")
+    receipt = adapter.get_platform_info(second)["configuration"]["execution_engine"]
+
+    assert [s for s in second.statements if s.startswith("EXPLAIN")] == ["EXPLAIN select 2"]
+    assert (receipt["observed"], receipt["observed_reason"]) == ("duckdb", None)
