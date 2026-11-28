@@ -5,7 +5,7 @@ from benchbox.sql_compat.context import Phase
 from benchbox.sql_compat.decision import CompatibilityDecision, FailureMode, SkipQueryPayload, SupportLevel
 from benchbox.sql_compat.registry import REGISTRY
 
-_VERSION = "ClickHouse 25.8.33.6"
+_VERSION = "ClickHouse 26.8.46.6"
 
 _NO_MERGE = (
     f"{_VERSION} has no MERGE statement: `MERGE INTO t AS target USING ...` fails with Code 62 SYNTAX_ERROR "
@@ -22,8 +22,8 @@ _NO_READ_CSV_AUTO = (
 )
 _NO_RETURNING = f"{_VERSION} has no RETURNING clause: the statement fails with Code {{code}} ({{detail}})."
 _NO_CORRELATED_MUTATION = (
-    f"{_VERSION} cannot resolve a correlated subquery that references the {{verb}} target: the statement fails "
-    "with Code 47 UNKNOWN_IDENTIFIER (`Missing columns: '<target>.<column>' while processing`)."
+    f"{_VERSION} has no correlated subqueries in mutations: the statement fails with Code 48 NOT_IMPLEMENTED "
+    "(`Correlated subqueries in mutation {clause} are not supported`)."
 )
 
 CLICKHOUSE_WRITE_PRIMITIVES_OPERATION_SKIPS: dict[str, str] = {
@@ -41,22 +41,16 @@ CLICKHOUSE_WRITE_PRIMITIVES_OPERATION_SKIPS: dict[str, str] = {
     "delete_returning": _NO_RETURNING.format(
         code="62 SYNTAX_ERROR", detail="`Syntax error: failed at position 98 (RETURNING)`"
     ),
-    "update_with_subquery": _NO_CORRELATED_MUTATION.format(verb="UPDATE"),
-    "update_from_select": _NO_CORRELATED_MUTATION.format(verb="UPDATE"),
-    "update_with_aggregate": _NO_CORRELATED_MUTATION.format(verb="UPDATE"),
-    "delete_with_join": _NO_CORRELATED_MUTATION.format(verb="DELETE"),
-    "delete_with_not_exists": _NO_CORRELATED_MUTATION.format(verb="DELETE"),
-    "delete_with_aggregation": _NO_CORRELATED_MUTATION.format(verb="DELETE"),
-    "merge_scd_type2_basic": _NO_CORRELATED_MUTATION.format(verb="UPDATE"),
-    "merge_scd_type2_no_change": _NO_CORRELATED_MUTATION.format(verb="UPDATE"),
+    "update_with_subquery": _NO_CORRELATED_MUTATION.format(clause="update"),
+    "update_from_select": _NO_CORRELATED_MUTATION.format(clause="filter"),
+    "update_with_aggregate": _NO_CORRELATED_MUTATION.format(clause="update"),
+    "delete_with_join": _NO_CORRELATED_MUTATION.format(clause="update"),
+    "delete_with_not_exists": _NO_CORRELATED_MUTATION.format(clause="update"),
+    "merge_scd_type2_basic": _NO_CORRELATED_MUTATION.format(clause="update"),
+    "merge_scd_type2_no_change": _NO_CORRELATED_MUTATION.format(clause="update"),
     "update_with_join": (
         f"{_VERSION} has no UPDATE ... FROM: the statement fails with Code 62 SYNTAX_ERROR "
         "(`Syntax error: failed at position 58 (FROM)`)."
-    ),
-    "update_conditional_multi_column": (
-        f"{_VERSION} cannot unify a CASE whose branches mix Float64 literals with a Decimal(15, 2) column: the "
-        "statement fails with Code 386 NO_COMMON_TYPE (`There is no supertype for types Float64, Float64, "
-        "Decimal(15, 2)`)."
     ),
     "ddl_create_table_with_constraints": (
         f"{_VERSION} rejects a NOT NULL modifier on a Nullable column: the statement fails with Code 377 "

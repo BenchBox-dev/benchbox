@@ -19,6 +19,21 @@ clickhouse:
           arm with the reference 100 rows at 3.40 GiB peak (1.33x under the full template); plans
           and rows read for Q3, Q5 and Q18 are in _project/analysis/clickhouse-tuning-evidence-sf1;
           SF1 only, 5.25 GiB container
+      - state: measured-benefit
+        scale_factor: 1.0
+        memory:
+          basis: container_limit
+          value: 5637144576
+        engine_version: "26.8.46.6"
+        measured_on: "2026-11-25"
+        evidence: >-
+          scripts.tuning_evidence on a ClickHouse server in Docker on a GitHub-hosted ubuntu-latest runner (4
+          vCPU, 16 GB, AMD EPYC 9V74; alberttwong/benchbox workflow run 45552947311), 15 shuffled rounds, seed
+          42, 22 queries, no failures or answer mismatches; the 9-round cell failed its A/A (G 1.0504, run
+          45551429443, Intel Xeon 6975P-C) and was repeated once at 15 rounds, where A/A passed (G 1.0253, 95%
+          CI 0.9891-1.0665): full tuned template G 0.7556 (0.7276-0.7793) with load plus settle 16.9 s against
+          15.3 s notuning, layout only G 0.7660 (0.7375-0.7924) with 17.8 s; no query exceeds the 1.5x bound
+          (Q18 1.28 under the full template, 1.55 in the uncalibrated cell); SF1 only, 5.25 GiB container
   tpcds:
     measurements:
       - state: measured-benefit
@@ -35,6 +50,20 @@ clickhouse:
           0.9948-1.0267): full tuned template G 0.9708 (0.9526-0.9887), layout only G 0.9999
           (0.9790-1.0071, neutral); no query exceeds 1.3x under the full template; SF1 only,
           5.25 GiB container
+      - state: measured-neutral
+        scale_factor: 1.0
+        memory:
+          basis: container_limit
+          value: 5637144576
+        engine_version: "26.8.46.6"
+        measured_on: "2026-11-25"
+        evidence: >-
+          scripts.tuning_evidence on a ClickHouse server in Docker on a GitHub-hosted ubuntu-latest runner (4
+          vCPU, 16 GB, AMD EPYC 9V45; alberttwong/benchbox workflow run 45551429443), 9 shuffled rounds, seed
+          42, 99 queries, no failures or answer mismatches, A/A passed (G 1.0070, 95% CI 0.9892-1.0216): full
+          tuned template G 1.0050 (0.9835-1.0176), layout only G 0.9967 (0.9747-1.0151), both neutral; Q69 is
+          1.50x (1.335-1.802) under the full template, above the 1.5x bound, cause unproven; SF1 only, 5.25
+          GiB container
   ssb:
     measurements:
       - state: measured-benefit
@@ -51,6 +80,20 @@ clickhouse:
           0.9654-1.0614): full tuned template G 0.7484 (0.7258-0.7881) with load plus settle
           14.6 s against 11.8 s notuning, layout only G 0.8046 (0.7658-0.8396) with 14.0 s; no
           query exceeds the 1.5x bound; SF1 only, 5.25 GiB container
+      - state: measured-benefit
+        scale_factor: 1.0
+        memory:
+          basis: container_limit
+          value: 5637144576
+        engine_version: "26.8.46.6"
+        measured_on: "2026-11-25"
+        evidence: >-
+          scripts.tuning_evidence on a ClickHouse server in Docker on a GitHub-hosted ubuntu-latest runner (4
+          vCPU, 16 GB, AMD EPYC 9V74; alberttwong/benchbox workflow run 45551429443), 15 shuffled rounds, seed
+          42, 13 queries, no failures or answer mismatches, A/A passed (G 1.0085, 95% CI 0.9386-1.0512): full
+          tuned template G 0.8906 (0.8389-0.9247) with load plus settle 13.4 s against 12.3 s notuning, layout
+          only G 0.8901 (0.8508-0.9184) with 13.2 s; no query exceeds the 1.5x bound; SF1 only, 5.25 GiB
+          container
 databricks:
   tpch:
     measurements: []

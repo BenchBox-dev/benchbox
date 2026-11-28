@@ -77,10 +77,10 @@ _NATIVE_MODEL_BENCHMARK_GATES = {
         "uses embedded chDB analytical execution, not a transactional DBAPI contract."
     ),
     ("clickhouse-server", "transaction_primitives"): (
-        "ClickHouse 25.8.33.6 MergeTree tables have no multi-statement transactions: every transaction_primitives "
-        "operation opens with BEGIN, which the server rejects with Code 48 NOT_IMPLEMENTED (`Transactions are not "
-        "supported`), and `SET TRANSACTION ISOLATION LEVEL ...` fails with Code 62 SYNTAX_ERROR (`Expected "
-        "SNAPSHOT`). All 24 operations fail, so the benchmark has nothing to measure."
+        "ClickHouse 26.8.46.6 MergeTree tables have no multi-statement transactions: 20 transaction_primitives "
+        "operations fail with Code 48 NOT_IMPLEMENTED (`Transactions are not supported`), and the 3 that run "
+        "`SET TRANSACTION ISOLATION LEVEL ...` fail with Code 62 SYNTAX_ERROR (`Expected SNAPSHOT`). All 23 "
+        "operations fail, so the benchmark has nothing to measure."
     ),
     ("clickhouse-local", "ai_primitives"): (
         "AI primitives requires platform AI/ML SQL functions; ClickHouse is listed in the AI primitives "
@@ -92,7 +92,7 @@ _NATIVE_MODEL_BENCHMARK_EVIDENCE = (
     "benchbox/core/ai_primitives/specs.yaml unsupported_platforms; "
     "benchbox/platforms/datafusion.py DataFusionConnectionCompat; "
     "benchbox/platforms/clickhouse_local.py embedded chDB local adapter; "
-    "benchbox/core/transaction_primitives/catalog operations (BEGIN on ClickHouse Server 25.8.33.6, Code 48); "
+    "benchbox/core/transaction_primitives/catalog operations (BEGIN on ClickHouse Server 26.8.46.6, Code 48); "
     "benchbox/core/vector_search/queries.py and schema_specs.yaml"
 )
 

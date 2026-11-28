@@ -27,6 +27,13 @@ class _FakeConn:
         return [(1,)]
 
 
+class _OlderServerConn(_FakeConn):
+    def execute(self, sql, params=None, query_id=None):
+        if "pretty" in sql:
+            raise RuntimeError("Code: 115. DB::Exception: Unknown setting 'pretty'")
+        return super().execute(sql, params, query_id)
+
+
 def _make(mode, **kwargs):
     if mode == "local":
         from benchbox.platforms.clickhouse_local import ClickHouseLocalAdapter
@@ -58,6 +65,21 @@ class TestClickHouseParserWiring:
         assert plan is not None
         assert any("EXPLAIN PLAN" in sql.upper() for sql in conn.executed)
         assert "ReadFromMergeTree" in plan
+
+    @pytest.mark.parametrize("mode", ALL_MODES)
+    def test_get_query_plan_requests_the_classic_format_once(self, mode):
+        conn = _FakeConn()
+        _make(mode, capture_plans=True).get_query_plan(conn, "SELECT 1")
+        explains = [sql for sql in conn.executed if sql.startswith("EXPLAIN")]
+        assert explains == ["EXPLAIN PLAN actions = 0, pretty = 0, compact = 0 SELECT 1"]
+
+    @pytest.mark.parametrize("mode", ALL_MODES)
+    def test_get_query_plan_falls_back_when_the_server_rejects_the_classic_options(self, mode):
+        conn = _OlderServerConn()
+        plan = _make(mode, capture_plans=True).get_query_plan(conn, "SELECT 1")
+        assert plan is not None
+        assert "ReadFromMergeTree" in plan
+        assert conn.executed[-1] == "EXPLAIN PLAN SELECT 1"
 
 
 class TestClickHouseExecuteQueryCapture:

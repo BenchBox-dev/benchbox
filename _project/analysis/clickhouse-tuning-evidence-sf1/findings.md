@@ -146,6 +146,31 @@ empty. `scripts/tuning_evidence/platforms.py` now reads the id the adapter used 
 platform timing, and the cells above were measured with that fix (harness commit `ddf6c749fe` plus this
 change). The fix does not touch timing.
 
+## ClickHouse 26.8.46.6 (GitHub-hosted runners)
+
+Measured 2026-11-25 with the arms, seed and 5.25 GiB container limit above (`memory.max` 5637144576, zero
+OOM kills), server image 26.8, commit `62a0c9b0f8`. The runs are in `alberttwong/benchbox`: 45551429443,
+and 45552947311 for the TPC-H repeat. The runner class is the same for every cell but the CPU is not, so
+compare arms only within a cell. No query fails and no answer differs in any cell.
+
+| Cell | CPU | A/A | `S` vs `N` | `T` vs `N` | Verdict for `T` |
+|---|---|---|---|---|---|
+| TPC-H, 15 rounds | AMD EPYC 9V74 | 1.0253 (0.9891 to 1.0665), passed | 0.7660 (0.7375 to 0.7924) | 0.7556 (0.7276 to 0.7793) | benefit |
+| TPC-H, 9 rounds | Intel Xeon 6975P-C | 1.0504 (0.9771 to 1.1072), failed | 0.7862 (0.7339 to 0.8361) | 0.7759 (0.7206 to 0.8303) | withheld |
+| SSB, 15 rounds | AMD EPYC 9V74 | 1.0085 (0.9386 to 1.0512), passed | 0.8901 (0.8508 to 0.9184) | 0.8906 (0.8389 to 0.9247) | benefit |
+| TPC-DS, 9 rounds | AMD EPYC 9V45 | 1.0070 (0.9892 to 1.0216), passed | 0.9967 (0.9747 to 1.0151) | 1.0050 (0.9835 to 1.0176) | neutral |
+| TPC-H Q6 and Q21, 9 rounds | AMD EPYC 9V45 | 0.9748 (0.9410 to 1.1350), passed | 0.5491 (0.5344 to 0.6775) | 0.5555 (0.5371 to 0.6344) | benefit |
+
+- The 9-round TPC-H cell failed its A/A and was repeated once at 15 rounds, as the SSB cell was on
+  25.8.33.6. Q18 is 1.55x (1.32 to 1.74) in the uncalibrated cell and 1.28x (1.18 to 1.45) in the repeat,
+  with 1.95 times the rows read in both.
+- TPC-DS was a small benefit on 25.8.33.6 and is neutral on 26.8.46.6. Q69 is a named loser at 1.50x
+  (1.335 to 1.802), cause unproven.
+- Q21 passes in every arm with the reference 100 rows at 0.07 to 0.08 GiB peak, against 3.40 GiB on
+  25.8.33.6.
+
+Summaries: `cells/*-26.8-*.md`.
+
 ## Remaining
 
 - The ADR-3 addendum in `benchbox-site` (the Q3, Q5 and Q18 narrative above supersedes the 2026-10-10

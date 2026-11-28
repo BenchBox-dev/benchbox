@@ -18,6 +18,9 @@ from .workload import ClickHouseWorkloadMixin
 
 logger = logging.getLogger(__name__)
 
+_DEFAULT_EXPLAIN_PLAN = "EXPLAIN PLAN"
+_CLASSIC_EXPLAIN_PLAN = f"{_DEFAULT_EXPLAIN_PLAN} actions = 0, pretty = 0, compact = 0"
+
 
 class ClickHouseAdapter(
     ClickHouseTimingMixin,
@@ -100,14 +103,13 @@ class ClickHouseAdapter(
     def get_query_plan(self, connection, query: str) -> str | None:
         from benchbox.platforms.base.sql_execution import join_explain_rows
 
-        try:
-            result = connection.execute(f"EXPLAIN PLAN {query}")
-            if not result:
-                return None
-            return join_explain_rows(list(result))
-        except Exception as e:
-            self.logger.debug(f"Could not get ClickHouse query plan: {e}")
-            return None
+        for explain in (_CLASSIC_EXPLAIN_PLAN, _DEFAULT_EXPLAIN_PLAN):
+            try:
+                result = connection.execute(f"{explain} {query}")
+                return join_explain_rows(list(result)) if result else None
+            except Exception as e:
+                self.logger.debug(f"Could not get ClickHouse query plan with {explain}: {e}")
+        return None
 
     def get_query_plan_parser(self):
         from benchbox.core.query_plans.parsers.clickhouse import ClickHouseQueryPlanParser

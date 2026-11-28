@@ -265,7 +265,7 @@ def _run_mirror_step(
 @pytest.mark.parametrize(
     ("image", "source_image"),
     [
-        ("clickhouse", "clickhouse/clickhouse-server:25.8"),
+        ("clickhouse", "clickhouse/clickhouse-server:26.8"),
         ("trino", "trinodb/trino:480"),
     ],
 )
@@ -290,7 +290,7 @@ def test_mirror_reuses_an_existing_digest_without_reading_docker_hub(
 @pytest.mark.parametrize(
     ("image", "source_image"),
     [
-        ("clickhouse", "clickhouse/clickhouse-server:25.8"),
+        ("clickhouse", "clickhouse/clickhouse-server:26.8"),
         ("trino", "trinodb/trino:480"),
     ],
 )
@@ -320,7 +320,7 @@ def test_mirror_fails_closed_on_non_missing_registry_errors(
 @pytest.mark.parametrize(
     ("image", "source_image"),
     [
-        ("clickhouse", "clickhouse/clickhouse-server:25.8"),
+        ("clickhouse", "clickhouse/clickhouse-server:26.8"),
         ("trino", "trinodb/trino:480"),
     ],
 )
@@ -340,7 +340,7 @@ def test_mirror_refuses_an_unpinned_compose_source(tmp_path: Path, image: str, s
 @pytest.mark.parametrize(
     ("image", "source_image"),
     [
-        ("clickhouse", "clickhouse/clickhouse-server:25.8"),
+        ("clickhouse", "clickhouse/clickhouse-server:26.8"),
         ("trino", "trinodb/trino:480"),
     ],
 )
@@ -362,7 +362,7 @@ def test_mirror_fails_if_existing_digest_reference_returns_other_content(
 @pytest.mark.parametrize(
     ("image", "source_image"),
     [
-        ("clickhouse", "clickhouse/clickhouse-server:25.8"),
+        ("clickhouse", "clickhouse/clickhouse-server:26.8"),
         ("trino", "trinodb/trino:480"),
     ],
 )
@@ -392,7 +392,7 @@ def test_mirror_copies_only_a_missing_digest_and_checks_the_result(
 @pytest.mark.parametrize(
     ("image", "source_image"),
     [
-        ("clickhouse", "clickhouse/clickhouse-server:25.8"),
+        ("clickhouse", "clickhouse/clickhouse-server:26.8"),
         ("trino", "trinodb/trino:480"),
     ],
 )
@@ -873,7 +873,7 @@ def test_throughput_signal_publishes_the_commit_status_the_retiring_workflow_pub
         (
             "clickhouse",
             "docker/clickhouse/docker-compose.yml",
-            "docker://docker.io/clickhouse/clickhouse-server@sha256:0152dd511befe6a2c2ef53e930726179669b08116da78500b37c51c96ff5ee77",
+            "docker://docker.io/clickhouse/clickhouse-server@sha256:e49863ded96abdc0545bcd0320c1b99c979c18f27915eb6519a5546760d24cb9",
         ),
         (
             "trino",
