@@ -55755,12 +55755,17 @@
       "title": "TPC-DI step 16: generator and audit recount for the two incremental batches"
     },
     "tpcdi-17-duckdb-incremental-and-full-audit-20261120": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-29T13:02:59Z",
+        "generation": "59ab391a2fe841f7a11becbb4cc87568",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d9c82d4657b7a4cbcbfb0e73"
+      },
       "needs": [
         "tpcdi-incremental-facts-20261121"
       ],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "TPC-DI step 24: visibility queries, the full audit and the validity rule on DuckDB"
     },
     "tpcdi-18-metric-bundle-and-reopen-duckdb-20261120": {
