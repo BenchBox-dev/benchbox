@@ -217,20 +217,32 @@ def test_apply_tuning_and_setup_distributed_paths(monkeypatch, tmp_path):
     assert adapter._spill_to_disk is True
 
     adapter.scheduler_address = "tcp://x"
-    mod.Client = lambda addr: SimpleNamespace(
-        scheduler=SimpleNamespace(address=addr), scheduler_info=lambda: {"workers": {"w1": {}}}, close=lambda: None
+    monkeypatch.setattr(
+        mod,
+        "Client",
+        lambda addr: SimpleNamespace(
+            scheduler=SimpleNamespace(address=addr), scheduler_info=lambda: {"workers": {"w1": {}}}, close=lambda: None
+        ),
     )
     adapter._setup_distributed()
     assert adapter._client is not None
 
     adapter.scheduler_address = None
-    mod.LocalCluster = lambda **kwargs: SimpleNamespace(
-        scheduler=SimpleNamespace(address="local"), workers={"w": {}}, close=lambda: None, dashboard_link="x"
+    monkeypatch.setattr(
+        mod,
+        "LocalCluster",
+        lambda **kwargs: SimpleNamespace(
+            scheduler=SimpleNamespace(address="local"), workers={"w": {}}, close=lambda: None, dashboard_link="x"
+        ),
     )
-    mod.Client = lambda cluster: SimpleNamespace(
-        scheduler=SimpleNamespace(address="local"),
-        scheduler_info=lambda: {"workers": {"w1": {}, "w2": {}}},
-        close=lambda: None,
+    monkeypatch.setattr(
+        mod,
+        "Client",
+        lambda cluster: SimpleNamespace(
+            scheduler=SimpleNamespace(address="local"),
+            scheduler_info=lambda: {"workers": {"w1": {}, "w2": {}}},
+            close=lambda: None,
+        ),
     )
     adapter._setup_distributed()
     assert adapter._cluster is not None
