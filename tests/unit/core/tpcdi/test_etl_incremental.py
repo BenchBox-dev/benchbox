@@ -363,11 +363,14 @@ def test_an_atomic_step_rolls_back_a_partial_expire(tmp_path):
         },
     )
     staging.load_batch(connection, tmp_path, 2, steps=DIMENSION_INGEST_STEPS, allow_third_party_extensions=False)
-    connection.execute("DROP TABLE StatusType")
-    with pytest.raises(duckdb.Error):
+    connection.execute("CREATE UNIQUE INDEX only_one_version_per_customer ON DimCustomer (CustomerID)")
+    with pytest.raises(duckdb.ConstraintException, match="Duplicate key"):
         load_incremental(connection, 2, steps=[INCREMENTAL_STEPS[0]])
-    assert connection.execute("SELECT count(*) FROM DimCustomer WHERE IsCurrent").fetchone() == (4,)
+    assert connection.execute(
+        "SELECT count(*) FROM DimCustomer WHERE IsCurrent AND EndDate = DATE '9999-12-31'"
+    ).fetchone() == (4,)
     assert connection.execute("SELECT count(*) FROM DimCustomer").fetchone() == (4,)
+    assert connection.execute("SELECT count(*) FROM DImessages WHERE BatchID = 2").fetchone() == (0,)
     connection.close()
 
 
