@@ -379,6 +379,7 @@ def test_tpch_reference_run_records_query_and_run_validation_evidence() -> None:
         "failed": 0,
         "skipped": 0,
         "errors": 0,
+        "reference_kinds": {"tpc_answer_set": {"label": "TPC answer set", "rows": 1}},
     }
     assert result.execution_metadata["phase_status"]["validation"] == {"status": "PASSED"}
     assert build_result_payload(result)["phases"]["validation"] == {"status": "PASSED"}
