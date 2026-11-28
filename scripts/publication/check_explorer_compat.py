@@ -18,10 +18,14 @@ if str(Path(__file__).resolve().parents[2]) not in sys.path:
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from _project.scripts.explorer_pipeline.contract import (
+    CORPUS_RANKING_COLUMNS as _CORPUS_RANKING_COLUMNS,
+    CORPUS_RESULT_COLUMNS as _CORPUS_RESULT_COLUMNS,
     EXPLORER_BUILD_CONTRACT_VERSION as _CONTRACT_VERSION,
     EXPLORER_READ_MODEL_VERSION as _READ_MODEL_VERSION,
     HARDWARE_RESULT_COLUMNS as _HARDWARE_RESULT_COLUMNS,
+    IDENTITY_MEDIAN_COLUMNS as _IDENTITY_MEDIAN_COLUMNS,
     QPH_RESULT_COLUMNS as _QPH_RESULT_COLUMNS,
+    RESULT_LANE_SCORE_COLUMNS as _RESULT_LANE_SCORE_COLUMNS,
     SELECTABLE_READ_MODEL_VERSIONS as _SELECTABLE_READ_MODEL_VERSIONS,
     TRANSLATOR_RESULT_COLUMNS as _TRANSLATOR_RESULT_COLUMNS,
 )
@@ -432,6 +436,20 @@ TABLE_COLUMNS_V20: dict[str, dict[str, str]] = {
     },
 }
 
+TABLE_COLUMNS_V21: dict[str, dict[str, str]] = {
+    **TABLE_COLUMNS_V20,
+    "results": {
+        **TABLE_COLUMNS_V20["results"],
+        **dict(_CORPUS_RESULT_COLUMNS),
+    },
+    "benchmark_rankings": {
+        **TABLE_COLUMNS_V20["benchmark_rankings"],
+        **dict(_CORPUS_RANKING_COLUMNS),
+    },
+    "result_lane_scores": dict(_RESULT_LANE_SCORE_COLUMNS),
+    "identity_medians": dict(_IDENTITY_MEDIAN_COLUMNS),
+}
+
 
 SCHEMA_REGISTRY: dict[int, dict[str, dict[str, str]]] = {
     9: TABLE_COLUMNS_V9,
@@ -446,6 +464,7 @@ SCHEMA_REGISTRY: dict[int, dict[str, dict[str, str]]] = {
     18: TABLE_COLUMNS_V18,
     19: TABLE_COLUMNS_V19,
     20: TABLE_COLUMNS_V20,
+    21: TABLE_COLUMNS_V21,
 }
 
 REQUIRED_INDEXES_V9: list[tuple[str, str, list[str]]] = [
@@ -527,7 +546,15 @@ REQUIRED_VIEW_COLUMNS_V20: dict[str, list[str]] = {
     ],
 }
 
+REQUIRED_VIEW_COLUMNS_V21: dict[str, list[str]] = {
+    "result_detail_metrics": [
+        *REQUIRED_VIEW_COLUMNS_V20["result_detail_metrics"],
+        *(name for name, _ in _CORPUS_RESULT_COLUMNS),
+    ],
+}
+
 _VIEW_COLUMN_REQUIREMENTS_BY_MIN_VERSION: tuple[tuple[int, dict[str, list[str]]], ...] = (
+    (21, REQUIRED_VIEW_COLUMNS_V21),
     (20, REQUIRED_VIEW_COLUMNS_V20),
     (17, REQUIRED_VIEW_COLUMNS_V17),
     (16, REQUIRED_VIEW_COLUMNS_V16),
@@ -628,6 +655,16 @@ def generate_schema_ddl(version: int) -> list[str]:
     )
 
     ddl_statements.append("CREATE TABLE short_ids (short_id VARCHAR PRIMARY KEY, result_id VARCHAR NOT NULL UNIQUE);")
+
+    if "result_lane_scores" in columns_map:
+        rls_cols = ", ".join(f"{c} {t}" for c, t in columns_map["result_lane_scores"].items())
+        ddl_statements.append(f"CREATE TABLE result_lane_scores ({rls_cols}, PRIMARY KEY (result_id, lane));")
+
+    if "identity_medians" in columns_map:
+        im_cols = ", ".join(f"{c} {t}" for c, t in columns_map["identity_medians"].items())
+        ddl_statements.append(
+            f"CREATE TABLE identity_medians ({im_cols}, PRIMARY KEY (cohort_key, lane, variant_id, tuning_mode, comparison_version));"
+        )
 
     env_select_cols = [f"e.{col}" for col in columns_map["result_environment"] if col != "result_id"]
     env_proj = ", ".join(env_select_cols)
@@ -785,6 +822,26 @@ def validate_database_schema(con: Any, expected_version: int | None = None) -> l
     return errors
 
 
+CORPUS_EXPLORER_QUERIES: list[tuple[str, str]] = [
+    (
+        "Corpus outcome columns",
+        "SELECT result_id, corpus_class, corpus_lanes, corpus_labels, comparison_identity, comparison_version, "
+        "version_is_release, observed_engine, row_count_evidence_label, iteration_label FROM result_detail_metrics LIMIT 24",
+    ),
+    ("Lane scores", "SELECT result_id, lane, score, score_source FROM result_lane_scores LIMIT 50"),
+    (
+        "Identity medians",
+        "SELECT cohort_key, lane, platform_id, variant_id, tuning_mode, comparison_version, version_is_release, run_count, "
+        "median_score, spread, is_leaderboard_version, rank, total_in_cohort, ranking_exclusion_reason "
+        "FROM identity_medians LIMIT 50",
+    ),
+    (
+        "Runs behind a median row",
+        "SELECT m.cohort_key, m.rank, r.result_id, r.rank FROM identity_medians m JOIN benchmark_rankings r "
+        "USING (cohort_key, lane, variant_id, tuning_mode, comparison_version) LIMIT 50",
+    ),
+]
+
 QPH_EXPLORER_QUERIES: list[tuple[str, str]] = [
     (
         "Combined cohort results query",
@@ -800,7 +857,11 @@ QPH_EXPLORER_QUERIES: list[tuple[str, str]] = [
 
 def validate_database_queries(con: Any, version: int) -> list[str]:
     errors: list[str] = []
-    queries = CORE_EXPLORER_QUERIES + (QPH_EXPLORER_QUERIES if version >= 19 else [])
+    queries = (
+        CORE_EXPLORER_QUERIES
+        + (QPH_EXPLORER_QUERIES if version >= 19 else [])
+        + (CORPUS_EXPLORER_QUERIES if version >= 21 else [])
+    )
     for label, sql in queries:
         try:
             con.execute(sql).fetchall()

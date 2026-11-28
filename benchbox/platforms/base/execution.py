@@ -13,6 +13,7 @@ from benchbox.core.constants import (
     GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS,
 )
 from benchbox.core.errors import PlanCaptureError
+from benchbox.core.execution_engine import unmeasured_statements
 from benchbox.core.gateway import is_greybeam_gateway, raise_greybeam_maintenance_unsupported
 from benchbox.core.operations import OperationExecutor
 from benchbox.core.plan_capture_phase import (
@@ -229,7 +230,8 @@ class TestDriversMixin:
             if run_stop_requested():
                 break
             console.print(f"[cyan]--- Warm-up Run {i + 1}/{warm_up_iterations} ---[/cyan]")
-            warmup_results = self._execute_all_queries(benchmark, connection, run_config, dialect_queries)
+            with unmeasured_statements():
+                warmup_results = self._execute_all_queries(benchmark, connection, run_config, dialect_queries)
             for result in warmup_results:
                 result["iteration"] = 0
                 result["stream_id"] = 0

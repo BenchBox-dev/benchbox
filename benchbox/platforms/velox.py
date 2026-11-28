@@ -6,7 +6,12 @@ from pathlib import Path
 from typing import Any
 
 from benchbox.core.deployment import deployment_class, select_adapter_deployment
-from benchbox.core.execution_engine import ExecutionEngineReceipt, ObservedSource
+from benchbox.core.execution_engine import (
+    MIXED,
+    ExecutionEngineReceipt,
+    ObservationNotRecognizedError,
+    QueryObservationTarget,
+)
 from benchbox.core.platform_manifest import DEFAULT_EXECUTION_ENGINE
 from benchbox.core.results.timer_scope import TIMING_METHOD_QUERY_ONLY
 from benchbox.utils.clock import elapsed_seconds, mono_time
@@ -63,6 +68,26 @@ _TABLE_FORMAT_SPARK_CONF: dict[str, dict[str, str]] = {
 }
 
 
+_PHYSICAL_PLAN_HEADER = "== Physical Plan =="
+_NEXT_PLAN_SECTION = re.compile(r"^== .* ==$", re.MULTILINE)
+_NATIVE_PLAN_NODE = re.compile(r"\bVeloxColumnar\w*|\b\w+ExecTransformer\b|\bWholeStageTransformer\b")
+_JVM_TRANSITION_NODE = re.compile(r"GlutenRowToArrowColumnar|(?<!Velox)(?:ColumnarToRow|RowToColumnar)")
+_UNFINALIZED_ADAPTIVE_PLAN = "isFinalPlan=false"
+
+
+def classify_physical_plan(plan_text: str) -> str | None:
+    _, header, tail = plan_text.partition(_PHYSICAL_PLAN_HEADER)
+    if not header:
+        return None
+    following = _NEXT_PLAN_SECTION.search(tail)
+    physical = tail[: following.start()] if following else tail
+    if not physical.strip():
+        return None
+    if not _NATIVE_PLAN_NODE.search(physical):
+        return None if _UNFINALIZED_ADAPTIVE_PLAN in physical else "standard"
+    return MIXED if _JVM_TRANSITION_NODE.search(physical) else "velox"
+
+
 _WINDOWS_DRIVE_PATH = re.compile(r"^[A-Za-z]:[\\/]")
 
 
@@ -78,6 +103,10 @@ class VeloxAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecutio
     default_service_port = 50051
 
     driver_isolation_capability = DriverIsolationCapability.NOT_FEASIBLE
+
+    OBSERVED_ENGINE_SOURCE = "explain"
+    OBSERVATION_AT_RUN_END = True
+    RUN_END_OBSERVATION_USES_CONNECTION = True
 
     _requires_csv_extension: bool = False
 
@@ -264,20 +293,23 @@ class VeloxAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecutio
             platform_info["platform_version"] = None
             platform_info["velox_active"] = None
 
-        velox_active = platform_info["velox_active"]
-        observed = "velox" if velox_active is True else "standard" if velox_active is False else "not_captured"
-        observed_source: ObservedSource = "explain" if velox_active is not None else "none"
-        platform_info["configuration"]["execution_engine"] = asdict(
-            ExecutionEngineReceipt(
-                requested=DEFAULT_EXECUTION_ENGINE,
-                applied=None,
-                applied_class=None,
-                resolution="platform_default",
-                observed=observed,
-                observed_source=observed_source,
-            )
+        receipt = ExecutionEngineReceipt(
+            requested=DEFAULT_EXECUTION_ENGINE,
+            applied=None,
+            applied_class=None,
+            resolution="platform_default",
+        )
+        platform_info["configuration"]["execution_engine"] = self.finalize_query_engine_observation(
+            asdict(receipt), connection
         )
         return platform_info
+
+    def observe_execution_engine(self, lazy: QueryObservationTarget) -> str | None:
+        rows = lazy.connection.sql(f"EXPLAIN EXTENDED {lazy.query}").collect()
+        observed = classify_physical_plan("\n".join(str(row[0]) for row in rows))
+        if observed is None:
+            raise ObservationNotRecognizedError("physical plan not recognized")
+        return observed
 
     def get_target_dialect(self) -> str:
         return "spark"

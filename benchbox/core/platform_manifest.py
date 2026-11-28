@@ -1181,6 +1181,9 @@ _PLATFORM_MANIFEST_JSON = """[
           "selectable": false
         }
       },
+      "observed_engine": {
+        "adapter": "benchbox.platforms.databricks.adapter:DatabricksAdapter"
+      },
       "gateways": {
         "espresso": {
           "requires_host": true,
@@ -1934,6 +1937,9 @@ _PLATFORM_MANIFEST_JSON = """[
           "dependencies": [],
           "selectable": true
         }
+      },
+      "observed_engine": {
+        "adapter": "benchbox.platforms.pg_duckdb:PgDuckDBAdapter"
       }
     },
     "support_status": "experimental"
@@ -3283,6 +3289,9 @@ _PLATFORM_MANIFEST_JSON = """[
           "dependencies": [],
           "selectable": false
         }
+      },
+      "observed_engine": {
+        "adapter": "benchbox.platforms.velox:VeloxAdapter"
       }
     },
     "support_status": "experimental"

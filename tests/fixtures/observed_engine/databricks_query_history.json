@@ -1,0 +1,11 @@
+{
+  "source": "Query History API QueryInfo objects (https://docs.databricks.com/api/query-history/v1/query-history/object.md) listed with include_metrics. Field names follow the SDK QueryMetrics; values are illustrative, not captured from a workspace.",
+  "queries": {
+    "photon_run": {"query_id": "01f0-photon", "metrics": {"total_time_ms": 900, "task_total_time_ms": 4000, "photon_total_time_ms": 3800, "result_from_cache": false}},
+    "photon_zero_with_tasks": {"query_id": "01f0-standard", "metrics": {"total_time_ms": 1200, "task_total_time_ms": 5000, "photon_total_time_ms": 0, "result_from_cache": false}},
+    "photon_zero_without_tasks": {"query_id": "01f0-notasks", "metrics": {"total_time_ms": 10, "task_total_time_ms": 0, "photon_total_time_ms": 0, "result_from_cache": false}},
+    "photon_field_absent": {"query_id": "01f0-nofield", "metrics": {"total_time_ms": 800, "task_total_time_ms": 3000, "photon_total_time_ms": null, "result_from_cache": false}},
+    "served_from_cache": {"query_id": "01f0-cached", "metrics": {"total_time_ms": 20, "task_total_time_ms": 0, "photon_total_time_ms": 0, "result_from_cache": true}},
+    "metrics_not_yet_available": {"query_id": "01f0-pending", "metrics": null}
+  }
+}

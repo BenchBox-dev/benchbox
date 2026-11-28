@@ -43,7 +43,7 @@ MINIMAL_BUNDLE: dict = {
             "power_at_size": 1234.56,
         },
     },
-    "phases": {},
+    "phases": {"power_test": {"status": "COMPLETED"}},
     "queries": [
         {
             "id": "Q1",

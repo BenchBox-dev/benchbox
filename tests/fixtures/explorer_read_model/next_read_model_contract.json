@@ -52,14 +52,21 @@
           "name": "row_count_evidence_label",
           "type": "VARCHAR",
           "nullable": true,
-          "description": "Wording for the row-count evidence behind the result, for example 'row counts not checked'; null when the evidence needs no label."
+          "description": "Wording for the row-count evidence behind the result, for example 'Row counts not checked'; null when the evidence needs no label."
         },
         {
           "name": "iteration_label",
           "type": "VARCHAR",
           "nullable": true,
-          "description": "'single iteration' when fewer than three measured iterations back the timings; null otherwise."
+          "description": "'Single iteration' when fewer than three measured iterations back the timings; null otherwise."
         }
+      ]
+    },
+    "benchmark_rankings": {
+      "added_columns": [
+        {"name": "cohort_key", "type": "VARCHAR", "nullable": false, "description": "Same value as identity_medians.cohort_key for the run's cohort."},
+        {"name": "lane", "type": "VARCHAR", "nullable": true, "description": "Lane the run ranks in for this cohort; null when the rule places the run in no lane."},
+        {"name": "comparison_version", "type": "VARCHAR", "nullable": false, "description": "Comparison version of the run; with cohort_key, lane, variant_id and tuning_mode it joins the run row to its median row."}
       ]
     },
     "result_lane_scores": {
@@ -72,18 +79,22 @@
       ]
     },
     "identity_medians": {
-      "primary_key": ["cohort_key", "lane", "variant_id", "comparison_version"],
+      "primary_key": ["cohort_key", "lane", "variant_id", "tuning_mode", "comparison_version"],
       "columns": [
         {"name": "cohort_key", "type": "VARCHAR", "nullable": false, "description": "Benchmark, scale factor and phase of the cohort."},
         {"name": "lane", "type": "VARCHAR", "nullable": false, "description": "Lane the median ranks in."},
         {"name": "platform_id", "type": "VARCHAR", "nullable": false, "description": "Platform of the identity."},
         {"name": "variant_id", "type": "VARCHAR", "nullable": false, "description": "Execution variant of the identity."},
+        {"name": "tuning_mode", "type": "VARCHAR", "nullable": false, "description": "Tuning mode of the runs behind the median, as run rows carry it; a missing value is notuning. Tuned and untuned runs of one variant and version are separate rows."},
         {"name": "comparison_version", "type": "VARCHAR", "nullable": false, "description": "Comparison version of the identity."},
         {"name": "version_is_release", "type": "BOOLEAN", "nullable": false, "description": "Whether the comparison version is a release."},
         {"name": "run_count", "type": "INTEGER", "nullable": false, "description": "Number of runs behind the median."},
         {"name": "median_score", "type": "DOUBLE", "nullable": true, "description": "Lane score computed from the per-query median times of the runs."},
         {"name": "spread", "type": "DOUBLE", "nullable": true, "description": "(highest run score - lowest run score) / median_score; zero for a single run."},
-        {"name": "is_leaderboard_version", "type": "BOOLEAN", "nullable": false, "description": "True for the newest released version of the platform and variant that has a ranked result."}
+        {"name": "is_leaderboard_version", "type": "BOOLEAN", "nullable": false, "description": "True for the newest released version of the platform and variant that has a ranked result."},
+        {"name": "rank", "type": "INTEGER", "nullable": true, "description": "Rank among the leaderboard-version medians of the cohort and lane by the cohort's primary metric; equal scores share a rank and the next rank skips. Null when ranking_exclusion_reason is set."},
+        {"name": "total_in_cohort", "type": "INTEGER", "nullable": false, "description": "Number of leaderboard-version medians with a score in the cohort and lane; below two, no row is ranked."},
+        {"name": "ranking_exclusion_reason", "type": "VARCHAR", "nullable": true, "allowed_values": ["no_median_score", "not_leaderboard_version", "below_cohort_minimum"], "description": "Why the row has no rank; null for a ranked row."}
       ]
     }
   },
@@ -106,7 +117,7 @@
         "result_id": "example-ranked-release",
         "corpus_class": "power_only",
         "corpus_lanes": "[\"power_only\"]",
-        "corpus_labels": "[\"Derived from TPC-H, not an official TPC result\", \"Power test only\"]",
+        "corpus_labels": "[\"Derived from TPC-H. These results do not comply with the TPC-H Specification and must not be compared with official TPC-H results.\", \"Power test only\"]",
         "comparison_identity": "example-engine v1.2.0",
         "comparison_version": "1.2.0",
         "version_is_release": true,
@@ -118,24 +129,24 @@
         "result_id": "example-pre-release",
         "corpus_class": "power_only",
         "corpus_lanes": "[\"power_only\"]",
-        "corpus_labels": "[\"Derived from TPC-H, not an official TPC result\", \"Power test only\"]",
+        "corpus_labels": "[\"Derived from TPC-H. These results do not comply with the TPC-H Specification and must not be compared with official TPC-H results.\", \"Power test only\"]",
         "comparison_identity": "example-engine v1.3.0.dev4",
         "comparison_version": "1.3.0.dev4",
         "version_is_release": false,
         "observed_engine": "example-engine",
-        "row_count_evidence_label": "row counts not checked",
-        "iteration_label": "single iteration"
+        "row_count_evidence_label": "Row counts not checked",
+        "iteration_label": "Single iteration"
       },
       {
         "result_id": "example-version-not-recorded",
         "corpus_class": "partial",
         "corpus_lanes": "[\"power_only\", \"throughput\"]",
-        "corpus_labels": "[\"Derived from TPC-DS, not an official TPC result\", \"Partial run: not every required phase ran\"]",
+        "corpus_labels": "[\"Derived from TPC-DS. These results do not comply with the TPC-DS Specification and must not be compared with official TPC-DS results.\", \"Partial run: not every required phase ran\"]",
         "comparison_identity": "example-service (version not recorded)",
         "comparison_version": "version not recorded",
         "version_is_release": false,
         "observed_engine": null,
-        "row_count_evidence_label": "row counts not checked",
+        "row_count_evidence_label": "Row counts not checked",
         "iteration_label": null
       }
     ],
@@ -144,30 +155,58 @@
       {"result_id": "example-version-not-recorded", "lane": "power_only", "score": 310.25, "score_source": "from_timings"},
       {"result_id": "example-version-not-recorded", "lane": "throughput", "score": 2210.0, "score_source": "from_timings"}
     ],
+    "benchmark_rankings": [
+      {"benchmark": "tpch", "scale_factor": 1.0, "phase": "power", "result_id": "example-ranked-release", "variant_id": "example-engine", "cohort_key": "tpch/sf1/power", "lane": "power_only", "tuning_mode": "notuning", "comparison_version": "1.2.0"},
+      {"benchmark": "tpch", "scale_factor": 1.0, "phase": "power", "result_id": "example-pre-release", "variant_id": "example-engine", "cohort_key": "tpch/sf1/power", "lane": "power_only", "tuning_mode": "notuning", "comparison_version": "1.3.0.dev4"}
+    ],
     "identity_medians": [
       {
         "cohort_key": "tpch/sf1/power",
         "lane": "power_only",
         "platform_id": "example-engine",
         "variant_id": "example-engine",
+        "tuning_mode": "notuning",
         "comparison_version": "1.2.0",
         "version_is_release": true,
         "run_count": 3,
         "median_score": 1500.0,
         "spread": 0.04,
-        "is_leaderboard_version": true
+        "is_leaderboard_version": true,
+        "rank": 1,
+        "total_in_cohort": 2,
+        "ranking_exclusion_reason": null
+      },
+      {
+        "cohort_key": "tpch/sf1/power",
+        "lane": "power_only",
+        "platform_id": "example-engine",
+        "variant_id": "example-engine-tuned",
+        "tuning_mode": "notuning",
+        "comparison_version": "1.2.0",
+        "version_is_release": true,
+        "run_count": 2,
+        "median_score": 1400.0,
+        "spread": 0.02,
+        "is_leaderboard_version": true,
+        "rank": 2,
+        "total_in_cohort": 2,
+        "ranking_exclusion_reason": null
       },
       {
         "cohort_key": "tpch/sf1/power",
         "lane": "power_only",
         "platform_id": "example-engine",
         "variant_id": "example-engine",
+        "tuning_mode": "notuning",
         "comparison_version": "1.3.0.dev4",
         "version_is_release": false,
         "run_count": 1,
         "median_score": 1620.0,
         "spread": 0.0,
-        "is_leaderboard_version": false
+        "is_leaderboard_version": false,
+        "rank": null,
+        "total_in_cohort": 2,
+        "ranking_exclusion_reason": "not_leaderboard_version"
       }
     ]
   }

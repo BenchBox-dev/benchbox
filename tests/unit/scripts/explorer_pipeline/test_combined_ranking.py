@@ -126,17 +126,22 @@ def _fail_maintenance(payload: dict) -> None:
         ("tpcds", _fail_maintenance, "combined_refresh_not_clean"),
     ],
 )
-def test_combined_bundle_with_a_failed_throughput_or_refresh_step_is_not_rankable(
+def test_combined_bundle_with_a_failed_throughput_or_refresh_step_is_not_ranked_in_the_combined_lane(
     tmp_path: Path, family_id: str, mutate: Callable[[dict], None], reason: str
 ) -> None:
     payload = _bundle("duckdb", benchmark=family_id)
     mutate(payload)
     entry, detail = _entry(tmp_path, payload)
+    lane_entries = BundleTransformer().lane_entries(entry, payload)
 
     assert entry.qphh_at_size is None
     assert entry.qphds_at_size is None
-    assert entry.ranking_exclusion_reason == reason
-    assert detail.ranking_exclusion_reason == reason
+    assert all(
+        lane_entry.ranking_exclusion_reason == reason
+        for lane_entry in lane_entries
+        if lane_entry.test_type == "combined"
+    )
+    assert detail.ranking_exclusion_reason == entry.ranking_exclusion_reason
 
 
 def test_power_bundles_leave_the_composite_columns_empty(tmp_path: Path) -> None:
@@ -223,7 +228,7 @@ def test_tpcds_combined_cohort_ranks_on_qphds(tmp_path: Path) -> None:
     ]
 
 
-def test_a_dirty_combined_bundle_is_listed_but_not_ranked(tmp_path: Path) -> None:
+def test_a_dirty_combined_bundle_leaves_the_combined_cohort_for_the_lanes_the_rule_assigns(tmp_path: Path) -> None:
     dirty = _bundle("beta", qph=9999.0)
     _fail_stream(dirty)
     db = _build(
@@ -234,13 +239,14 @@ def test_a_dirty_combined_bundle_is_listed_but_not_ranked(tmp_path: Path) -> Non
 
     with duckdb.connect(str(db), read_only=True) as con:
         rows = con.execute(
-            "SELECT platform, rank, is_ranking_eligible, ranking_exclusion_reason FROM benchmark_rankings "
-            "WHERE phase = 'combined' ORDER BY platform"
+            "SELECT platform, phase, rank, is_ranking_eligible, ranking_exclusion_reason FROM benchmark_rankings "
+            "ORDER BY platform, phase"
         ).fetchall()
 
     assert rows == [
-        ("alpha", 1, True, None),
-        ("beta", None, False, "combined_throughput_not_clean"),
+        ("alpha", "combined", 1, True, None),
+        ("beta", "power", 1, True, None),
+        ("beta", "throughput", None, False, "missing_primary_metric"),
     ]
 
 
@@ -324,5 +330,5 @@ def test_default_build_publishes_combined_cohorts(tmp_path: Path) -> None:
         version = con.execute("SELECT read_model_version FROM metadata").fetchone()
         metrics = {row[0] for row in con.execute("SELECT DISTINCT primary_metric FROM benchmark_rankings").fetchall()}
 
-    assert version == (20,)
+    assert version == (21,)
     assert metrics == {"power_score", "qphh_at_size"}

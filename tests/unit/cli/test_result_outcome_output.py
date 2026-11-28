@@ -14,7 +14,10 @@ from tests.fixtures.result_dict_fixtures import make_benchmark_results
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
-DERIVED_WORDING = "Derived from TPC-H, not an official TPC result"
+DERIVED_WORDING = (
+    "Derived from TPC-H. These results do not comply with the TPC-H Specification "
+    "and must not be compared with official TPC-H results."
+)
 POWER_ONLY_WORDING = "Power test only"
 
 
@@ -100,7 +103,7 @@ def test_cli_result_output_prints_class_and_wording(mock_console):
     printed = "\n".join(str(call.args[0]) for call in mock_console.print.call_args_list)
     assert "Class:[/bold blue] power_only" in printed
     assert f"{DERIVED_WORDING}; {POWER_ONLY_WORDING}" in printed
-    assert "official" not in printed.replace("not an official TPC result", "")
+    assert "official" not in printed.replace(DERIVED_WORDING, "")
 
 
 def test_csv_export_carries_class_and_wording(tmp_path):

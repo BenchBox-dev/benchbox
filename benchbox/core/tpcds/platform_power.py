@@ -7,6 +7,7 @@ from benchbox.core.constants import (
     TPCDS_POWER_DEFAULT_MEASUREMENT_ITERATIONS,
     TPCDS_POWER_DEFAULT_WARMUP_ITERATIONS,
 )
+from benchbox.core.execution_engine import unmeasured_statements
 from benchbox.core.tpch.platform_power import (
     PowerConnectionAdapterFactory,
     _power_query_result,
@@ -70,7 +71,8 @@ def execute_tpcds_power_test(
                 dialect=adapter.get_target_dialect(),
                 query_subset=query_subset,
             )
-            power_test_result = power_test.run()
+            with unmeasured_statements():
+                power_test_result = power_test.run()
             for query_result in power_test_result.query_results:
                 all_results.append(
                     _power_query_result(

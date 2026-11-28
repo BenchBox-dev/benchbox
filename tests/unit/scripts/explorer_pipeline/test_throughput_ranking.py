@@ -133,9 +133,7 @@ def test_stream_count_mismatch_from_config_withholds_throughput_score(tmp_path: 
     assert entry.ranking_exclusion_reason == "stream_count_mismatch"
 
 
-@pytest.mark.parametrize(
-    "benchmark_name", ["ssb", "clickbench", "star_schema", "nyctaxi", "tsbs-devops", "h2odb", "datavault"]
-)
+@pytest.mark.parametrize("benchmark_name", ["ssb", "clickbench", "nyctaxi", "tsbs_devops", "h2odb", "datavault"])
 def test_stream_count_mismatch_excludes_geomean_throughput_from_ranking(tmp_path: Path, benchmark_name: str) -> None:
     invalid = throughput_bundle("invalid", benchmark=benchmark_name, streams=3)
     invalid["run"]["streams"] = 4

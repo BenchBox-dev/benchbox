@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import asdict
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -342,7 +343,10 @@ class TestVeloxWiring:
         result = adapter.execute_query(spark, "SELECT 1", "q2", validate_row_count=False)
         assert result["status"] == "SUCCESS"
         assert "query_plan" not in result or result.get("query_plan") is None
-        assert not any(q.strip().upper().startswith("EXPLAIN") for q in spark.queries)
+        assert not [q for q in spark.queries if q.strip().upper().startswith("EXPLAIN")]
+        adapter.finalize_query_engine_observation(asdict(adapter.resolve_execution_engine("default")), spark)
+        explained = [q for q in spark.queries if q.strip().upper().startswith("EXPLAIN")]
+        assert explained == ["EXPLAIN EXTENDED SELECT 1"]
 
     def test_graceful_when_plan_unavailable(self, adapter, monkeypatch):
         monkeypatch.setattr(adapter, "get_query_plan", lambda *a, **k: None)

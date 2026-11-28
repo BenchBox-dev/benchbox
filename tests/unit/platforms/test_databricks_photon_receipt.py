@@ -106,6 +106,7 @@ def _receipt(applied: str | None, applied_class: str | None, applied_native: dic
         "resolution": "platform_default",
         "observed": "not_captured",
         "observed_source": "none",
+        "observed_reason": "no query completed",
     }
     if applied_native is not None:
         receipt["applied_native"] = applied_native

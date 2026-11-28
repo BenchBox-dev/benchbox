@@ -255,6 +255,7 @@ class PlatformAdapter(
         self._link_probe_timed_out = False
         self._post_measurement_contained = False
         self._contained_throughput_result = None
+        self.reset_query_engine_observation()
         if self.dry_run_mode:
             self.captured_sql = []
             self.query_counter = 0
@@ -687,7 +688,11 @@ class PlatformAdapter(
             for line in self.effective_session_config_report():
                 quiet_console.print(line)
             self._last_throughput_test_result = None
-            query_results = self._execute_queries_by_type(benchmark, connection, run_config)
+            self.open_engine_observation_window()
+            try:
+                query_results = self._execute_queries_by_type(benchmark, connection, run_config)
+            finally:
+                self.close_engine_observation_window()
             probe_elapsed_s = self._collect_post_measurement_metadata(connection, run_config)
 
             queries = self._get_dialect_queries(

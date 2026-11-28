@@ -814,17 +814,17 @@ class TestCohortVariantPreservation:
             f"platform_id must not be in the PK (would dedupe variants): {constraint_text}"
         )
 
-    def test_meta_leaderboard_keeps_best_rank_per_platform(self, variant_db_path: Path) -> None:
+    def test_a_better_ranked_tuned_median_does_not_replace_the_untuned_one_in_the_meta_leaderboard(
+        self, variant_db_path: Path
+    ) -> None:
         with _connect(variant_db_path) as con:
-            row = con.execute(
-                "SELECT avg_rank, n_cohorts FROM meta_leaderboard WHERE platform_id = 'duckdb'"
-            ).fetchone()
-        assert row is not None
-        avg_rank, n_cohorts = row
-        assert math.isclose(avg_rank, 1.0), (
-            f"avg_rank must be 1.0 (best variant wins), got {avg_rank} - platform_agg last-write-wins regression"
-        )
-        assert n_cohorts == 1
+            meta = con.execute("SELECT variant_id, avg_rank, n_cohorts FROM meta_leaderboard").fetchall()
+            medians = con.execute(
+                "SELECT tuning_mode, run_count, is_leaderboard_version, rank, total_in_cohort "
+                "FROM identity_medians ORDER BY rank"
+            ).fetchall()
+        assert medians == [("tuned", 1, True, 1, 2), ("notuning", 1, True, 2, 2)]
+        assert meta == [("duckdb", 2.0, 1)]
 
 
 class TestBenchmarkRankingTieHandling:

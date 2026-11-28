@@ -6,8 +6,8 @@ import os
 import re
 import time
 import uuid
-from collections.abc import Mapping, Sequence
-from dataclasses import asdict
+from collections.abc import Callable, Mapping, Sequence
+from dataclasses import asdict, replace
 from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING, Any, cast
 from urllib.parse import urlparse
@@ -23,7 +23,12 @@ if TYPE_CHECKING:
         UnifiedTuningConfiguration,
     )
 
-from benchbox.core.execution_engine import ExecutionEngineReceipt, supported_execution_engines
+from benchbox.core.execution_engine import (
+    MIXED,
+    ExecutionEngineReceipt,
+    QueryObservationTarget,
+    supported_execution_engines,
+)
 from benchbox.core.gateway import UNKNOWN_GATEWAY_ENGINE
 from benchbox.core.platform_manifest import DEFAULT_EXECUTION_ENGINE
 from benchbox.core.upload_validation import UploadValidationEngine
@@ -855,8 +860,8 @@ class DatabricksAdapter(PlatformAdapter):
                 if isinstance(configuration, dict):
                     configuration["region"] = detected_region
 
-        platform_info["configuration"]["execution_engine"] = asdict(
-            self._photon_receipt(platform_info.get("compute_configuration", {}).get("enable_photon"))
+        platform_info["configuration"]["execution_engine"] = self.finalize_query_engine_observation(
+            asdict(self._photon_receipt(platform_info.get("compute_configuration", {}).get("enable_photon")))
         )
         return platform_info
 
@@ -2575,6 +2580,12 @@ class DatabricksAdapter(PlatformAdapter):
             if own_cursor:
                 cursor.close()
 
+        self.record_query_engine_observation(
+            connection,
+            query,
+            query_id,
+            [request.statement_id for request in ledger.requests if request.statement_id],
+        )
         self._merge_plan_capture_into_result(result_dict, connection, query, query_id)
 
         return result_dict
@@ -2591,12 +2602,12 @@ class DatabricksAdapter(PlatformAdapter):
 
         return WorkspaceClient(host=f"https://{self.server_hostname}", token=self.access_token)
 
-    def fetch_platform_timings(self, connection: Any, statement_ids: Sequence[str]) -> Mapping[str, StatementTiming]:
+    def _query_infos(self, statement_ids: Sequence[str], ready: Callable[[Any], bool]) -> dict[str, Any]:
         from databricks.sdk.service.sql import QueryFilter
 
         wanted = list(dict.fromkeys(statement_ids))
         client = self._query_history_client()
-        found: dict[str, StatementTiming] = {}
+        found: dict[str, Any] = {}
         deadline = mono_time() + _QUERY_HISTORY_BUDGET_SECONDS
         delay = _QUERY_HISTORY_INITIAL_DELAY_SECONDS
         while True:
@@ -2604,13 +2615,68 @@ class DatabricksAdapter(PlatformAdapter):
                 filter_by=QueryFilter(statement_ids=wanted), include_metrics=True, max_results=len(wanted)
             )
             for info in response.res or []:
-                timing = self._statement_timing_from_query_info(info)
-                if timing is not None:
-                    found[timing.statement_id] = timing
+                if getattr(info, "query_id", None) and ready(info):
+                    found[info.query_id] = info
             if all(statement_id in found for statement_id in wanted) or mono_time() + delay > deadline:
                 return found
             time.sleep(delay)
             delay = min(delay * 2, _QUERY_HISTORY_MAX_DELAY_SECONDS)
+
+    def fetch_platform_timings(self, connection: Any, statement_ids: Sequence[str]) -> Mapping[str, StatementTiming]:
+        infos = self._query_infos(statement_ids, lambda info: self._statement_timing_from_query_info(info) is not None)
+        return {
+            statement_id: timing
+            for statement_id, info in infos.items()
+            if (timing := self._statement_timing_from_query_info(info)) is not None
+        }
+
+    OBSERVED_ENGINE_SOURCE = "vendor_log"
+    OBSERVATION_AT_RUN_END = True
+
+    def engine_observation_gap(self) -> str | None:
+        if self.gateway != "native":
+            return "queries ran through a gateway, so the warehouse's Query History does not describe the engine used"
+        return None
+
+    @staticmethod
+    def _engine_evidence_ready(info: Any) -> bool:
+        metrics = getattr(info, "metrics", None)
+        return metrics is not None and metrics.total_time_ms is not None
+
+    def observe_run_end_targets(
+        self, targets: Sequence[QueryObservationTarget], connection: Any = None
+    ) -> list[str | None]:
+        statement_ids = [statement_id for target in targets for statement_id in target.statement_ids]
+        if not statement_ids:
+            return [None for _ in targets]
+        try:
+            with outside_query_timer():
+                infos = self._query_infos(statement_ids, self._engine_evidence_ready)
+        except Exception as exc:
+            self.logger.debug("Databricks Query History lookup for engine observation failed: %s", exc)
+            return [None for _ in targets]
+        return [self._observe_target(replace(target, evidence=infos)) for target in targets]
+
+    def observe_execution_engine(self, lazy: QueryObservationTarget) -> str | None:
+        if not lazy.statement_ids:
+            return None
+        observed = {
+            self._engine_from_query_info(lazy.evidence.get(statement_id)) for statement_id in lazy.statement_ids
+        }
+        if len(observed) != 1:
+            return MIXED if None not in observed else None
+        return next(iter(observed))
+
+    @staticmethod
+    def _engine_from_query_info(info: Any) -> str | None:
+        metrics = getattr(info, "metrics", None)
+        if metrics is None or metrics.result_from_cache or metrics.photon_total_time_ms is None:
+            return None
+        if metrics.photon_total_time_ms > 0:
+            return "photon"
+        if metrics.task_total_time_ms is not None and metrics.task_total_time_ms > 0:
+            return "standard"
+        return None
 
     @staticmethod
     def _statement_timing_from_query_info(info: Any) -> StatementTiming | None:

@@ -100,12 +100,22 @@ compliance class once three platforms shared its scale.
   report (`results-data/compliance-classes.json` is unchanged because its `rule`
   section already held these outcomes). TPC-H SF 1 now has four ranked identities, so
   it left the documented shallow cohorts.
-- Until the Explorer pipeline emits the rule's outcome, the cohort depth gate does not
-  count the 19 bundles listed in `scripts/unpublished_rule_rankings.txt`, because the
-  published ranking still excludes them. `validate_corpus.exclusion_reason` and the lanes
-  follow the rule; only `cohort_platforms` subtracts the list, so TPC-H SF 1 stays a
-  documented shallow cohort. The list is removed when the Explorer switches to the rule.
-  Corrects the 2026-11-23 note above: TPC-H SF 1 did not leave the shallow cohorts.
+- The Explorer pipeline now takes class, lane, labels, score and identity from the rule,
+  so the depth gate counts the rule's rankings with no divergence list; the validator and
+  the pipeline agree on every committed bundle. The 19 bundles that carried
+  `unofficial_nonstandard` at a standard scale are ranked in the published read model too.
+- The leaderboard stands each identity on the median of the runs of its newest released
+  version, separately for each tuning mode (a missing tuning mode counts as `notuning`), so
+  tuned and untuned runs of one version are two medians and two ranks, never one merged median. The meta leaderboard keeps one row per
+  variant and takes the variant's untuned median in each cohort, falling back to a tuned median
+  only when it has no ranked untuned median there. An identity with no recorded version stands on its unrecorded-version median
+  and is ranked (every BigQuery result in the corpus is such an identity). A
+  median with no recorded version is left out only when a released version of the same
+  identity exists, with the existing reason `not_leaderboard_version`.
+  `results-data/compliance-classes.json` now also records every identity median (score, rank,
+  cohort size, exclusion reason, leaderboard flag) as the pipeline publishes it and as
+  `scripts/corpus_compliance_snapshot.py` computes it from per-query medians, so a change to
+  the published leaderboard fails `--check`.
 
 Effect on the published corpus: the registry lists only SF 1 as a standard
 ClickBench scale. The 13 ClickBench bundles at SF 0.1 and SF 10 (see "Cloud

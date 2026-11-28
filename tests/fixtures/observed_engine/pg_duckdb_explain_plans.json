@@ -1,0 +1,24 @@
+{
+  "source": "EXPLAIN output as published in https://dev.to/franckpachot/pgduckdb-quietly-ignored-forceexecution-on-my-numeric-column-h2m: with duckdb.force_execution = true, a query DuckDB runs has a Custom Scan (DuckDBScan) top node; a query pg_duckdb declined shows a plain PostgreSQL plan. Not captured from a live server.",
+  "plans": {
+    "duckdb": [
+      "Custom Scan (DuckDBScan)  (cost=0.00..0.00 rows=0 width=0)",
+      "  DuckDB Execution Plan:",
+      "",
+      " UNGROUPED_AGGREGATE",
+      "  PGDUCKDB_POSTGRES_SCAN"
+    ],
+    "postgres_after_forced_duckdb": [
+      "Aggregate  (cost=2074.00..2074.01 rows=1 width=32)",
+      "  ->  Seq Scan on nf  (cost=0.00..1824.00 rows=100000 width=8)"
+    ],
+    "postgres_over_duckdb": [
+      "Limit  (cost=0.00..0.00 rows=10 width=8)",
+      "  ->  Custom Scan (DuckDBScan)  (cost=0.00..0.00 rows=0 width=0)"
+    ],
+    "unrecognized": [
+      "Something else entirely"
+    ],
+    "empty": []
+  }
+}

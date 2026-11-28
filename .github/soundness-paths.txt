@@ -71,6 +71,8 @@ file	_project/scripts/explorer_pipeline/models.py
 file	_project/scripts/explorer_pipeline/pipeline.py
 file	_project/scripts/explorer_pipeline/ranking.py
 file	_project/scripts/explorer_pipeline/transformer.py
+file	_project/scripts/explorer_pipeline/corpus_outcome.py
+file	_project/scripts/explorer_pipeline/medians.py
 file	_project/scripts/explorer_pipeline/duckdb_builder.py
 file	_project/scripts/explorer_pipeline/compare_math.py
 file	_project/scripts/explorer_pipeline/browser_fixtures.py
@@ -81,6 +83,8 @@ file	benchbox/core/results/timing_fields.py
 file	benchbox/core/results/subscale_policy.py
 file	benchbox/core/results/corpus_rule_data.json
 file	scripts/generate_corpus_rule_data.py
+file	scripts/corpus_compliance_snapshot.py
+file	results-data/compliance-classes.json
 file	benchbox/core/results/corpus_rule.py
 file	benchbox/core/results/corpus_score.py
 file	benchbox/core/results/comparison_identity.py
@@ -89,7 +93,6 @@ file	benchbox/core/results/result_outcome.py
 file	benchbox/core/results/submit_classification.py
 file	scripts/check_mirror_validator_parity.py
 file	scripts/corpus_outcome_probe.py
-file	scripts/unpublished_rule_rankings.txt
 file	results-data/validate_corpus.py
 file	benchbox/core/results/loader.py
 file	benchbox/core/results/schema.py

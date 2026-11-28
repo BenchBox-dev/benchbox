@@ -9,6 +9,7 @@ from benchbox.core.constants import (
     TPCH_POWER_DEFAULT_MEASUREMENT_ITERATIONS,
     TPCH_POWER_DEFAULT_WARMUP_ITERATIONS,
 )
+from benchbox.core.execution_engine import unmeasured_statements
 from benchbox.core.plan_capture_phase import propagate_query_execution_metadata
 from benchbox.utils.run_deadline import TIMED_OUT_QUERY_STATUS, run_stop_requested
 
@@ -147,7 +148,8 @@ def execute_tpch_power_test(
                 query_subset=query_subset,
             )
             connection_adapter._validate_row_count = power_test.config.validation
-            power_test_result = power_test.run()
+            with unmeasured_statements():
+                power_test_result = power_test.run()
             _record_validation_run(validation_runs, power_test_result, 0, "warmup")
             for query_result in power_test_result.query_results:
                 all_results.append(

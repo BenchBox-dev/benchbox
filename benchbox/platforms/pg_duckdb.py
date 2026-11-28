@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import time
 from dataclasses import asdict
 from datetime import datetime, timezone
@@ -13,7 +14,10 @@ from typing import Any
 
 from benchbox.core.deployment import DEPLOYMENT_SELECTOR_OPTION, deployment_class, select_adapter_deployment
 from benchbox.core.execution_engine import (
+    MIXED,
     ExecutionEngineReceipt,
+    ObservationNotRecognizedError,
+    QueryObservationTarget,
     resolve_requested,
     supported_execution_engines,
 )
@@ -36,7 +40,38 @@ except ImportError:
     psycopg_sql = None
 
 
+_DUCKDB_SCAN_NODE = "Custom Scan (DuckDBScan)"
+_POSTGRES_PLAN_NODE = re.compile(r"\(cost=\S+ rows=\d+ width=\d+\)")
+
+
+_TRANSACTION_IDLE = 0
+_TRANSACTION_INTRANS = 2
+_TRANSACTION_INERROR = 3
+_OBSERVATION_SAVEPOINT = "benchbox_engine_observation"
+
+
+def _transaction_status(connection: Any) -> int | None:
+    try:
+        return int(connection.info.transaction_status)
+    except (AttributeError, TypeError, ValueError):
+        return None
+
+
+def classify_explain_plan(plan_text: str) -> str | None:
+    lines = [line for line in plan_text.splitlines() if line.strip()]
+    if not lines:
+        return None
+    if lines[0].lstrip().startswith(_DUCKDB_SCAN_NODE):
+        return "duckdb"
+    if _DUCKDB_SCAN_NODE in plan_text:
+        return MIXED
+    return "postgres" if _POSTGRES_PLAN_NODE.search(lines[0]) else None
+
+
 class PgDuckDBAdapter(PostgreSQLAdapter):
+    OBSERVED_ENGINE_SOURCE = "explain"
+    OBSERVATION_AT_RUN_END = True
+    RUN_END_OBSERVATION_USES_CONNECTION = True
     execution_partitioning_supported = True
     post_load_index_cluster_supported = True
     supports_refresh_functions = False
@@ -48,6 +83,51 @@ class PgDuckDBAdapter(PostgreSQLAdapter):
 
     def get_target_dialect(self) -> str:
         return POSTGRES_DIALECT
+
+    def execute_query(
+        self,
+        connection: Any,
+        query: str,
+        query_id: str,
+        benchmark_type: str | None = None,
+        scale_factor: float | None = None,
+        validate_row_count: bool = True,
+        stream_id: int | None = None,
+    ) -> dict[str, Any]:
+        result = super().execute_query(
+            connection, query, query_id, benchmark_type, scale_factor, validate_row_count, stream_id
+        )
+        if result.get("status") == "SUCCESS":
+            self.record_query_engine_observation(connection, query, query_id)
+        return result
+
+    def observe_execution_engine(self, lazy: QueryObservationTarget) -> str | None:
+        connection = lazy.connection
+        status = _transaction_status(connection)
+        if status == _TRANSACTION_INERROR:
+            raise RuntimeError("the connection's transaction is aborted")
+        cursor = connection.cursor()
+        savepoint = status == _TRANSACTION_INTRANS
+        try:
+            if savepoint:
+                cursor.execute(f"SAVEPOINT {_OBSERVATION_SAVEPOINT}")
+            try:
+                cursor.execute(f"EXPLAIN {lazy.query}")
+                plan_text = "\n".join(str(row[0]) for row in cursor.fetchall())
+            except Exception:
+                if savepoint:
+                    cursor.execute(f"ROLLBACK TO SAVEPOINT {_OBSERVATION_SAVEPOINT}")
+                raise
+            if savepoint:
+                cursor.execute(f"RELEASE SAVEPOINT {_OBSERVATION_SAVEPOINT}")
+        finally:
+            cursor.close()
+            if status == _TRANSACTION_IDLE and _transaction_status(connection) != _TRANSACTION_IDLE:
+                connection.rollback()
+        observed = classify_explain_plan(plan_text)
+        if observed is None:
+            raise ObservationNotRecognizedError("EXPLAIN output not recognized")
+        return observed
 
     @staticmethod
     def add_cli_arguments(parser) -> None:
@@ -265,7 +345,9 @@ class PgDuckDBAdapter(PostgreSQLAdapter):
         platform_info["configuration"]["force_execution"] = self.force_execution
         platform_info["configuration"]["postgres_scan_threads"] = self.postgres_scan_threads
         platform_info["configuration"]["deployment_mode"] = self.deployment_mode
-        platform_info["configuration"]["execution_engine"] = asdict(self._engine_receipt)
+        platform_info["configuration"]["execution_engine"] = self.finalize_query_engine_observation(
+            asdict(self._engine_receipt), connection
+        )
 
         if connection:
             try:
