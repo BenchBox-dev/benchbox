@@ -5846,7 +5846,7 @@
         }
       },
       "integration_branch": "feat/explorer-data-r2",
-      "integration_head": "10edfb2d5a4245b9eb30021e72b813859f5ddf66",
+      "integration_head": "67bc25c235a79b96cce604e20faf54dca084ab53",
       "integration_log": [
         {
           "at": "2026-11-27T16:35:55Z",
@@ -6029,6 +6029,32 @@
           "op_id": "3b32c8331cd78d273f70e710964c2e1f",
           "previous_head": "39e507d8b19379674c3d95f68083e59932863c06",
           "seq": 3
+        },
+        {
+          "at": "2026-11-28T07:27:51Z",
+          "changed_files": [
+            "benchbox/core/execution_engine.py",
+            "benchbox/core/tpcds/platform_power.py",
+            "benchbox/core/tpch/platform_power.py",
+            "benchbox/platforms/base/adapter.py",
+            "benchbox/platforms/base/execution.py",
+            "benchbox/platforms/databricks/adapter.py",
+            "benchbox/platforms/pg_duckdb.py",
+            "benchbox/platforms/velox.py",
+            "tests/unit/core/test_execution_engine_observed.py",
+            "tests/unit/platforms/test_databricks_observed_engine.py",
+            "tests/unit/platforms/test_misc_plan_capture.py",
+            "tests/unit/platforms/test_pg_duckdb_observed_engine.py",
+            "tests/unit/platforms/test_velox_observed_engine.py"
+          ],
+          "head": "67bc25c235a79b96cce604e20faf54dca084ab53",
+          "kind": "fix",
+          "op_id": "eff9fce31125dfa3d460688c3005ec33",
+          "previous_head": "10edfb2d5a4245b9eb30021e72b813859f5ddf66",
+          "requires_acceptance": [
+            "crr-d2-observed-engine-sql-platforms"
+          ],
+          "seq": 4
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-explorer-data-r2",
