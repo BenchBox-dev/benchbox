@@ -212,6 +212,15 @@ def test_a_release_stands_for_the_platform_and_a_pre_release_stays_in_the_versio
     ]
 
 
+def test_an_identity_with_only_a_pre_release_has_no_leaderboard_version(tmp_path: Path) -> None:
+    db = _build(tmp_path, {"pre": _power_run("pre", version="1.3.0rc1")})
+
+    assert _medians(db) == [("1.3.0rc1", False, 1, pytest.approx(BASE_SCORE), 0.0, False)]
+    with duckdb.connect(str(db), read_only=True) as con:
+        reasons = con.execute("SELECT rank, ranking_exclusion_reason FROM identity_medians").fetchall()
+    assert reasons == [(None, "not_leaderboard_version")]
+
+
 def test_a_newest_version_without_a_ranked_result_does_not_hide_an_older_ranked_one(tmp_path: Path) -> None:
     failed = _power_run("failed", version="1.3.0")
     failed["queries"].pop()

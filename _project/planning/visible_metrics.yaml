@@ -389,7 +389,7 @@ metrics:
     canonical_ref: "_project.scripts.explorer_pipeline.medians.build_identity_medians"
     tolerance: 0
     display_surfaces: [home, benchmark_index]
-    notes: "True for the newest released version of the platform, variant and tuning mode that has a ranked result"
+    notes: "True for the newest released version of the platform, variant and tuning mode that has a ranked result; when no released version has one, true for the unrecorded-version median"
 
   - table: identity_medians
     column: rank
@@ -420,9 +420,11 @@ metrics:
     display_surfaces: [home, benchmark_index, compare]
     notes: >
       Null for a ranked row. Otherwise no_median_score (no ranked run behind the row),
-      not_leaderboard_version (an older, pre-release or unrecorded version of the identity while a released
-      version stands for it), or below_cohort_minimum (fewer leaderboard-version medians in the cohort and
-      lane than the minimum). An identity with no recorded version at all stands on its unrecorded-version median.
+      not_leaderboard_version (an older released version of the identity, any pre-release or development build,
+      which never stands, or an unrecorded version once a released version stands), or below_cohort_minimum
+      (fewer leaderboard-version medians in the cohort and lane than the minimum). An identity with no recorded
+      version at all stands on its unrecorded-version median; an identity with only pre-release or development
+      versions has no leaderboard version.
 
   - table: benchmark_rankings
     column: cohort_key
