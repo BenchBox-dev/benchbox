@@ -5747,20 +5747,58 @@
       "terminal_outcome": "deliver"
     },
     "explorer-data-r2": {
-      "accepted_members": {},
+      "accepted_members": {
+        "crr-d2-observed-engine-sql-platforms": "01d0a6765cabbd594a251fe311ea9f0b0d243fa7"
+      },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
-      "integrated_members": {},
+      "integrated_members": {
+        "crr-d2-observed-engine-sql-platforms": {
+          "accepted_head": "01d0a6765cabbd594a251fe311ea9f0b0d243fa7",
+          "changed_files": [
+            "benchbox/core/execution_engine.py",
+            "benchbox/core/platform_manifest.py",
+            "benchbox/platforms/base/spark_execution_mixin.py",
+            "benchbox/platforms/databricks/adapter.py",
+            "benchbox/platforms/pg_duckdb.py",
+            "benchbox/platforms/velox.py",
+            "changelog.d/feat-sql-platforms-record-observed-engine.json",
+            "tests/fixtures/observed_engine/databricks_query_history.json",
+            "tests/fixtures/observed_engine/gluten_explain_plans.json",
+            "tests/fixtures/observed_engine/pg_duckdb_explain_plans.json",
+            "tests/unit/core/test_execution_engine_observed.py",
+            "tests/unit/core/test_observed_engine_guard.py",
+            "tests/unit/platforms/test_databricks_adapter_coverage.py",
+            "tests/unit/platforms/test_databricks_observed_engine.py",
+            "tests/unit/platforms/test_databricks_photon_receipt.py",
+            "tests/unit/platforms/test_misc_plan_capture.py",
+            "tests/unit/platforms/test_pg_duckdb_observed_engine.py",
+            "tests/unit/platforms/test_velox_adapter.py",
+            "tests/unit/platforms/test_velox_observed_engine.py"
+          ],
+          "integration_head": "437a81f68d08a9426ae7e99b1c6e23a92acc6b65",
+          "integration_seq": 1
+        }
+      },
       "integration_branch": "feat/explorer-data-r2",
-      "integration_head": "372f743e84df1422dea5d4926d8338b371be8518",
+      "integration_head": "437a81f68d08a9426ae7e99b1c6e23a92acc6b65",
       "integration_log": [
         {
           "at": "2026-11-27T16:35:55Z",
           "head": "372f743e84df1422dea5d4926d8338b371be8518",
           "kind": "start",
           "seq": 0
+        },
+        {
+          "at": "2026-11-28T02:27:13Z",
+          "head": "437a81f68d08a9426ae7e99b1c6e23a92acc6b65",
+          "kind": "prepare",
+          "member": "crr-d2-observed-engine-sql-platforms",
+          "op_id": "a43e4ec5413536a08c9c4259fe166d99",
+          "previous_head": "372f743e84df1422dea5d4926d8338b371be8518",
+          "seq": 1
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-explorer-data-r2",
@@ -27935,17 +27973,12 @@
       "title": "Stop the Dask distributed-setup test leaking its replaced Client and LocalCluster into later tests"
     },
     "crr-d2-observed-engine-sql-platforms": {
-      "claim": {
-        "expires_at": "2026-11-29T02:27:09Z",
-        "generation": "97d9a025ec6e4e098dcfdd3b4d13935c",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1aa1b7754325244256f109cf"
-      },
+      "claim": null,
       "needs": [
         "crr-d1-observed-engine-contract-and-dataframe"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "open",
       "title": "Record the observed execution engine on the SQL platforms that declare engines"
     },
     "crr-i1-tpcds-q93-empty-sf01": {
