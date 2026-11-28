@@ -103,7 +103,7 @@ decision; see `CORPUS_NOTES.md`. The maintainer-run seed lane
 each month (`0 7 1 * *`) and remains callable via `workflow_dispatch`. Its
 supported local matrix maintains TPC-H at SF 0.01 and SF 0.1 with DuckDB,
 DataFusion, and Polars DataFrame; TPC-H SF 1 and TPC-DS SF 1 with DuckDB,
-DataFusion, and ClickHouse Local; and SSB at SF 0.01 and SF 0.1 with DuckDB,
+ClickHouse Local, and CedarDB; and SSB at SF 0.01 and SF 0.1 with DuckDB,
 DataFusion, and Polars DataFrame. It does not claim to regenerate every
 checked-in cohort; the authoritative cell list is the workflow file and is
 summarized in `SEED_CORPUS_SPEC.md`.

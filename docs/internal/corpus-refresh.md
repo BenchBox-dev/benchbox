@@ -26,7 +26,6 @@ Cloud warehouses are not on this calendar.
 | TPC-H | 0.01, 0.1 | DuckDB, DataFusion, Polars-DF | Power phase only |
 | TPC-H | 1.0 | DuckDB, ClickHouse Local, CedarDB | Full specification: power, 2-stream throughput, RF1/RF2 |
 | TPC-DS | 1 | DuckDB, ClickHouse Local, CedarDB | Full specification: load, power, 4-stream throughput, maintenance |
-| TPC-DI | 0.01, 0.1, 1.0 | DuckDB, DataFusion, ClickHouse Local | Power phase only |
 | SSB | 0.01, 0.1 | DuckDB, DataFusion, Polars-DF | Power phase only |
 
 The power-only TPC-H SF 1 and TPC-DS SF 1 cohorts published before
