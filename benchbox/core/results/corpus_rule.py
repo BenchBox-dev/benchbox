@@ -284,12 +284,17 @@ def row_count_reference_exists(benchmark_id: Any, scale_factor: Any, data: Mappi
     return any(abs(scale - recorded) < 1e-9 for recorded in scales)
 
 
+BENCHMARK_ALIASES = {"star_schema": "ssb"}
+
+
 def normalize_benchmark_id(benchmark_id: Any) -> str | None:
     if not isinstance(benchmark_id, str) or not benchmark_id.strip():
         return None
     lowered = benchmark_id.strip().lower()
     squashed = "".join(character for character in lowered if character.isalnum())
-    return squashed if squashed in ("tpch", "tpcds", "tpcdi") else lowered
+    if squashed in ("tpch", "tpcds", "tpcdi"):
+        return squashed
+    return BENCHMARK_ALIASES.get(lowered, lowered)
 
 
 def _scale_value(scale_factor: Any) -> float | None:

@@ -273,6 +273,15 @@ def test_every_ranked_tpc_row_carries_the_derived_wording_and_the_class_in_words
     assert ranked
 
 
+def test_the_star_schema_benchmark_id_resolves_to_the_ssb_registry_entry() -> None:
+    assert rule.normalize_benchmark_id("star_schema") == "ssb"
+    assert rule.normalize_benchmark_id("Star_Schema ") == "ssb"
+    assert rule.is_standard_scale("star_schema", 1.0) == rule.is_standard_scale("ssb", 1.0)
+    context = rule.build_context(rule.Facts(benchmark="star_schema", scale_factor=1.0, phases=frozenset()))
+    assert context.registry_known
+    assert context.band == rule.BAND_STANDARD
+
+
 def test_scale_registry_and_stream_minima_come_from_the_data_file() -> None:
     data = rule.load_data()
 
