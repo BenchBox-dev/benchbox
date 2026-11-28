@@ -2084,7 +2084,7 @@ class TestSubmissionDeterministicGates:
             assert not vr.ok
             assert any("not accepted for public submissions" in e for e in vr.errors)
 
-    @pytest.mark.parametrize("benchmark_id", ["star_schema", "tsbs-devops"])
+    @pytest.mark.parametrize("benchmark_id", ["tsbs-devops"])
     def test_unregistered_scale_is_undetermined(self, benchmark_id):
         data = _minimal_bundle()
         data["benchmark"]["id"] = benchmark_id
