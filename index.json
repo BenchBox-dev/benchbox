@@ -15339,7 +15339,7 @@
         }
       },
       "integration_branch": "feat/tpcdi-cleanup",
-      "integration_head": "df9e7e65ee87302d4041d18fa50e66fbe4ea74ec",
+      "integration_head": "1ea17f291199edb3bac5e91d3578589a76787917",
       "integration_log": [
         {
           "at": "2026-11-27T18:39:04Z",
@@ -15373,6 +15373,30 @@
           "op_id": "161c044f795a48e0ab1144904c8e9c2e",
           "previous_head": "dc81f2f07b9a255fa2525c34f5c110bba3d250ea",
           "seq": 3
+        },
+        {
+          "at": "2026-11-28T01:43:21Z",
+          "changed_files": [
+            "_project/sql-translation-ml/uv.lock",
+            "tests/fixtures/fast_tier_baseline/tests-00.json",
+            "tests/fixtures/fast_tier_baseline/tests-01.json",
+            "tests/fixtures/fast_tier_baseline/tests-02.json",
+            "tests/fixtures/fast_tier_baseline/tests-03.json",
+            "tests/fixtures/fast_tier_baseline/tests-04.json",
+            "tests/fixtures/fast_tier_baseline/tests-05.json",
+            "tests/fixtures/fast_tier_baseline/tests-06.json",
+            "tests/fixtures/fast_tier_baseline/tests-07.json"
+          ],
+          "head": "1ea17f291199edb3bac5e91d3578589a76787917",
+          "kind": "fix",
+          "op_id": "0d4b210614f548bd96616f5bef5c0af9",
+          "previous_head": "df9e7e65ee87302d4041d18fa50e66fbe4ea74ec",
+          "requires_acceptance": [
+            "tpcdi-15-delete-old-generator-and-etl-20261120",
+            "tpcdi-correct-stale-claims-and-surfaces-20261121",
+            "tpcdi-delete-old-etl-dataframe-and-stale-claims-20261121"
+          ],
+          "seq": 4
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpcdi-cleanup",
