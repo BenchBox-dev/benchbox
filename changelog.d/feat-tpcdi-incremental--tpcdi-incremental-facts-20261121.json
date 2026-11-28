@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "Add the Batch 2 and 3 updates of DimTrade, FactCashBalances, FactHoldings, FactWatches and FactMarketHistory on DuckDB; DimTrade.BatchID moves to the batch of the trade's latest update"
+}

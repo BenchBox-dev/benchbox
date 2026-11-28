@@ -1,0 +1,23 @@
+CREATE OR REPLACE TABLE DailyMarketRaw AS
+SELECT
+  * EXCLUDE (filename),
+  CAST(regexp_extract(filename, '[/\\]Batch([0-9]+)[/\\][^/\\]+$', 1) AS INTEGER) AS batchid
+FROM read_csv(
+  $daily_market_path,
+  delim = '|',
+  header = false,
+  quote = '',
+  escape = '',
+  nullstr = '',
+  filename = true,
+  columns = {
+    'cdc_flag': 'VARCHAR',
+    'cdc_dsn': 'BIGINT',
+    'dm_date': 'DATE',
+    'dm_s_symb': 'VARCHAR',
+    'dm_close': 'DECIMAL(8,2)',
+    'dm_high': 'DECIMAL(8,2)',
+    'dm_low': 'DECIMAL(8,2)',
+    'dm_vol': 'BIGINT'
+  }
+)
