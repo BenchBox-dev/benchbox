@@ -28268,13 +28268,18 @@
       "title": "Roll up row-count evidence with one rule shared by the writer, the validators, the DataFrame summary and the corpus rule"
     },
     "crr-v2-measured-stream-integrity-checks": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-29T04:11:22Z",
+        "generation": "6379c6f292604214b9bf4a90cfa47208",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1aa1b7754325244256f109cf"
+      },
       "needs": [
         "crr-v0-reference-reader-and-generator",
         "crr-v1-row-evidence-roll-up"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Check every measured TPC-H and TPC-DS row against an exact count, a recorded invariant, 'must return rows' or a LIMIT/one-row bound"
     },
     "crr-v3-qualification-library": {
