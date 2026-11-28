@@ -24,8 +24,6 @@ _TIMING_KEYS = frozenset({"ms", "execution_time_ms", "duration_ms"})
 _VERSION_PART = re.compile(r"(\d+)")
 _POWER_LANES = frozenset({corpus_rule.LANE_POWER_ONLY, corpus_rule.LANE_SUBSCALE})
 
-UNRECORDED_VERSION_SUPERSEDED = "unrecorded_version_superseded_by_release"
-
 _SummaryKey = tuple[str, float, str, int | None]
 
 
@@ -222,25 +220,13 @@ def _mark_leaderboard_versions(medians: list[IdentityMedian]) -> list[IdentityMe
             standing[identity] = max(released, key=lambda median: version_order(median.comparison_version))
         elif unrecorded:
             standing[identity] = unrecorded[0]
-    marked: list[IdentityMedian] = []
-    for median in medians:
-        identity = (median.lane, median.platform_id, median.variant_id)
-        stands = standing.get(identity) is median
-        superseded = (
-            not stands
-            and median.median_score is not None
-            and median.comparison_version == NOT_RECORDED
-            and standing.get(identity) is not None
-            and standing[identity].version_is_release
+    return [
+        replace(
+            median,
+            is_leaderboard_version=standing.get((median.lane, median.platform_id, median.variant_id)) is median,
         )
-        marked.append(
-            replace(
-                median,
-                is_leaderboard_version=stands,
-                ranking_exclusion_reason=UNRECORDED_VERSION_SUPERSEDED if superseded else None,
-            )
-        )
-    return marked
+        for median in medians
+    ]
 
 
 def _identity(median: IdentityMedian) -> tuple[str, str, str]:
@@ -251,7 +237,7 @@ def _exclusion_reason(median: IdentityMedian) -> str:
     if median.median_score is None:
         return "no_median_score"
     if not median.is_leaderboard_version:
-        return median.ranking_exclusion_reason or "not_leaderboard_version"
+        return "not_leaderboard_version"
     return "below_cohort_minimum"
 
 

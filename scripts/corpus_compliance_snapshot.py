@@ -485,21 +485,12 @@ def _rule_medians(
         ranked = len(scores) >= MINIMUM_RANKED_COHORT
         for row in cohort:
             stands = id(row) in standing_ids
-            identity = (row["platform_id"], row["variant_id"])
-            superseded = (
-                not stands
-                and row["median_score"] is not None
-                and row["comparison_version"] == comparison_identity.NOT_RECORDED
-                and identity in standing
-                and standing[identity]["version_is_release"]
-            )
             if stands and ranked:
                 rank, reason = _competition_rank(row["median_score"], scores, lower_is_better[lane]), None
             elif row["median_score"] is None:
                 rank, reason = None, "no_median_score"
             elif not stands:
-                rank = None
-                reason = "unrecorded_version_superseded_by_release" if superseded else "not_leaderboard_version"
+                rank, reason = None, "not_leaderboard_version"
             else:
                 rank, reason = None, "below_cohort_minimum"
             result.append(

@@ -323,7 +323,7 @@ def test_an_unrecorded_version_median_gives_way_to_a_released_version_of_the_sam
 
     assert [(variant, version, standing, reason) for variant, version, standing, _, reason in rows] == [
         ("engine-a", "1.2.0", True, None),
-        ("engine-a", "version not recorded", False, "unrecorded_version_superseded_by_release"),
+        ("engine-a", "version not recorded", False, "not_leaderboard_version"),
         ("engine-b", "1.2.0", True, None),
     ]
     assert [rank for _, version, _, rank, _ in rows if version == "1.2.0"] == [2, 1]

@@ -108,7 +108,7 @@ compliance class once three platforms shared its scale.
   version. An identity with no recorded version stands on its unrecorded-version median
   and is ranked (every BigQuery result in the corpus is such an identity). A
   median with no recorded version is left out only when a released version of the same
-  identity exists, with the reason `unrecorded_version_superseded_by_release`.
+  identity exists, with the existing reason `not_leaderboard_version`.
   `results-data/compliance-classes.json` now also records every identity median (score, rank,
   cohort size, exclusion reason, leaderboard flag) as the pipeline publishes it and as
   `scripts/corpus_compliance_snapshot.py` computes it from per-query medians, so a change to

@@ -93,7 +93,7 @@
         {"name": "is_leaderboard_version", "type": "BOOLEAN", "nullable": false, "description": "True for the newest released version of the platform and variant that has a ranked result."},
         {"name": "rank", "type": "INTEGER", "nullable": true, "description": "Rank among the leaderboard-version medians of the cohort and lane by the cohort's primary metric; equal scores share a rank and the next rank skips. Null when ranking_exclusion_reason is set."},
         {"name": "total_in_cohort", "type": "INTEGER", "nullable": false, "description": "Number of leaderboard-version medians with a score in the cohort and lane; below two, no row is ranked."},
-        {"name": "ranking_exclusion_reason", "type": "VARCHAR", "nullable": true, "allowed_values": ["no_median_score", "not_leaderboard_version", "unrecorded_version_superseded_by_release", "below_cohort_minimum"], "description": "Why the row has no rank; null for a ranked row."}
+        {"name": "ranking_exclusion_reason", "type": "VARCHAR", "nullable": true, "allowed_values": ["no_median_score", "not_leaderboard_version", "below_cohort_minimum"], "description": "Why the row has no rank; null for a ranked row."}
       ]
     }
   },
