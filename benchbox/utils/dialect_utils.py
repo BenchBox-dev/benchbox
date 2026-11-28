@@ -833,6 +833,19 @@ def unqualified_table_names(sql: str, dialect: str) -> list[str] | None:
     return names
 
 
+def placeholder_names(sql: str, dialect: str) -> list[str]:
+    from benchbox._vendor import sqlglot
+
+    resolved = resolve_sql_dialect(dialect)
+    names = {
+        placeholder.name
+        for statement in sqlglot.parse(sql, read=resolved)
+        if statement is not None
+        for placeholder in statement.find_all(sqlglot.exp.Placeholder)
+    }
+    return sorted(names)
+
+
 def translate_ddl(
     ddl: str,
     target_dialect: str,

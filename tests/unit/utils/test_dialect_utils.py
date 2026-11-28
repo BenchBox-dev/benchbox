@@ -9,6 +9,7 @@ from benchbox.utils.dialect_utils import (
     SQLTranslationError,
     UnknownSqlDialectError,
     apply_rewrite,
+    placeholder_names,
     resolve_sql_dialect,
     split_sql_statements,
     sql_translation_context,
@@ -1087,3 +1088,16 @@ def test_doris_rollup_rewrite_preserves_with_clause_and_limit():
     assert translated.startswith("WITH `w` AS")
     assert "`rollup_rows` AS" in translated
     assert translated.rstrip().endswith("LIMIT 5")
+
+
+@pytest.mark.parametrize(
+    ("sql", "names"),
+    [
+        ("UPDATE t SET a = 1 WHERE batchid = $batch_id AND b = $batch_id", ["batch_id"]),
+        ("INSERT INTO t SELECT $batch_id, $source FROM s", ["batch_id", "source"]),
+        ("SELECT '$batch_id' AS literal FROM t", []),
+        ("DROP TABLE t", []),
+    ],
+)
+def test_placeholder_names_come_from_the_parsed_statement(sql, names):
+    assert placeholder_names(sql, "duckdb") == names
