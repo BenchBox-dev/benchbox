@@ -4,6 +4,7 @@
     "The publish job runs only on tags and uses no stored token.",
     "Wheels contain THIRD_PARTY_LICENSES with the TPC legal notice (test on the built wheel)."
   ],
+  "context": "2026-11-28: library PR #22 merged (c687756): tag-triggered `publish` job in wheels.yml (OIDC Trusted Publishing, job-local id-token, environment `pypi`, validates all 8 wheels + sdist from the same run incl. CRLF-normalised TPC notice before upload). Remaining OWNER setup: create the GitHub environment `pypi` and register the PyPI pending Trusted Publisher (project benchbox-datagen, owner BenchBox-dev, repo benchbox-datagen, workflow wheels.yml, environment pypi). Then the agent tags v0.1.0 (pre-approved) once the generators it should ship are merged.",
   "description": "## Problem\nBenchBox can pin the library only from PyPI. No publish job exists and no Trusted Publisher is configured.\n\n## Change\nOwner: add a PyPI pending Trusted Publisher (repo BenchBox-dev/benchbox-datagen, workflow wheels.yml, environment pypi). Agent: add a tag-triggered publish job to wheels.yml (OIDC, no stored token) that uploads the 8 wheels and the sdist; tag v0.1.0 once TPC-H and TPC-DS are merged.\n\n## Decision gates\n- Owner-only: the PyPI publisher setup. Tagging 0.x releases is pre-approved (owner 2026-11-26 decision 1).\n- A wheel built with a git `[patch]` dependency is publishable; an sdist that cannot build offline from crates.io is acceptable only if the README says so; otherwise stop and ask.\n\n## Guardrails\n- BenchBox work only in a linked worktree; heavy work only through make heavy-run; never kill processes by name pattern.\n- No divergent fork of tpcgen-rs; carried patches only under the 2026-11-27 rule (<= ~200 changed lines, upstream PR, SHA pin, README entry); anything larger goes to the owner with sizes first.\n- Human commit identity, no agent attribution. Report only observed results.",
   "sessions": [
     {
@@ -12,6 +13,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "161b4bace9fd4e61855a4140cbfcac10",
+      "session_id": "f712a0dbd40744a0b61814816d0ceba7"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af",
+      "at": "2026-11-28T18:11:23Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "a8d247b11e06458c80943b51635ba171",
       "session_id": "f712a0dbd40744a0b61814816d0ceba7"
     }
   ]
