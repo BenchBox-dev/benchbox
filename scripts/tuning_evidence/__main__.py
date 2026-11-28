@@ -17,7 +17,8 @@ from scripts.tuning_evidence.platforms import (
     SEAMS,
     ChDBSeam,
     ClickHouseSeam,
-    ClickHouseServerSeam,
+    ServerSeam,
+    StarRocksSeam,
 )
 
 JSON_NAME = "harness.json"
@@ -61,16 +62,18 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--work-dir", type=Path, help="where file databases go (default: OUT/databases)")
     run.add_argument("--out", type=Path, required=True)
     run.add_argument("--keep-databases", action="store_true")
+    run.add_argument("--statistics", action="store_true", help="gather optimizer statistics on every arm after loading")
     run.add_argument("--min-rounds", type=int, default=stats.RuleThresholds.min_rounds)
     run.add_argument("--aa-point-low", type=float, default=stats.RuleThresholds.aa_point_low)
     run.add_argument("--aa-point-high", type=float, default=stats.RuleThresholds.aa_point_high)
     run.add_argument("--load-settle-ratio", type=float, default=stats.RuleThresholds.load_settle_ratio)
     run.add_argument("--slow-query-ratio", type=float, default=stats.RuleThresholds.slow_query_ratio)
     run.add_argument("--host", default="localhost")
-    run.add_argument("--port", type=int, default=9000)
-    run.add_argument("--user", default="default")
-    run.add_argument("--password-env", default="CLICKHOUSE_PASSWORD", help="environment variable holding the password")
-    run.add_argument("--container", help="ClickHouse server container name, for memory evidence")
+    run.add_argument("--port", type=int, help="server port (default: the platform's)")
+    run.add_argument("--http-port", type=int, default=8040, help="StarRocks backend HTTP port for Stream Load")
+    run.add_argument("--user", help="server user (default: the platform's)")
+    run.add_argument("--password-env", help="environment variable holding the password (default: the platform's)")
+    run.add_argument("--container", help="server container name, for memory evidence")
     run.add_argument("--container-cli", help="container CLI (default: mocker on macOS, docker elsewhere)")
     run.add_argument("--settle-timeout", type=float, default=600.0)
 
@@ -135,15 +138,18 @@ def seam_from(args: argparse.Namespace, run_tag: str) -> Any:
         "run_tag": run_tag,
         "data_dir": args.data_dir,
         "max_checksum_rows": args.max_checksum_rows,
+        "gather_statistics": args.statistics,
     }
-    if issubclass(seam_class, ClickHouseSeam):
+    if issubclass(seam_class, (ClickHouseSeam, StarRocksSeam)):
         kwargs["timeout_seconds"] = args.timeout
-    if issubclass(seam_class, ClickHouseServerSeam):
+    if issubclass(seam_class, StarRocksSeam):
+        kwargs["http_port"] = args.http_port
+    if issubclass(seam_class, ServerSeam):
         kwargs.update(
             host=args.host,
             port=args.port,
             user=args.user,
-            password=os.environ.get(args.password_env, ""),
+            password=os.environ.get(args.password_env or seam_class.password_env, ""),
             container=args.container,
             container_cli=args.container_cli,
             settle_timeout_seconds=args.settle_timeout,

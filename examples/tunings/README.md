@@ -27,6 +27,9 @@ a matching `<benchmark>_notuning.yaml`):
   key per fact table; TPC-H also partitions `LINEITEM` and `ORDERS` by month.
   All constraints are disabled, because the sort key is ClickHouse's primary
   index
+- `starrocks/` - `tpch`, `ssb`. Sets a date-leading `ORDER BY` sort key on
+  `LINEITEM` (TPC-H) and `lineorder` (SSB) and keeps the order-key hash
+  distribution. All constraints are disabled, so tables use the duplicate key model
 - `timescaledb/` - `tpch`. Converts `lineitem` and `orders` to hypertables
   using their date partition columns, with compression ordering and segmentation.
   Constraints are disabled because the benchmark's logical keys do not include

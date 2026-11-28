@@ -77,7 +77,7 @@ class StarRocksMetadataMixin:
         if connection:
             try:
                 cursor = connection.cursor()
-                cursor.execute("SELECT version()")
+                cursor.execute("SELECT current_version()")
                 result = cursor.fetchone()
                 if result:
                     version_str = result[0] if isinstance(result, (list, tuple)) else result

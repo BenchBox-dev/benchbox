@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "added",
+      "breaking": false,
+      "text": "StarRocks has tuned templates for TPC-H and SSB.",
+      "platforms": ["starrocks"]
+    },
+    {
+      "category": "added",
+      "breaking": false,
+      "text": "StarRocks supports the statistics phase, which gathers full optimizer statistics after loading.",
+      "platforms": ["starrocks"]
+    },
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "The local StarRocks Docker stack moves from StarRocks 3.5.16 to 4.1.8.",
+      "platforms": ["starrocks"]
+    },
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed StarRocks results recording the MySQL compatibility version (8.0.33) instead of the StarRocks version.",
+      "platforms": ["starrocks"]
+    },
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed tuned StarRocks runs failing to clear earlier tuning metadata, because StarRocks rejects DELETE with WHERE TRUE.",
+      "platforms": ["starrocks"]
+    }
+  ]
+}

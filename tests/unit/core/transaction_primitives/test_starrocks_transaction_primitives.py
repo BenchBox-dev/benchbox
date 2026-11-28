@@ -23,7 +23,7 @@ def test_unsupported_operations_are_skipped_on_starrocks(txn, monkeypatch, opera
     connection = Mock()
     result = txn.execute_operation(operation_id, connection, platform_key="starrocks", platform_name="starrocks")
     assert result.status == "SKIPPED"
-    assert result.skip_reason.startswith(f"Operation '{operation_id}' is skipped on starrocks: StarRocks 3.5")
+    assert result.skip_reason.startswith(f"Operation '{operation_id}' is skipped on starrocks: StarRocks 4.1")
     connection.execute.assert_not_called()
 
 
@@ -64,6 +64,14 @@ def test_starrocks_transaction_sql_is_never_merged_and_skips_are_exactly_the_mul
         "transaction_isolation_repeatable_read",
         "transaction_isolation_serializable",
         "transaction_multi_table_writes",
+        "transaction_commit_large",
+        "transaction_mixed_dml_small",
+        "transaction_mixed_dml_medium",
+        "transaction_insert_update_chain",
+        "transaction_delete_insert_same_key",
+        "transaction_read_your_writes",
+        "transaction_long_running_mixed",
+        "transaction_nested_subquery_updates",
     } <= one_dml_skips
     runnable = set(txn.get_all_operations()) - set(STARROCKS_TRANSACTION_PRIMITIVES_OPERATION_SKIPS)
     assert not runnable & multi_dml

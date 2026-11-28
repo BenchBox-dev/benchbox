@@ -3,6 +3,7 @@ from __future__ import annotations
 import subprocess
 import time
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -396,3 +397,135 @@ def test_server_successful_query_leaves_the_session_alone(tmp_path: Path) -> Non
 def test_other_seams_leave_the_session_alone(tmp_path: Path) -> None:
     seam = platforms.DuckDBSeam(benchmark="tpch", scale_factor=1.0, work_dir=tmp_path, run_tag="t1")
     assert seam.refresh_session(handle_for(FakeClient())) is None
+
+
+class FakeCursor:
+    def __init__(self, responses: dict[str, Any]) -> None:
+        self.responses = responses
+        self.description: list[tuple[str]] = []
+        self.rows: list[tuple[Any, ...]] = []
+
+    def execute(self, sql: str) -> None:
+        response = next(value for prefix, value in self.responses.items() if sql.startswith(prefix))
+        names, self.rows = response() if callable(response) else response
+        self.description = [(name,) for name in names]
+
+    def fetchall(self) -> list[tuple[Any, ...]]:
+        return self.rows
+
+    def close(self) -> None:
+        return None
+
+
+class FakeMySqlConnection:
+    def __init__(self, responses: dict[str, Any]) -> None:
+        self.responses = responses
+
+    def cursor(self) -> FakeCursor:
+        return FakeCursor(self.responses)
+
+
+def starrocks_seam(tmp_path: Path, **kwargs: Any) -> platforms.StarRocksSeam:
+    return platforms.StarRocksSeam(
+        benchmark="tpch", scale_factor=1.0, work_dir=tmp_path, run_tag="t1", settle_sleep=lambda seconds: None, **kwargs
+    )
+
+
+def starrocks_handle(responses: dict[str, Any]) -> ArmHandle:
+    return ArmHandle(spec=ArmSpec("N"), connection=FakeMySqlConnection(responses), database="te_t1_n", load_seconds=1.0)
+
+
+def analyze_status(*rows: tuple[str, str]) -> tuple[list[str], list[tuple[Any, ...]]]:
+    return ["Id", "Database", "Status"], [(index, *row) for index, row in enumerate(rows)]
+
+
+def test_starrocks_seam_uses_the_platform_connection_defaults(tmp_path: Path) -> None:
+    seam = starrocks_seam(tmp_path)
+    assert seam.adapter_options(ArmSpec("N"), "te_t1_n") == {
+        "host": "localhost",
+        "port": 9030,
+        "username": "root",
+        "password": "",
+        "http_port": 8040,
+        "database": "te_t1_n",
+    }
+
+
+def test_starrocks_settle_waits_for_statistics_and_stable_rowsets(tmp_path: Path) -> None:
+    statistics = iter(
+        [
+            analyze_status(("te_t1_n", "RUNNING (10%)")),
+            *[analyze_status(("default_catalog.te_t1_n", "SUCCESS"), ("other", "RUNNING"))] * 5,
+        ]
+    )
+    rowsets = iter([40, 24, 16, 16, 16, 16])
+    record = starrocks_seam(tmp_path).settle(
+        starrocks_handle(
+            {
+                "SHOW ANALYZE STATUS": lambda: next(statistics),
+                "SELECT COALESCE(SUM(t.NUM_ROWSET)": lambda: (["rowsets"], [(next(rowsets),)]),
+            }
+        )
+    )
+    assert record.settled is True
+    assert record.detail["rowsets"] == 16
+    assert record.detail["pending_statistics_jobs"] == 0
+    assert list(rowsets) == []
+
+
+@pytest.mark.parametrize(
+    ("database_status", "rowsets"), [("PENDING", 16), ("SUCCESS", 0)], ids=["statistics-pending", "no-tablets"]
+)
+def test_starrocks_settle_timeout_marks_the_arm_unsettled(tmp_path: Path, database_status: str, rowsets: int) -> None:
+    record = starrocks_seam(tmp_path, settle_timeout_seconds=0.0).settle(
+        starrocks_handle(
+            {
+                "SHOW ANALYZE STATUS": analyze_status(("te_t1_n", database_status)),
+                "SELECT COALESCE(SUM(t.NUM_ROWSET)": (["rowsets"], [(rowsets,)]),
+            }
+        )
+    )
+    assert record.settled is False
+
+
+def test_starrocks_session_settings_report_only_the_relevant_variables(tmp_path: Path) -> None:
+    handle = starrocks_handle(
+        {"SHOW VARIABLES": (["Variable_name", "Value"], [("query_timeout", "300"), ("autocommit", "true")])}
+    )
+    assert starrocks_seam(tmp_path).session_settings(handle) == {"query_timeout": "300"}
+
+
+def statistics_handle(phase: Any) -> tuple[ArmHandle, list[dict[str, Any]]]:
+    calls: list[dict[str, Any]] = []
+
+    def run_statistics_phase(benchmark: Any, connection: Any, **kwargs: Any) -> Any:
+        calls.append(kwargs)
+        return phase
+
+    handle = starrocks_handle({})
+    handle.adapter = SimpleNamespace(run_statistics_phase=run_statistics_phase)
+    return handle, calls
+
+
+def statistics_phase(status: str, stats_mode: str, error_message: str | None = None) -> SimpleNamespace:
+    return SimpleNamespace(
+        status=status, stats_mode=stats_mode, duration_ms=1200, tables_analyzed=2, error_message=error_message
+    )
+
+
+def test_statistics_run_through_the_adapter_phase(tmp_path: Path) -> None:
+    handle, calls = statistics_handle(statistics_phase("COMPLETED", "explicit"))
+    record = starrocks_seam(tmp_path).run_statistics(handle, ["lineitem", "orders"])
+    assert record == {"duration_ms": 1200, "tables_analyzed": 2}
+    assert calls == [{"benchmark_name": "tpch", "table_names": ["lineitem", "orders"]}]
+
+
+@pytest.mark.parametrize(
+    "phase",
+    [None, statistics_phase("COMPLETED", "unsupported"), statistics_phase("FAILED", "explicit", "boom")],
+    ids=["benchmark-not-opted-in", "adapter-unsupported", "failed"],
+)
+def test_missing_statistics_stop_the_run(tmp_path: Path, phase: Any) -> None:
+    handle, _ = statistics_handle(phase)
+    with pytest.raises(RuntimeError, match="arm N: statistics were not gathered"):
+        starrocks_seam(tmp_path).run_statistics(handle, ["lineitem"])
