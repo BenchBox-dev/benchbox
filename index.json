@@ -55002,12 +55002,17 @@
       "title": "TPC-DI step 43: DataFrame mode on pandas"
     },
     "tpcdi-delete-old-etl-dataframe-and-stale-claims-20261121": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-29T02:16:32Z",
+        "generation": "774cf2a0469041c2a94df0f945f7180e",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d9c82d4657b7a4cbcbfb0e73"
+      },
       "needs": [
         "tpcdi-15-delete-old-generator-and-etl-20261120"
       ],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "TPC-DI step 20: delete the old ETL, DataFrame path and metric"
     },
     "tpcdi-deterministic-generation-contract": {
