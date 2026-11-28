@@ -17062,7 +17062,7 @@
         }
       },
       "integration_branch": "feat/tpcdi-incremental",
-      "integration_head": "2c4be7defd701570fbb4361bb513b883a27bae2c",
+      "integration_head": "6dfd689c02b9b3d014805cb37f2a28128fd3cc2a",
       "integration_log": [
         {
           "at": "2026-11-28T02:18:52Z",
@@ -17078,6 +17078,26 @@
           "op_id": "172f2877b1bd4c728307b55ce296f64b",
           "previous_head": "18bcc9697b575a1b09049158d82bf42092873e05",
           "seq": 1
+        },
+        {
+          "at": "2026-11-28T03:55:03Z",
+          "changed_files": [
+            ".github/workflows/seed-corpus.yml",
+            "changelog.d/ci-seed-corpus-capture-plans.json",
+            "results-data/SEED_CORPUS_SPEC.md",
+            "scripts/analyze_version_matrix.py",
+            "scripts/run_version_matrix.py",
+            "scripts/version_matrix_specs.py",
+            "tests/fixtures/version_matrix/polars_dry_run.txt",
+            "tests/unit/scripts/test_compare_warehouses.py",
+            "tests/unit/scripts/test_polars_version_matrix.py"
+          ],
+          "head": "6dfd689c02b9b3d014805cb37f2a28128fd3cc2a",
+          "kind": "develop-merge",
+          "merged_parent": "f8a90819d391c1b9e70c88935ceea168681f6bed",
+          "op_id": "b2990da4678c4137bb173b4cb7147e78",
+          "previous_head": "2c4be7defd701570fbb4361bb513b883a27bae2c",
+          "seq": 2
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpcdi-incremental",
