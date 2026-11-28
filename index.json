@@ -17025,7 +17025,8 @@
     },
     "tpcdi-incremental": {
       "accepted_members": {
-        "tpcdi-incremental-dimensions-20261121": "86ec6bd28315eabfd8fd7a83d8492a180af89bc8"
+        "tpcdi-incremental-dimensions-20261121": "86ec6bd28315eabfd8fd7a83d8492a180af89bc8",
+        "tpcdi-incremental-facts-20261121": "00d06973a80233feed7ce5bac0cbd6cd07527d03"
       },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
@@ -17059,10 +17060,37 @@
           ],
           "integration_head": "2c4be7defd701570fbb4361bb513b883a27bae2c",
           "integration_seq": 1
+        },
+        "tpcdi-incremental-facts-20261121": {
+          "accepted_head": "00d06973a80233feed7ce5bac0cbd6cd07527d03",
+          "changed_files": [
+            "benchbox/core/tpcdi/etl/DEPARTURES.yaml",
+            "benchbox/core/tpcdi/etl/PROVENANCE.json",
+            "benchbox/core/tpcdi/etl/incremental.py",
+            "benchbox/core/tpcdi/etl/incremental/dim_trade.sql",
+            "benchbox/core/tpcdi/etl/incremental/fact_cash_balances.sql",
+            "benchbox/core/tpcdi/etl/incremental/fact_holdings.sql",
+            "benchbox/core/tpcdi/etl/incremental/fact_market_history.sql",
+            "benchbox/core/tpcdi/etl/incremental/fact_watches.sql",
+            "benchbox/core/tpcdi/etl/incremental/ingest/cash_transaction.sql",
+            "benchbox/core/tpcdi/etl/incremental/ingest/daily_market.sql",
+            "benchbox/core/tpcdi/etl/incremental/ingest/holding_history.sql",
+            "benchbox/core/tpcdi/etl/incremental/ingest/trade.sql",
+            "benchbox/core/tpcdi/etl/incremental/ingest/watch_history.sql",
+            "changelog.d/feat-tpcdi-incremental--tpcdi-incremental-facts-20261121.json",
+            "docs/internal/tpcdi-duckdb-comparison.md",
+            "scripts/tpcdi/EXPECTED_DIFFERENCES.yaml",
+            "tests/integration/core/test_tpcdi_etl_incremental_facts_digen_output.py",
+            "tests/unit/core/tpcdi/test_etl_incremental.py",
+            "tests/unit/core/tpcdi/test_etl_incremental_facts.py",
+            "tests/unit/sql_compat/golden_corpus/frozen/area_tpcdi_etl.json"
+          ],
+          "integration_head": "d66fe5f7d688680c0caf3ba9ad5cc0d7b78c3f38",
+          "integration_seq": 3
         }
       },
       "integration_branch": "feat/tpcdi-incremental",
-      "integration_head": "6dfd689c02b9b3d014805cb37f2a28128fd3cc2a",
+      "integration_head": "d66fe5f7d688680c0caf3ba9ad5cc0d7b78c3f38",
       "integration_log": [
         {
           "at": "2026-11-28T02:18:52Z",
@@ -17098,6 +17126,15 @@
           "op_id": "b2990da4678c4137bb173b4cb7147e78",
           "previous_head": "2c4be7defd701570fbb4361bb513b883a27bae2c",
           "seq": 2
+        },
+        {
+          "at": "2026-11-28T04:07:11Z",
+          "head": "d66fe5f7d688680c0caf3ba9ad5cc0d7b78c3f38",
+          "kind": "prepare",
+          "member": "tpcdi-incremental-facts-20261121",
+          "op_id": "5cc9c3bb18834e44a9bccd39d9a492ad",
+          "previous_head": "6dfd689c02b9b3d014805cb37f2a28128fd3cc2a",
+          "seq": 3
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpcdi-incremental",
@@ -55356,17 +55393,12 @@
       "title": "TPC-DI step 22: incremental updates, dimension tables"
     },
     "tpcdi-incremental-facts-20261121": {
-      "claim": {
-        "expires_at": "2026-11-29T03:57:32Z",
-        "generation": "ad22b2e5ec4a44399dd36e55a3f7aa5d",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d9c82d4657b7a4cbcbfb0e73"
-      },
+      "claim": null,
       "needs": [
         "tpcdi-incremental-dimensions-20261121"
       ],
       "priority": "medium-high",
-      "status": "active",
+      "status": "open",
       "title": "TPC-DI step 23: incremental updates, trade and fact tables"
     },
     "tpcdi-memory-test-delta-refactor": {
