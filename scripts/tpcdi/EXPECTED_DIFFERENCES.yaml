@@ -100,17 +100,6 @@ entries:
       AND l.fiftytwoweeklow < ROUND(r.fiftytwoweeklow, 2)
       AND l.sk_fiftytwoweeklowdate = CAST(strftime(strptime(CAST(l.sk_dateid AS VARCHAR), '%Y%m%d')::DATE - INTERVAL 365 DAY, '%Y%m%d') AS BIGINT))
 
-  - id: dimtrade-batchid-fixed-at-creation
-    departure: dimtrade-batchid-fixed-at-creation
-    kind: column_value
-    clause: "4.6.7.2"
-    reason: "The specification fixes DimTrade.BatchID at the batch that created the row. The DuckDB implementation overwrites it with the batch of the last update. Accepted only when BenchBox's value is the first batch whose BatchDate is on or after the trade's create date, and the implementation's value is not earlier."
-    table: DimTrade
-    column: BatchID
-    condition: >-
-      l.batchid = (SELECT min(b.batchid) FROM lhs.main.BatchDate b WHERE CAST(strftime(b.batchdate, '%Y%m%d') AS BIGINT) >= l.sk_createdateid)
-      AND l.batchid <= r.batchid
-
   - id: prospect-status-messages
     departure: prospect-status-messages
     kind: messages

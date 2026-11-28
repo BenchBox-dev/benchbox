@@ -22,7 +22,9 @@ STATUS_NAMES = ("Active", "Inactive", "Completed", "Canceled", "Pending", "Submi
 CREATED_TABLE = re.compile(r"CREATE TEMPORARY TABLE (\w+)")
 DROPPED_TABLE = re.compile(r"DROP TABLE (\w+)")
 LATER_BATCH = re.compile(r"Batch\s*[0-9]|Batch\*|Batch\[|batchid\s*=\s*[0-9]|BatchID\s*=\s*[0-9]")
-RAW_READ = re.compile(r"\b(?:FROM|JOIN) (?:CustomerRaw|AccountRaw|ProspectRaw)\b")
+RAW_READ = re.compile(
+    r"\b(?:FROM|JOIN) (?:CustomerRaw|AccountRaw|ProspectRaw|TradeRaw|CashTransactionRaw|HoldingHistoryRaw|WatchHistoryRaw|DailyMarketRaw)\b"
+)
 BATCH_GUARD = re.compile(r"\bbatchid = \$batch_id")
 
 BATCH_ONE_DATE = "20170707|2017-07-07|July 7, 2017|2017|2017|20173|2017 Q3|201707|2017 July|201727|2017-W27|5|Friday|2017|2017|20173|2017 Q3|false\n"
@@ -146,6 +148,8 @@ BATCH_TWO_CUSTOMERS = (
 )
 BATCH_TWO_ACCOUNTS = "U|1|11|7|1|Ann renamed|2|ACTV\nI|2|61|7|6||1|ACTV\n"
 BATCH_TWO_PROSPECT = PROSPECT_AG1 + PROSPECT_AG3_RICHER + PROSPECT_AG5
+DIMENSION_INGEST_STEPS = INCREMENTAL_INGEST_STEPS[:4]
+DIMENSION_STEPS = INCREMENTAL_STEPS[:3]
 
 
 def write_batch(root: Path, number: int, files: dict[str, str]) -> None:
@@ -240,8 +244,8 @@ def update_batch_two(root: Path, connection) -> list:
             "Account.txt": BATCH_TWO_ACCOUNTS,
         },
     )
-    staging.load_batch(connection, root, 2, steps=INCREMENTAL_INGEST_STEPS, allow_third_party_extensions=False)
-    return load_incremental(connection, 2)
+    staging.load_batch(connection, root, 2, steps=DIMENSION_INGEST_STEPS, allow_third_party_extensions=False)
+    return load_incremental(connection, 2, steps=DIMENSION_STEPS)
 
 
 @pytest.fixture
@@ -263,11 +267,26 @@ def test_every_incremental_step_has_one_sql_file_and_the_reverse():
     own = [step for step in INCREMENTAL_INGEST_STEPS if step.directory == ingest]
     assert {step.path.name for step in own} == {path.name for path in ingest.glob("*.sql")}
     assert len({step.table for step in INCREMENTAL_STEPS}) == len(INCREMENTAL_STEPS)
-    assert all(step.atomic for step in INCREMENTAL_STEPS)
+    assert {step.name for step in INCREMENTAL_STEPS if step.atomic} == {
+        "dim_customer",
+        "dim_account",
+        "prospect",
+        "dim_trade",
+        "fact_watches",
+    }
 
 
 def test_the_incremental_phase_order_follows_the_dependencies():
-    assert [step.name for step in INCREMENTAL_STEPS] == ["dim_customer", "dim_account", "prospect"]
+    assert [step.name for step in INCREMENTAL_STEPS] == [
+        "dim_customer",
+        "dim_account",
+        "prospect",
+        "dim_trade",
+        "fact_cash_balances",
+        "fact_holdings",
+        "fact_watches",
+        "fact_market_history",
+    ]
     assert [step.name for step in INCREMENTAL_INGEST_STEPS][:2] == ["batch_date", "prospect"]
 
 
@@ -343,7 +362,7 @@ def test_an_atomic_step_rolls_back_a_partial_expire(tmp_path):
             "Account.txt": BATCH_TWO_ACCOUNTS,
         },
     )
-    staging.load_batch(connection, tmp_path, 2, steps=INCREMENTAL_INGEST_STEPS, allow_third_party_extensions=False)
+    staging.load_batch(connection, tmp_path, 2, steps=DIMENSION_INGEST_STEPS, allow_third_party_extensions=False)
     connection.execute("DROP TABLE StatusType")
     with pytest.raises(duckdb.Error):
         load_incremental(connection, 2, steps=[INCREMENTAL_STEPS[0]])
@@ -540,8 +559,8 @@ def test_a_customer_matching_two_prospects_takes_the_highest_agency_deterministi
             "Account.txt": "U|1|11|7|1|Ann main|1|ACTV\n",
         },
     )
-    staging.load_batch(connection, tmp_path, 2, steps=INCREMENTAL_INGEST_STEPS, allow_third_party_extensions=False)
-    load_incremental(connection, 2)
+    staging.load_batch(connection, tmp_path, 2, steps=DIMENSION_INGEST_STEPS, allow_third_party_extensions=False)
+    load_incremental(connection, 2, steps=DIMENSION_STEPS)
     assert connection.execute(
         "SELECT AgencyID, NetWorth FROM DimCustomer WHERE CustomerID = 4 AND IsCurrent"
     ).fetchall() == [("AG6", 900000)]
@@ -550,11 +569,14 @@ def test_a_customer_matching_two_prospects_takes_the_highest_agency_deterministi
 
 def test_initialization_drops_the_raw_tables_of_the_incremental_updates():
     connection = duckdb.connect()
-    for table in ("CustomerRaw", "AccountRaw", "ProspectRaw"):
+    tables = [step.table for step in INCREMENTAL_INGEST_STEPS if not step.loads_into_existing_table]
+    for table in tables:
         connection.execute(f"CREATE TABLE {table} (batchid INTEGER)")
     phases.run_initialization(connection)
     leftover = connection.execute(
-        "SELECT table_name FROM information_schema.tables WHERE table_name IN ('CustomerRaw', 'AccountRaw', 'ProspectRaw')"
+        "SELECT table_name FROM information_schema.tables WHERE table_name IN ("
+        + ", ".join(f"'{table}'" for table in tables)
+        + ")"
     ).fetchall()
     assert leftover == []
     connection.close()

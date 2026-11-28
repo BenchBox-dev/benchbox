@@ -208,6 +208,66 @@
       "source": "src/incremental_batches/silver/Prospect.sql",
       "kind": "rewritten",
       "duckdb_implementation": "sequential/models/incremental/Prospect.sql"
+    },
+    {
+      "path": "benchbox/core/tpcdi/etl/incremental/ingest/trade.sql",
+      "source": "src/incremental_batches/silver/DimTrade Incremental.sql",
+      "kind": "adapted",
+      "duckdb_implementation": "sequential/macros/tpcdi.sql"
+    },
+    {
+      "path": "benchbox/core/tpcdi/etl/incremental/ingest/cash_transaction.sql",
+      "source": "src/incremental_batches/bronze/Ingest_Incremental.ipynb",
+      "kind": "adapted",
+      "duckdb_implementation": "sequential/macros/tpcdi.sql"
+    },
+    {
+      "path": "benchbox/core/tpcdi/etl/incremental/ingest/holding_history.sql",
+      "source": "src/incremental_batches/silver/DimTrade Incremental.sql",
+      "kind": "adapted",
+      "duckdb_implementation": "sequential/macros/tpcdi.sql"
+    },
+    {
+      "path": "benchbox/core/tpcdi/etl/incremental/ingest/watch_history.sql",
+      "source": "src/incremental_batches/silver/FactWatches Incremental.sql",
+      "kind": "adapted",
+      "duckdb_implementation": "sequential/macros/tpcdi.sql"
+    },
+    {
+      "path": "benchbox/core/tpcdi/etl/incremental/ingest/daily_market.sql",
+      "source": "src/incremental_batches/bronze/ingest_dailymarketincremental.sql",
+      "kind": "adapted",
+      "duckdb_implementation": "sequential/macros/tpcdi.sql"
+    },
+    {
+      "path": "benchbox/core/tpcdi/etl/incremental/dim_trade.sql",
+      "source": "src/incremental_batches/silver/DimTrade Incremental.sql",
+      "kind": "adapted",
+      "duckdb_implementation": "sequential/models/incremental/DimTrade.sql"
+    },
+    {
+      "path": "benchbox/core/tpcdi/etl/incremental/fact_holdings.sql",
+      "source": "src/incremental_batches/silver/DimTrade Incremental.sql",
+      "kind": "adapted",
+      "duckdb_implementation": "sequential/models/incremental/FactHoldings.sql"
+    },
+    {
+      "path": "benchbox/core/tpcdi/etl/incremental/fact_watches.sql",
+      "source": "src/incremental_batches/silver/FactWatches Incremental.sql",
+      "kind": "adapted",
+      "duckdb_implementation": "sequential/models/incremental/FactWatches.sql"
+    },
+    {
+      "path": "benchbox/core/tpcdi/etl/incremental/fact_cash_balances.sql",
+      "source": "src/incremental_batches/gold/FactCashBalances Incremental.sql",
+      "kind": "rewritten",
+      "duckdb_implementation": "sequential/models/incremental/FactCashBalances.sql"
+    },
+    {
+      "path": "benchbox/core/tpcdi/etl/incremental/fact_market_history.sql",
+      "source": "src/incremental_batches/gold/FactMarketHistory Incremental.sql",
+      "kind": "rewritten",
+      "duckdb_implementation": "sequential/models/incremental/FactMarketHistory.sql"
     }
   ]
 }

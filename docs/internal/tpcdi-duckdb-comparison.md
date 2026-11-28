@@ -335,6 +335,37 @@ official audit, run with `latest_batch=3` after both updates
 The three `<table> batches` rows are read as OK in that test although the audit
 marks them as not evaluable until the audit counts every batch.
 
+## Incremental updates of the trade, cash, holding, watch and market tables
+
+`run_incremental_update` also loads `Trade.txt`, `CashTransaction.txt`,
+`HoldingHistory.txt`, `WatchHistory.txt` and `DailyMarket.txt` of the batch into
+their raw tables (each replaced by the batch) and runs DimTrade, FactCashBalances,
+FactHoldings, FactWatches and FactMarketHistory after the dimensions, in that
+order. Every raw-table read is filtered on the batch of the phase.
+
+- DimTrade takes the last row of each trade in CDC order as its current values.
+  A trade that is already in the table is updated; a trade with an `I` row that is
+  not yet in the table is inserted with the current security and account records.
+  An update never changes a surrogate key or the create date and time keys, but
+  sets `BatchID` to the batch of the update, so a trade created in Batch 1 and
+  closed in Batch 2 carries BatchID 2. The specification (4.6.7.2) fixes BatchID
+  at creation; Appendix A's `DimTrade date check` requires the later value
+  (departure `dimtrade-batchid-of-last-update`).
+- FactHoldings joins DimTrade on the trade identifier alone.
+- FactCashBalances adds the net of the batch's transactions to the latest balance
+  of the account, found through any surrogate key of the account, and is dated at
+  the batch date.
+- FactWatches inserts a row for each watch activated in the batch and sets the
+  removal date of an open row for a watch that is only cancelled, matched through
+  any customer and security record.
+- FactMarketHistory computes the 52-week values over the batch's rows and the rows
+  already in FactMarketHistory (symbol through DimSecurity, date through DimDate),
+  with the security, company and dividend of the current records.
+
+The warehouses of the implementation that are on disk hold Batch 1 only, so these
+tables are checked by the official audit run with `latest_batch=3`
+(`tests/integration/core/test_tpcdi_etl_incremental_facts_digen_output.py`).
+
 ## Results of the early run (2026-11-22)
 
 Staging by BenchBox at `24b7592956` with Zulu 8, DIGen 1.1.0, tools SHA-256

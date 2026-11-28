@@ -12,6 +12,10 @@ departures:
       - benchbox/core/tpcdi/etl/historical/dim_security.sql
       - benchbox/core/tpcdi/etl/historical/financial.sql
       - benchbox/core/tpcdi/etl/historical/fact_market_history.sql
+      - benchbox/core/tpcdi/etl/incremental/ingest/trade.sql
+      - benchbox/core/tpcdi/etl/incremental/ingest/cash_transaction.sql
+      - benchbox/core/tpcdi/etl/incremental/ingest/daily_market.sql
+      - benchbox/core/tpcdi/etl/incremental/fact_market_history.sql
       - benchbox/core/tpcdi/etl/staging.py
     status: implemented
     approval: approved
@@ -39,6 +43,11 @@ departures:
       - benchbox/core/tpcdi/etl/ingest/cash_transaction.sql
       - benchbox/core/tpcdi/etl/incremental/ingest/customer.sql
       - benchbox/core/tpcdi/etl/incremental/ingest/account.sql
+      - benchbox/core/tpcdi/etl/incremental/ingest/trade.sql
+      - benchbox/core/tpcdi/etl/incremental/ingest/cash_transaction.sql
+      - benchbox/core/tpcdi/etl/incremental/ingest/holding_history.sql
+      - benchbox/core/tpcdi/etl/incremental/ingest/watch_history.sql
+      - benchbox/core/tpcdi/etl/incremental/ingest/daily_market.sql
     status: implemented
     approval: approved
 
@@ -87,6 +96,11 @@ departures:
       - benchbox/core/tpcdi/etl/ingest/watch_history.sql
       - benchbox/core/tpcdi/etl/ingest/cash_transaction.sql
       - benchbox/core/tpcdi/etl/ingest/daily_market.sql
+      - benchbox/core/tpcdi/etl/incremental/ingest/trade.sql
+      - benchbox/core/tpcdi/etl/incremental/ingest/holding_history.sql
+      - benchbox/core/tpcdi/etl/incremental/ingest/watch_history.sql
+      - benchbox/core/tpcdi/etl/incremental/ingest/cash_transaction.sql
+      - benchbox/core/tpcdi/etl/incremental/ingest/daily_market.sql
     status: implemented
     approval: approved
 
@@ -118,6 +132,7 @@ departures:
     benchbox_behaviour: "Yield is the dividend divided by the closing price, multiplied by 100."
     files:
       - benchbox/core/tpcdi/etl/historical/fact_market_history.sql
+      - benchbox/core/tpcdi/etl/incremental/fact_market_history.sql
     status: implemented
     approval: approved
 
@@ -128,6 +143,7 @@ departures:
     benchbox_behaviour: "The 52-week high and low are taken over the dates after DM_DATE minus one year."
     files:
       - benchbox/core/tpcdi/etl/historical/fact_market_history.sql
+      - benchbox/core/tpcdi/etl/incremental/fact_market_history.sql
     status: implemented
     approval: approved
 
@@ -138,16 +154,18 @@ departures:
     benchbox_behaviour: "The earliest date on which the value occurs in the window is stored."
     files:
       - benchbox/core/tpcdi/etl/historical/fact_market_history.sql
+      - benchbox/core/tpcdi/etl/incremental/fact_market_history.sql
     status: implemented
     approval: approved
 
-  - id: dimtrade-batchid-fixed-at-creation
-    kind: changed
-    clause: "4.6.7.2"
-    project_behaviour: "DimTrade.BatchID is overwritten with the batch of the last update."
-    benchbox_behaviour: "DimTrade.BatchID keeps the batch that created the row."
-    files: []
-    status: pending
+  - id: dimtrade-batchid-of-last-update
+    kind: kept
+    clause: "4.6.7.2, 7.2.6.7"
+    project_behaviour: "DimTrade.BatchID is overwritten with the batch of the last update; every surrogate key and the create date and time keys stay as set when the trade was created."
+    benchbox_behaviour: "Kept. The specification (4.6.7.2) says BatchID is set when the record is created, but Appendix A's DimTrade date check, which the official audit requires to pass, expects a trade that was created in an earlier batch and closed in a later one to carry the later BatchID. A trade update therefore sets BatchID to the batch of the update and changes no SK_ field other than the close date and time keys."
+    files:
+      - benchbox/core/tpcdi/etl/incremental/dim_trade.sql
+    status: implemented
     approval: approved
 
   - id: prospect-status-messages
@@ -196,7 +214,7 @@ departures:
     kind: changed
     clause: "4.5.3.3, 4.5.4.4, 4.5.4.5"
     project_behaviour: "SPRating and date-of-birth alerts are made distinct, so a company or customer whose records repeat the same invalid value gets one alert; the tier alert is written once per customer from its last record."
-    benchbox_behaviour: "One alert is written for each CMP record with an invalid SPRating and for each NEW or UPDCUST action with an invalid tier or date of birth. A NEW action without a tier is invalid; an UPDCUST action without a tier changes nothing and raises no alert. In an incremental update one alert is written for each Customer.txt row, I or U, because every CDC row is a full image: a row without a tier is invalid."
+    benchbox_behaviour: "One alert is written for each CMP record with an invalid SPRating and for each NEW or UPDCUST action with an invalid tier or date of birth. A NEW action without a tier is invalid; an UPDCUST action without a tier changes nothing and raises no alert. In an incremental update one alert is written for each Customer.txt row, I or U, because every CDC row is a full image: a row without a tier is invalid. One DimTrade alert is written for each Trade.txt row whose commission or fee exceeds the trade value."
     files:
       - benchbox/core/tpcdi/etl/historical/dim_company.sql
       - benchbox/core/tpcdi/etl/historical/dim_customer.sql
@@ -321,6 +339,7 @@ departures:
     benchbox_behaviour: "PERatio divides the close by the sum of FI_BASIC_EPS over the company's Financial rows whose quarter starts in the four calendar quarters before the quarter of DM_DATE."
     files:
       - benchbox/core/tpcdi/etl/historical/fact_market_history.sql
+      - benchbox/core/tpcdi/etl/incremental/fact_market_history.sql
     status: implemented
     approval: approved
 
@@ -331,6 +350,7 @@ departures:
     benchbox_behaviour: "DimTrade joins StatusType and TradeType and stores ST_NAME and TT_NAME."
     files:
       - benchbox/core/tpcdi/etl/historical/dim_trade.sql
+      - benchbox/core/tpcdi/etl/incremental/dim_trade.sql
     status: implemented
     approval: approved
 
@@ -338,10 +358,12 @@ departures:
     kind: changed
     clause: "4.5.8.3, 4.5.8.4, 4.5.11.3"
     project_behaviour: "Commission, fee and missing-earnings alerts are written in one pass after Batch 3, read back from DimTrade and FactMarketHistory, distinct per trade or symbol, with the time of that pass."
-    benchbox_behaviour: "The DimTrade and FactMarketHistory transformations write one alert per source record they process, in the historical phase, with BatchID 1."
+    benchbox_behaviour: "The DimTrade and FactMarketHistory transformations write one alert per source record they process, in the phase that processes it, with the BatchID of that phase."
     files:
       - benchbox/core/tpcdi/etl/historical/dim_trade.sql
       - benchbox/core/tpcdi/etl/historical/fact_market_history.sql
+      - benchbox/core/tpcdi/etl/incremental/dim_trade.sql
+      - benchbox/core/tpcdi/etl/incremental/fact_market_history.sql
     status: implemented
     approval: approved
 
@@ -355,6 +377,8 @@ departures:
       - benchbox/core/tpcdi/etl/historical/fact_cash_balances.sql
       - benchbox/core/tpcdi/etl/historical/fact_holdings.sql
       - benchbox/core/tpcdi/etl/historical/fact_watches.sql
+      - benchbox/core/tpcdi/etl/incremental/dim_trade.sql
+      - benchbox/core/tpcdi/etl/incremental/fact_watches.sql
     status: implemented
     approval: approved
 
@@ -365,6 +389,7 @@ departures:
     benchbox_behaviour: "The placement date is the earliest ACTV record; the removal date is the latest CNCL record."
     files:
       - benchbox/core/tpcdi/etl/historical/fact_watches.sql
+      - benchbox/core/tpcdi/etl/incremental/fact_watches.sql
     status: implemented
     approval: approved
 
@@ -436,10 +461,11 @@ departures:
     kind: changed
     clause: "4.4.1.5, 4.6.1.2, 4.6.4.2"
     project_behaviour: "Every CDC row of Customer.txt and Account.txt is applied."
-    benchbox_behaviour: "The last row of each customer or account in the update, in CDC_DSN order, decides the single change record written for it."
+    benchbox_behaviour: "The last row of each customer, account or trade in the update, in CDC_DSN order, decides the single change record written for it."
     files:
       - benchbox/core/tpcdi/etl/incremental/dim_customer.sql
       - benchbox/core/tpcdi/etl/incremental/dim_account.sql
+      - benchbox/core/tpcdi/etl/incremental/dim_trade.sql
     status: implemented
     approval: approved
 
@@ -450,5 +476,35 @@ departures:
     benchbox_behaviour: "The fields of the Account.txt row are copied as given."
     files:
       - benchbox/core/tpcdi/etl/incremental/dim_account.sql
+    status: implemented
+    approval: approved
+
+  - id: holdings-join-trade-by-id
+    kind: changed
+    clause: "4.6.9.2"
+    project_behaviour: "Incremental FactHoldings joins only the DimTrade rows whose BatchID is the current batch, which works because DimTrade.BatchID is overwritten."
+    benchbox_behaviour: "FactHoldings joins DimTrade on the trade identifier alone, so a holding whose trade was created in an earlier batch is loaded with that trade's close date and time."
+    files:
+      - benchbox/core/tpcdi/etl/incremental/fact_holdings.sql
+    status: implemented
+    approval: approved
+
+  - id: cash-balance-from-the-warehouse
+    kind: changed
+    clause: "4.3.5.5, 4.6.8.2"
+    project_behaviour: "Running cash balances for Batches 2 and 3 are precomputed in the historical phase from the later batches' CashTransaction files."
+    benchbox_behaviour: "The balance of an account in an update is the balance of its latest FactCashBalances row, found through any surrogate key of the account, plus the net of the update's transactions; SK_DateID is the batch date."
+    files:
+      - benchbox/core/tpcdi/etl/incremental/fact_cash_balances.sql
+    status: implemented
+    approval: approved
+
+  - id: fifty-two-week-from-warehouse-history
+    kind: changed
+    clause: "4.3.5.5, 4.6.10.1"
+    project_behaviour: "The 52-week windows of Batches 2 and 3 are precomputed in the historical phase over the DailyMarket files of all batches."
+    benchbox_behaviour: "The window of an update's row is taken over the update's own DailyMarket rows and the earlier rows read back from FactMarketHistory, whose security symbol and date are recovered through DimSecurity and DimDate."
+    files:
+      - benchbox/core/tpcdi/etl/incremental/fact_market_history.sql
     status: implemented
     approval: approved

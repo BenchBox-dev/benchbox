@@ -14,12 +14,50 @@ INCREMENTAL_INGEST_STEPS: tuple[IngestStep, ...] = (
     STEPS_BY_NAME["prospect"],
     IngestStep("customer", "CustomerRaw", "customer_path", "Customer.txt", False, directory=INCREMENTAL_INGEST_DIR),
     IngestStep("account", "AccountRaw", "account_path", "Account.txt", False, directory=INCREMENTAL_INGEST_DIR),
+    IngestStep("trade", "TradeRaw", "trade_path", "Trade.txt", False, directory=INCREMENTAL_INGEST_DIR),
+    IngestStep(
+        "cash_transaction",
+        "CashTransactionRaw",
+        "cash_transaction_path",
+        "CashTransaction.txt",
+        False,
+        directory=INCREMENTAL_INGEST_DIR,
+    ),
+    IngestStep(
+        "holding_history",
+        "HoldingHistoryRaw",
+        "holding_history_path",
+        "HoldingHistory.txt",
+        False,
+        directory=INCREMENTAL_INGEST_DIR,
+    ),
+    IngestStep(
+        "watch_history",
+        "WatchHistoryRaw",
+        "watch_history_path",
+        "WatchHistory.txt",
+        False,
+        directory=INCREMENTAL_INGEST_DIR,
+    ),
+    IngestStep(
+        "daily_market",
+        "DailyMarketRaw",
+        "daily_market_path",
+        "DailyMarket.txt",
+        False,
+        directory=INCREMENTAL_INGEST_DIR,
+    ),
 )
 
 INCREMENTAL_STEPS: tuple[TransformStep, ...] = (
     TransformStep("dim_customer", "DimCustomer", INCREMENTAL_DIR, atomic=True),
     TransformStep("dim_account", "DimAccount", INCREMENTAL_DIR, atomic=True),
     TransformStep("prospect", "Prospect", INCREMENTAL_DIR, atomic=True),
+    TransformStep("dim_trade", "DimTrade", INCREMENTAL_DIR, atomic=True),
+    TransformStep("fact_cash_balances", "FactCashBalances", INCREMENTAL_DIR),
+    TransformStep("fact_holdings", "FactHoldings", INCREMENTAL_DIR),
+    TransformStep("fact_watches", "FactWatches", INCREMENTAL_DIR, atomic=True),
+    TransformStep("fact_market_history", "FactMarketHistory", INCREMENTAL_DIR),
 )
 
 
