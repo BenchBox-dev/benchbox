@@ -6200,6 +6200,10 @@
     "p50_seconds": 0.008942
   },
   {
+    "id": "tests/unit/core/test_csv_source_null_tokens.py::test_tpcdi_source_staging_keeps_null_looking_text",
+    "p50_seconds": 0.119658
+  },
+  {
     "id": "tests/unit/core/test_database_config_deployment_selector.py::TestSelectorInType::test_type_without_selector_is_unchanged",
     "p50_seconds": 0.009755
   },
@@ -6212,7 +6216,7 @@
     "p50_seconds": 0.008206
   },
   {
-    "id": "tests/unit/core/test_dataframe_benchmark_metadata.py::test_supports_dataframe_flags[tpcdi-False]",
+    "id": "tests/unit/core/test_dataframe_benchmark_metadata.py::test_supports_dataframe_flags[tpcdi-True]",
     "p50_seconds": 0.010899
   },
   {
@@ -6378,6 +6382,10 @@
   {
     "id": "tests/unit/core/test_datagen_version.py::test_stamp_without_generator_record_is_stale[tpch]",
     "p50_seconds": 0.01288
+  },
+  {
+    "id": "tests/unit/core/test_datagen_version.py::test_tpcdi_data_stamped_before_its_spec_was_fingerprinted_is_stale",
+    "p50_seconds": 0.01
   },
   {
     "id": "tests/unit/core/test_datagen_version.py::test_tpcds_direct_manifest_writer_stamps_version",
@@ -7210,6 +7218,14 @@
   {
     "id": "tests/unit/core/tpcdi/test_schema_spec.py::test_generated_ddl_has_no_floating_point_column[standard]",
     "p50_seconds": 0.023094
+  },
+  {
+    "id": "tests/unit/core/tpcdi/test_schema_spec.py::test_retained_old_modules_still_import[benchbox.core.tpcdi.etl.sql_backend]",
+    "p50_seconds": 0.011381
+  },
+  {
+    "id": "tests/unit/core/tpcdi/test_schema_spec.py::test_retained_old_modules_still_import[benchbox.core.tpcdi.validation]",
+    "p50_seconds": 0.009859
   },
   {
     "id": "tests/unit/core/tpcdi/test_schema_spec.py::test_table_matches_the_transcription_column_for_column[DimCompany]",

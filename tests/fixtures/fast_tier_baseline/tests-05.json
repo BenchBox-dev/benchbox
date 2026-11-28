@@ -6764,6 +6764,10 @@
     "p50_seconds": 0.012419
   },
   {
+    "id": "tests/unit/core/test_verbosity_rollout.py::test_verbose_and_quiet_propagation[TPCDIBenchmark-kwargs5-data_generator]",
+    "p50_seconds": 0.011126
+  },
+  {
     "id": "tests/unit/core/test_wave_b_generators.py::test_h2odb_generator_trips_and_manifest_tracking",
     "p50_seconds": 0.079498
   },
@@ -6802,6 +6806,14 @@
   {
     "id": "tests/unit/core/tpcdi/test_schema_spec.py::test_money_and_quantity_columns_are_exact_numerics",
     "p50_seconds": 0.010702
+  },
+  {
+    "id": "tests/unit/core/tpcdi/test_schema_spec.py::test_retained_old_modules_still_import[benchbox.core.tpcdi.etl.pipeline]",
+    "p50_seconds": 0.009758
+  },
+  {
+    "id": "tests/unit/core/tpcdi/test_schema_spec.py::test_retained_old_modules_still_import[benchbox.core.tpcdi.etl.scd_processor]",
+    "p50_seconds": 0.009755
   },
   {
     "id": "tests/unit/core/tpcdi/test_schema_spec.py::test_table_matches_the_transcription_column_for_column[DimBroker]",

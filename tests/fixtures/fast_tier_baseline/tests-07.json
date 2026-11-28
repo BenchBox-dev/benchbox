@@ -7040,6 +7040,14 @@
     "p50_seconds": 0.010009
   },
   {
+    "id": "tests/unit/core/tpcdi/test_schema_spec.py::test_retained_old_modules_still_import[benchbox.core.tpcdi.generator]",
+    "p50_seconds": 0.010572
+  },
+  {
+    "id": "tests/unit/core/tpcdi/test_schema_spec.py::test_retained_old_modules_still_import[benchbox.core.tpcdi.loader]",
+    "p50_seconds": 0.009378
+  },
+  {
     "id": "tests/unit/core/tpcdi/test_schema_spec.py::test_staging_tables_follow_the_core_tables",
     "p50_seconds": 0.009755
   },

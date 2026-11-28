@@ -6608,6 +6608,10 @@
     "p50_seconds": 0.037396
   },
   {
+    "id": "tests/unit/core/tpcdi/test_schema_spec.py::test_retained_old_modules_still_import[benchbox.core.tpcdi.etl.incremental_loader]",
+    "p50_seconds": 0.010151
+  },
+  {
     "id": "tests/unit/core/tpcdi/test_schema_spec.py::test_table_matches_the_transcription_column_for_column[DimTrade]",
     "p50_seconds": 0.009859
   },

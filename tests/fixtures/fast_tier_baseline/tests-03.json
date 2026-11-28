@@ -6788,6 +6788,18 @@
     "p50_seconds": 0.009879
   },
   {
+    "id": "tests/unit/core/tpcdi/test_schema_spec.py::test_retained_old_modules_still_import[benchbox.core.tpcdi.benchmark]",
+    "p50_seconds": 0.01068
+  },
+  {
+    "id": "tests/unit/core/tpcdi/test_schema_spec.py::test_retained_old_modules_still_import[benchbox.core.tpcdi.etl.data_quality_monitor]",
+    "p50_seconds": 0.010004
+  },
+  {
+    "id": "tests/unit/core/tpcdi/test_schema_spec.py::test_retained_old_modules_still_import[benchbox.core.tpcdi.metrics]",
+    "p50_seconds": 0.010004
+  },
+  {
     "id": "tests/unit/core/tpcdi/test_schema_spec.py::test_table_matches_the_transcription_column_for_column[DimCustomer]",
     "p50_seconds": 0.010137
   },
@@ -12302,6 +12314,10 @@
   {
     "id": "tests/unit/platforms/test_duckdb_unfinished_results.py::test_arrow_insert_registers_after_an_unfinished_result",
     "p50_seconds": 0.165065
+  },
+  {
+    "id": "tests/unit/platforms/test_duckdb_unfinished_results.py::test_bulk_dataframe_insert_registers_after_an_unfinished_result",
+    "p50_seconds": 0.073328
   },
   {
     "id": "tests/unit/platforms/test_embedded_timing_contract.py::TestDuckDBTimingContract::test_failed_query_has_no_timing_fields",
