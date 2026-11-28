@@ -158,7 +158,7 @@ def test_a_wrong_invariant_count_fails_the_row_and_the_run(reference_dir) -> Non
     assert rolled == "FAILED" and "failed" in reason
     assert "sample of 521 draws" in result.error_message
     assert current_datagen_stamp("tpcds")["base_constants_hash"][:12] in result.error_message
-    assert "docs/agent/maintainer-bundles.md" in result.error_message and len(result.error_message) < 500
+    assert len(result.error_message) < 500
 
 
 def test_an_empty_must_return_rows_answer_fails_the_row(reference_dir) -> None:

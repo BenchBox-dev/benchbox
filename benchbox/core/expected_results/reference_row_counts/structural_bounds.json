@@ -1,6 +1,5 @@
 {
   "schema_version": 1,
-  "regenerate": "uv run -- python _project/scripts/generate_structural_bounds.py",
   "tpch": {
     "limit": {
       "2": 100,

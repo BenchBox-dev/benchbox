@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from benchbox.core.expected_results import row_count_references as references
-from benchbox.utils.datagen_version import current_datagen_stamp
+from benchbox.core.expected_results.query_generation import current_query_generation_hash
 
 ROOT = Path(__file__).resolve().parents[3]
 SCRIPTS = ROOT / "_project/scripts"
@@ -147,6 +147,7 @@ def test_the_data_checksum_changes_when_a_table_changes(tmp_path) -> None:
 
 
 def test_a_built_payload_is_a_valid_reference_with_full_provenance(tmp_path, monkeypatch) -> None:
+    committed = json.loads(references.reference_path("tpch", 0.01).read_text(encoding="utf-8"))
     monkeypatch.setattr(references, "REFERENCE_DIR", tmp_path)
     payload = gen.build_payload(
         benchmark="tpch",
@@ -155,12 +156,12 @@ def test_a_built_payload_is_a_valid_reference_with_full_provenance(tmp_path, mon
             0: {"query_parameters": "qgen -d", "seed": None, "row_counts": _COUNTS},
             1: {"query_parameters": "qgen -d", "seed": None, "row_counts": _COUNTS},
         },
-        sensitive=["11"],
         versions={"duckdb": "1", "datafusion": "2"},
-        generator={"data_generator": "dbgen", "data_stamp": current_datagen_stamp("tpch")},
-        checksum={"algorithm": "x", "sha256": "0" * 64},
+        generator=committed["provenance"]["generator"],
+        checksum=committed["provenance"]["data_checksum"],
         agreement=gen.agreement_record("tpch", [0, 1]),
         regenerate="make row-count-references-regen",
+        integrity=committed["integrity"],
     )
 
     path = gen.write(payload)
@@ -180,7 +181,6 @@ def test_a_payload_without_agreement_is_refused(tmp_path, monkeypatch) -> None:
         streams={
             0: {"query_parameters": "fixed", "seed": None, "row_counts": dict.fromkeys(references.QUERY_IDS["ssb"], 1)}
         },
-        sensitive=[],
         versions={"duckdb": "1", "datafusion": "2"},
         generator={"data_generator": "ssb"},
         checksum={"algorithm": "x", "sha256": "0" * 64},
@@ -206,8 +206,8 @@ def test_tpcds_variant_ids_split_into_query_number_and_variant() -> None:
 
 
 def test_every_committed_tpch_reference_is_bound_to_the_current_query_templates() -> None:
-    expected = tpch_generator.template_digest()["sha256"]
+    expected = current_query_generation_hash("tpch")
 
     for scale in references.reference_scales("tpch"):
         reference = references.load_row_count_reference("tpch", scale)
-        assert reference.provenance["generator"]["query_template_digest"]["sha256"] == expected, scale
+        assert reference.provenance["generator"]["query_generation"]["query_generation_hash"] == expected, scale

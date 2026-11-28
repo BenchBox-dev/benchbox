@@ -46,7 +46,7 @@ def build_table(scale_factor: float = 1.0) -> dict:
     from benchbox.core.tpcds.benchmark.runner import TPCDSBenchmark
     from benchbox.core.tpch.benchmark import TPCHBenchmark
 
-    table: dict = {"schema_version": 1, "regenerate": "uv run -- python _project/scripts/generate_structural_bounds.py"}
+    table: dict = {"schema_version": 1}
     with tempfile.TemporaryDirectory() as work_dir:
         instances = {
             "tpch": TPCHBenchmark(scale_factor=scale_factor, output_dir=work_dir),

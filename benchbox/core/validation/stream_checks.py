@@ -30,7 +30,6 @@ CHECK_RANGE = "range"
 CHECK_NEVER_EMPTY = "never_empty"
 CHECK_STRUCTURAL = "structural"
 ROW_CHECK_KINDS = (CHECK_EXACT, CHECK_INVARIANT, CHECK_RANGE, CHECK_NEVER_EMPTY, CHECK_STRUCTURAL)
-SETTLING_PROCEDURE = "docs/agent/maintainer-bundles.md (Settling a disputed stream check)"
 TPCH_RANGE_SCALE = 1.0
 LOOSE_TOLERANCE = 0.5
 
@@ -159,7 +158,7 @@ def _failure(
     stamp = _short(reference.data_stamp if reference is not None else None)
     message = (
         f"Stream check FAILED: {benchmark} query {statement} returned {actual} rows; {check} check requires {bound} "
-        f"({detail}; {basis}; data stamp {stamp}). Settle a disputed check as in {SETTLING_PROCEDURE}."
+        f"({detail}; {basis}; data stamp {stamp})."
     )
     return _result(
         statement,
@@ -296,7 +295,7 @@ def decide_row_count(
             unvalidated=True,
             skip=(
                 f"Unvalidated: {NO_REFERENCE_REASON} (benchmark '{benchmark}', scale factor {scale:g}, "
-                f"query '{query_id}'). The row count was not checked. Actual rows returned: {actual_row_count}"
+                f"query '{query_id}'). The row count was not checked and is not counted as passed. Actual rows returned: {actual_row_count}"
             ),
         )
         return result
