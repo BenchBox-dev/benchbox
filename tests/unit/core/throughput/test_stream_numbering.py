@@ -219,7 +219,7 @@ class TestTPCHPowerStreamSemantics:
         class _Adapter:
             _validate_row_count = False
 
-            def set_query_context(self, query_id: Any, stream_id: Any = None) -> None:
+            def set_query_context(self, query_id: Any, stream_id: Any = None, generation: Any = None) -> None:
                 self.stream_id = stream_id
 
             def execute(self, sql: str) -> Any:

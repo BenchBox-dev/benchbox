@@ -330,6 +330,7 @@ class TestDriversMixin:
                 scale_factor=scale_factor,
                 num_streams=num_streams,
                 first_stream_id=throughput_round_stream_ids(num_streams, run_config.get("_phase_round", 1)).start,
+                data_refreshed=bool(run_config.get("_data_refreshed")),
                 **_throughput_config_options(run_config),
             )
             console.print(f"[dim]{_describe_stream_timeout(cfg, run_config)}[/dim]")
@@ -949,6 +950,7 @@ class TestDriversMixin:
             "maintenance": "_last_maintenance_test_result",
         }
         recorded: dict[tuple[str, int], Any] = {}
+        data_refreshed = False
         for phase_key, phase_round in plan:
             if run_stop_requested():
                 break
@@ -957,6 +959,8 @@ class TestDriversMixin:
             if phase_round is not None:
                 phase_label = f"{phase_label} {phase_round}"
                 phase_config = {**run_config, "_phase_round": phase_round}
+            if data_refreshed:
+                phase_config = {**phase_config, "_data_refreshed": True}
             if phase_key == "maintenance" and skip_maintenance:
                 warning = (
                     "Maintenance Test skipped: the greybeam gateway does not reflect refresh writes in its "
@@ -1008,7 +1012,13 @@ class TestDriversMixin:
             if phase_round is not None and phase_key in result_attrs:
                 setattr(self, result_attrs[phase_key], None)
             console.print(f"[cyan]Phase: {phase_label}[/cyan]")
-            all_results.extend(getattr(self, method_name)(benchmark, connection, phase_config))
+            phase_results = getattr(self, method_name)(benchmark, connection, phase_config)
+            all_results.extend(phase_results)
+            if phase_key == "maintenance" and any(
+                result.get("test_type") == "maintenance" and result.get("query_id") != "maintenance_not_supported"
+                for result in phase_results
+            ):
+                data_refreshed = True
             if phase_round is not None and phase_key in result_attrs:
                 recorded[(phase_key, phase_round)] = getattr(self, result_attrs[phase_key], None)
         if recorded:

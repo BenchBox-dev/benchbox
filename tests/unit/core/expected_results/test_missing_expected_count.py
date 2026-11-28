@@ -8,6 +8,7 @@ from benchbox.core.expected_results.models import (
 from benchbox.core.expected_results.registry import ExpectedResultsRegistry, LoadOutcome
 from benchbox.core.results.query_execution import ROW_COUNT_VALIDATION_MESSAGE_MAX_CHARS
 from benchbox.core.validation.query_validation import QueryValidator
+from benchbox.core.validation.stream_checks import QueryGeneration, query_generation_context
 
 pytestmark = [
     pytest.mark.unit,
@@ -137,7 +138,8 @@ def test_tpcds_every_query_has_a_count_and_unknown_variant_fails():
     validator = QueryValidator()
     recorded = load_row_count_reference("tpcds", 0.1).streams[0].row_counts["21"]
 
-    referenced = validator.validate_query_result("tpcds", "21", recorded, 0.1)
+    with query_generation_context(QueryGeneration(seed=1001)):
+        referenced = validator.validate_query_result("tpcds", "21", recorded, 0.1)
     typo = validator.validate_query_result("tpcds", "14c", 3, 0.1)
 
     assert referenced.is_valid
@@ -145,17 +147,6 @@ def test_tpcds_every_query_has_a_count_and_unknown_variant_fails():
     assert referenced.expected_row_count == recorded
     assert not typo.is_valid
     assert not typo.unvalidated
-
-
-def test_non_reference_stream_remains_a_skip_not_unvalidated():
-    validator = QueryValidator()
-
-    result = validator.validate_query_result("tpch", "1", 4, 1.0, stream_id=3)
-
-    assert result.is_valid
-    assert not result.unvalidated
-    assert result.validation_mode == ValidationMode.SKIP
-    assert "stream 3" in (result.warning_message or "")
 
 
 def test_exact_entry_without_an_expected_count_fails_validation():
@@ -196,7 +187,7 @@ def test_classified_timeout_is_unchanged(monkeypatch):
         lambda *args, **kwargs: (None, LoadOutcome.PROVIDER_TIMEOUT),
     )
 
-    result = validator.validate_query_result("tpch", "1", 4, 1.0)
+    result = validator.validate_query_result("ssb", "1.1", 4, 1.0)
 
     assert not result.is_valid
     assert not result.unvalidated

@@ -6,6 +6,7 @@ import re
 import sys
 from pathlib import Path
 
+import row_count_integrity_sample as sample
 import row_count_reference_generation as gen
 
 from benchbox.core.expected_results.row_count_references import QUERY_IDS
@@ -36,7 +37,6 @@ def generate(scale_factor: float, streams: list[int], work_dir: Path) -> Path:
     if len({checksum["sha256"] for checksum in checksums.values()}) != 1:
         raise SystemExit(f"tpcds SF {scale_factor:g}: the engines loaded data with different checksums: {checksums}")
     checksum = next(iter(checksums.values()))
-    stamp = gen.generator_stamp(gen.datagen_directory(roots[gen.REFERENCE_ENGINES[0]]))
 
     benchmark = TPCDSBenchmark(scale_factor=scale_factor, output_dir=str(work_dir / "bench"))
     counters, close = gen.open_counters(roots)
@@ -72,6 +72,52 @@ def generate(scale_factor: float, streams: list[int], work_dir: Path) -> Path:
             stream_entries[stream] = {
                 "query_parameters": f"dsqgen RNGSEED {rngseed} (power_parameter_seed(None, {stream}))",
                 "seed": rngseed,
+                "streams_index": None,
+                "row_counts": agreed,
+            }
+        generator = gen.generator_identity(
+            BENCHMARK,
+            "bundled dsdgen via the BenchBox TPC-DS generate phase",
+            "bundled dsqgen via TPCDSBenchmark.get_query (netezza base dialect, per-engine dialect translation)",
+            gen.datagen_directory(roots[gen.REFERENCE_ENGINES[0]]),
+        )
+        versions = gen.engine_versions()
+        integrity, _, draws = sample.integrity_section(
+            BENCHMARK,
+            scale_factor,
+            benchmark,
+            counters,
+            cache,
+            cache_path,
+            work_dir,
+            versions=versions,
+            generator=generator,
+            checksum=checksum,
+            regenerate=REGENERATE,
+        )
+        seedless = [draw for draw in draws if draw.group == "seedless"]
+        engine_counts = {
+            engine: sample.counts_for_draws(
+                counters,
+                cache,
+                cache_path,
+                engine,
+                seedless,
+                query_ids,
+                sample.sql_factory(BENCHMARK, benchmark, scale_factor, sample.sample_groups(BENCHMARK)),
+                data_sha256=checksum["sha256"],
+            )
+            for engine in gen.REFERENCE_ENGINES
+        }
+        for draw in seedless:
+            agreed, found = gen.agree(
+                draw.label, query_ids, {engine: counts[draw.label] for engine, counts in engine_counts.items()}
+            )
+            disagreements += found
+            stream_entries[len(stream_entries)] = {
+                "query_parameters": f"dsqgen -STREAMS RNGSEED {draw.seed}, stream file query_{draw.stream}.sql",
+                "seed": draw.seed,
+                "streams_index": draw.stream,
                 "row_counts": agreed,
             }
     finally:
@@ -81,28 +127,16 @@ def generate(scale_factor: float, streams: list[int], work_dir: Path) -> Path:
             BENCHMARK, scale_factor, disagreements, work_dir / f"disagreements-sf{scale_factor:g}.txt"
         )
 
-    sensitive = sorted(
-        (qid for qid in query_ids if len({entry["row_counts"][qid] for entry in stream_entries.values()}) > 1),
-        key=lambda value: (len(value), value),
-    )
     payload = gen.build_payload(
         benchmark=BENCHMARK,
         scale_factor=scale_factor,
         streams=stream_entries,
-        sensitive=sensitive,
-        versions=gen.engine_versions(),
-        generator={
-            "data_generator": "bundled dsdgen via the BenchBox TPC-DS generate phase",
-            "query_generator": "bundled dsqgen via TPCDSBenchmark.get_query (netezza base dialect, per-engine dialect translation)",
-            "data_stamp": stamp,
-        },
+        versions=versions,
+        generator=generator,
         checksum=checksum,
-        agreement=gen.agreement_record(
-            BENCHMARK,
-            streams,
-            {"sensitivity": "a query is parameter-sensitive where its row count differs between recorded streams"},
-        ),
+        agreement=gen.agreement_record(BENCHMARK, sorted(stream_entries)),
         regenerate=REGENERATE,
+        integrity=integrity,
     )
     return gen.write(payload)
 

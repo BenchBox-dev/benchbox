@@ -23,6 +23,7 @@ from benchbox.core.results.models import (
     ThroughputTestPhase,
 )
 from benchbox.core.results.query_execution import (
+    ROW_COUNT_VALIDATION_STREAM_FIELDS,
     query_execution_from_compact_v2,
     query_execution_to_legacy_dict,
 )
@@ -35,6 +36,7 @@ from benchbox.core.results.schema_policy import (
     result_schema_version_value,
     supports_round_trip_timing_fields,
     supports_row_count_validation,
+    supports_stream_checks,
 )
 from benchbox.core.results.timing_fields import bundle_timing_field_paths, net_estimate_problems, run_timing_problems
 from benchbox.core.results.tpcdi_audit import mark_legacy_tpcdi_result
@@ -160,6 +162,16 @@ def _validate_versioned_query_extensions(data: dict[str, Any]) -> None:
     run_problems.extend(net_estimate_problems(data))
     if run_problems:
         raise ValueError(f"run.{run_problems[0]}")
+    if not supports_stream_checks(version):
+        if "validation" in data:
+            raise ValueError(f"validation requires schema version 2.7 or later, got {version!r}")
+        for index, query in enumerate(data.get("queries", [])):
+            evidence = query.get("row_count_validation") if isinstance(query, dict) else None
+            if isinstance(evidence, dict) and ROW_COUNT_VALIDATION_STREAM_FIELDS & set(evidence):
+                raise ValueError(
+                    f"queries[{index}].row_count_validation stream-check fields require schema version 2.7 or "
+                    f"later, got {version!r}"
+                )
     if supports_row_count_validation(version):
         return
 
@@ -249,7 +261,7 @@ def reconstruct_benchmark_results(
         geometric_mean_execution_time=tpc["geometric_mean_execution_time"],
         test_execution_type=benchmark_section.get("mode", "standard"),
         validation_status=summary_section.get("validation", "NOT_RUN"),
-        validation_details=_extract_timeout_details(execution_section),
+        validation_details=_extract_validation_details(execution_section, data.get("validation")),
         execution_metadata=execution_metadata,
         execution_environment=execution_environment,
         platform_deployment=platform_section.get("deployment"),
@@ -336,9 +348,15 @@ def _extract_execution_metadata(execution_section: dict[str, Any]) -> dict[str, 
     return metadata or None
 
 
-def _extract_timeout_details(execution_section: dict[str, Any]) -> dict[str, Any] | None:
+def _extract_validation_details(execution_section: dict[str, Any], validation: Any) -> dict[str, Any] | None:
+    details: dict[str, Any] = {}
     timeout = execution_section.get("timeout")
-    return {"timeout": dict(timeout)} if isinstance(timeout, dict) else None
+    if isinstance(timeout, dict):
+        details["timeout"] = dict(timeout)
+    stream_checks = validation.get("stream_checks") if isinstance(validation, dict) else None
+    if isinstance(stream_checks, dict):
+        details["stream_checks"] = dict(stream_checks)
+    return details or None
 
 
 def _parse_timestamp(timestamp_str: str) -> datetime:

@@ -9,10 +9,15 @@ from typing import Any
 from benchbox.core.results.environment import HOST_LOAD_SAMPLE_FIELD_TYPES
 from benchbox.core.results.provenance import PLAN_TIERS, VENDOR_PROVENANCE_FIELDS
 from benchbox.core.results.query_execution import (
+    ROW_COUNT_VALIDATION_BOUND_MAX_CHARS,
+    ROW_COUNT_VALIDATION_CHECKS,
     ROW_COUNT_VALIDATION_FIELDS,
     ROW_COUNT_VALIDATION_MESSAGE_MAX_CHARS,
     ROW_COUNT_VALIDATION_REQUIRED_FIELDS,
     ROW_COUNT_VALIDATION_STATUSES,
+    ROW_COUNT_VALIDATION_STREAM_FIELDS,
+    STREAM_CHECKS_BENCHMARKS,
+    STREAM_CHECKS_REFERENCE_FIELDS,
 )
 from benchbox.core.results.schema import SchemaV2Validator
 from benchbox.core.results.schema_policy import (
@@ -22,6 +27,7 @@ from benchbox.core.results.schema_policy import (
     supports_round_trip_timing_fields,
     supports_row_count_validation,
     supports_run_timeout_marker,
+    supports_stream_checks,
 )
 from benchbox.core.results.timing_fields import (
     CLIENT_LINK_TIMING_FIELDS,
@@ -178,9 +184,45 @@ def _row_count_validation_schema() -> dict[str, Any]:
         "actual": _nullable(_NON_NEGATIVE_INT),
         "error": {"type": "string", "maxLength": ROW_COUNT_VALIDATION_MESSAGE_MAX_CHARS},
         "warning": {"type": "string", "maxLength": ROW_COUNT_VALIDATION_MESSAGE_MAX_CHARS},
+        "check": {"enum": sorted(ROW_COUNT_VALIDATION_CHECKS)},
+        "bound": {"type": "string", "minLength": 1, "maxLength": ROW_COUNT_VALIDATION_BOUND_MAX_CHARS},
+        "seed": _nullable(_NON_NEGATIVE_INT),
+        "streams_index": _nullable(_NON_NEGATIVE_INT),
     }
     assert set(properties) == set(ROW_COUNT_VALIDATION_FIELDS)
-    return _object(tuple(sorted(ROW_COUNT_VALIDATION_REQUIRED_FIELDS)), properties, closed=True)
+    schema = _object(tuple(sorted(ROW_COUNT_VALIDATION_REQUIRED_FIELDS)), properties, closed=True)
+    schema["dependentRequired"] = {"check": ["bound"], "bound": ["check"]}
+    return schema
+
+
+def _validation_schema() -> dict[str, Any]:
+    sha256 = {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+    reference = _object(
+        tuple(sorted(STREAM_CHECKS_REFERENCE_FIELDS)),
+        {
+            "benchmark": {"enum": sorted(STREAM_CHECKS_BENCHMARKS)},
+            "scale_factor": {"type": "number", "exclusiveMinimum": 0},
+            "file": _NON_EMPTY_STRING,
+            "sha256": sha256,
+            "data_stamp": sha256,
+            "query_generation_hash": sha256,
+            "sample_draws": {"type": "integer", "minimum": 1},
+        },
+        closed=True,
+    )
+    stream_checks = _object(
+        ("references", "checks"),
+        {
+            "references": {"type": "array", "items": reference},
+            "checks": {
+                "type": "object",
+                "propertyNames": {"enum": sorted(ROW_COUNT_VALIDATION_CHECKS)},
+                "additionalProperties": {"type": "integer", "minimum": 1},
+            },
+        },
+        closed=True,
+    )
+    return _object(("stream_checks",), {"stream_checks": stream_checks}, closed=True)
 
 
 def _query_schema() -> dict[str, Any]:
@@ -262,6 +304,7 @@ def _version_gates() -> list[dict[str, Any]]:
     without_row_count = _versions_where(lambda v: not supports_row_count_validation(v))
     without_timing = _versions_where(lambda v: not supports_round_trip_timing_fields(v))
     without_capture = _versions_where(lambda v: not supports_capture_and_vendor_fields(v))
+    without_stream_checks = _versions_where(lambda v: not supports_stream_checks(v))
     with_timing = _versions_where(supports_round_trip_timing_fields)
     gates: list[dict[str, Any]] = []
     if without_row_count:
@@ -297,6 +340,26 @@ def _version_gates() -> list[dict[str, Any]]:
                         "execution": _forbid_keys(("config_capture",)),
                         "provenance": _forbid_keys(VENDOR_PROVENANCE_FIELDS),
                     }
+                },
+            }
+        )
+    if without_stream_checks:
+        gates.append(
+            {
+                "if": _version_in(without_stream_checks),
+                "then": {
+                    "properties": {
+                        "queries": {
+                            "items": {
+                                "properties": {
+                                    "row_count_validation": _forbid_keys(
+                                        tuple(sorted(ROW_COUNT_VALIDATION_STREAM_FIELDS))
+                                    )
+                                }
+                            }
+                        },
+                    },
+                    **_forbid_keys(("validation",)),
                 },
             }
         )
@@ -447,6 +510,7 @@ def build_result_bundle_schema() -> dict[str, Any]:
     properties["environment"] = _environment_schema()
     properties["execution"] = _execution_schema()
     properties["provenance"] = _provenance_schema()
+    properties["validation"] = _validation_schema()
 
     return {
         "$schema": JSON_SCHEMA_DIALECT,

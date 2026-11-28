@@ -12,6 +12,7 @@ from benchbox.core.results.query_status import (
     NO_REFERENCE_VALIDATION_STATUS,
     row_evidence_roll_up,
 )
+from benchbox.core.validation.stream_checks import reference_for
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -57,10 +58,18 @@ def test_tpch_reference_result_records_real_pass_evidence() -> None:
         "failed": 0,
         "skipped": 0,
         "errors": 0,
-        "reference_kinds": {"tpc_answer_set": {"label": "TPC answer set", "rows": 1}},
+        "reference_kinds": {"engine_agreement": {"label": "agreement with duckdb 2.0.0, datafusion 55.0.0", "rows": 1}},
     }
     assert "row_count_validation" not in warmup
-    assert measurement["row_count_validation"] == {"expected": 4, "actual": 4, "status": "PASSED"}
+    assert measurement["row_count_validation"] == {
+        "expected": 4,
+        "actual": 4,
+        "seed": None,
+        "streams_index": None,
+        "check": "exact",
+        "bound": "exactly 4",
+        "status": "PASSED",
+    }
 
 
 def test_skipped_warmup_is_not_validation_evidence() -> None:
@@ -201,7 +210,7 @@ def test_oracle_error_makes_the_run_uncertain_without_condemning_the_result() ->
     measurement = _measurement()
 
     with patch(
-        "benchbox.core.dataframe.query_validation.QueryValidator.validate_query_result",
+        "benchbox.core.dataframe.query_validation.decide_row_count",
         side_effect=RuntimeError("oracle unavailable"),
     ):
         summary = validate_dataframe_query_results(
@@ -220,7 +229,7 @@ def test_oracle_error_evidence_is_bounded() -> None:
     measurement = _measurement()
 
     with patch(
-        "benchbox.core.dataframe.query_validation.QueryValidator.validate_query_result",
+        "benchbox.core.dataframe.query_validation.decide_row_count",
         side_effect=RuntimeError("x" * 2_000),
     ):
         validate_dataframe_query_results(
@@ -234,30 +243,19 @@ def test_oracle_error_evidence_is_bounded() -> None:
     assert error.endswith("...")
 
 
-def test_oracle_initialization_error_is_uncertain() -> None:
-    measurement = _measurement()
+@pytest.mark.parametrize(
+    ("benchmark_name", "query_id", "loader"),
+    [
+        ("ssb", "Q1.1", "benchbox.core.dataframe.query_validation.load_row_count_reference"),
+        ("tpcds", "Q1", "benchbox.core.validation.stream_checks.load_row_count_reference"),
+        ("tpch", "Q1", "benchbox.core.validation.stream_checks.load_row_count_reference"),
+    ],
+)
+def test_a_refused_reference_is_recorded_as_a_validation_error(benchmark_name: str, query_id: str, loader: str) -> None:
+    measurement = _measurement(query_id)
+    reference_for.cache_clear()
 
-    with patch("benchbox.core.dataframe.query_validation.QueryValidator", side_effect=RuntimeError("no registry")):
-        summary = validate_dataframe_query_results(
-            [measurement],
-            benchmark_name="tpch",
-            scale_factor=1.0,
-        )
-
-    assert summary.status == "UNCERTAIN"
-    assert summary.details["errors"] == 1
-    assert measurement["status"] == "SUCCESS"
-    assert measurement["row_count_validation"]["status"] == "ERROR"
-
-
-@pytest.mark.parametrize("benchmark_name", ["ssb", "tpcds"])
-def test_a_refused_reference_is_recorded_as_a_validation_error(benchmark_name: str) -> None:
-    measurement = _measurement("Q1.1" if benchmark_name == "ssb" else "Q1")
-
-    with patch(
-        "benchbox.core.dataframe.query_validation.load_row_count_reference",
-        side_effect=ValueError("reference data stamp no longer matches"),
-    ):
+    with patch(loader, side_effect=ValueError("reference data stamp no longer matches")):
         summary = validate_dataframe_query_results([measurement], benchmark_name=benchmark_name, scale_factor=1.0)
 
     assert summary.status == "UNCERTAIN"
@@ -429,12 +427,27 @@ def test_tpch_subscale_wrong_count_fails_the_query_and_run() -> None:
     assert wrong["row_count_validation"] == {
         "expected": 1,
         "actual": 0,
+        "seed": None,
+        "streams_index": None,
+        "check": "exact",
+        "bound": "exactly 1",
         "status": "FAILED",
         "error": wrong["row_count_validation"]["error"],
     }
 
 
-def test_seeded_subscale_run_checks_fixed_queries_and_skips_parameter_sensitive_ones() -> None:
+def _unconstrained_tpch_query(scale_factor: float) -> str:
+    from benchbox.core.expected_results.row_count_references import load_row_count_reference
+
+    integrity = load_row_count_reference("tpch", scale_factor).integrity
+    return next(
+        str(number)
+        for number in range(1, 23)
+        if str(number) not in integrity.invariant_counts and str(number) not in integrity.never_empty
+    )
+
+
+def test_seeded_subscale_run_checks_every_query_it_has_a_bound_for_and_documents_the_rest() -> None:
     from benchbox.core.expected_results.row_count_references import load_row_count_reference
 
     reference = load_row_count_reference("tpch", 0.01)
@@ -445,17 +458,22 @@ def test_seeded_subscale_run_checks_fixed_queries_and_skips_parameter_sensitive_
     summary = validate_dataframe_query_results(measurements, benchmark_name="tpch", scale_factor=0.01, seed=7)
 
     statuses = {row["query_id"]: row["row_count_validation"]["status"] for row in measurements}
+    bounded = reference.integrity.never_empty | set(reference.integrity.invariant_counts)
     assert summary.status == "PASSED"
-    assert summary.details["skipped"] == len(reference.parameter_sensitive_query_ids)
-    assert summary.details["documented_skips"] == len(reference.parameter_sensitive_query_ids)
-    assert summary.details["checked"] == 22 - len(reference.parameter_sensitive_query_ids)
-    assert statuses["Q2"] == "SKIPPED"
-    assert statuses["Q4"] == "PASSED"
+    assert summary.details["checked"] == len(bounded)
+    assert summary.details["skipped"] == 22 - len(bounded)
+    assert summary.details["documented_skips"] == 22 - len(bounded)
+    assert all(statuses[f"Q{qid}"] == "PASSED" for qid in bounded)
+    assert {row["row_count_validation"]["seed"] for row in measurements} == {
+        7 + 1000 * row.get("stream_id", 0) for row in measurements
+    }
 
 
-def test_seeded_subscale_run_with_only_parameter_sensitive_queries_is_not_a_pass() -> None:
+def test_seeded_subscale_run_with_only_unbounded_queries_is_not_a_pass() -> None:
+    query = _unconstrained_tpch_query(0.01)
+
     summary = validate_dataframe_query_results(
-        [_measurement(query_id="Q2", rows=3)], benchmark_name="tpch", scale_factor=0.01, seed=7
+        [_measurement(query_id=f"Q{query}", rows=3)], benchmark_name="tpch", scale_factor=0.01, seed=7
     )
 
     assert summary.status == "UNCERTAIN"
@@ -513,16 +531,6 @@ def test_seeded_subscale_run_fails_a_wrong_fixed_cardinality_count() -> None:
 
     assert summary.status == "FAILED"
     assert measurement["row_count_validation"]["expected"] == 5
-
-
-def test_seeded_validation_leaves_the_reference_seed_context_unchanged() -> None:
-    from benchbox.core.validation.query_validation import get_reference_seed_context
-
-    validate_dataframe_query_results(
-        [_measurement(query_id="Q4", rows=5)], benchmark_name="tpch", scale_factor=0.01, seed=7
-    )
-
-    assert get_reference_seed_context() is None
 
 
 @pytest.mark.parametrize(("benchmark_id", "scale_factor"), [("tpch", 10.0), ("tpcds", 10.0), ("ssb", 0.5)])

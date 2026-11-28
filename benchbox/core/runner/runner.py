@@ -526,6 +526,28 @@ def _attach_datagen_version(
     return result
 
 
+def _pre_run_data_stamp(benchmark: Any, established: bool) -> str:
+    from benchbox.core.validation.stream_checks import UNESTABLISHED_DATA_STAMP
+
+    if not established:
+        return UNESTABLISHED_DATA_STAMP
+    try:
+        from benchbox.utils.datagen_version import manifest_datagen_is_current
+
+        manifest_path = benchmark.output_dir.joinpath("_datagen_manifest.json")
+        with manifest_path.open("r", encoding="utf-8") as handle:
+            manifest = json.load(handle)
+        if not manifest_datagen_is_current(manifest):
+            return UNESTABLISHED_DATA_STAMP
+        identity_matches = getattr(benchmark, "manifest_matches_datagen_identity", None)
+        if callable(identity_matches) and not identity_matches(manifest):
+            return UNESTABLISHED_DATA_STAMP
+        return str(manifest.get("data_generation_identity_hash", manifest.get("base_constants_hash")))
+    except Exception as exc:
+        logger.debug("data stamp of the run is not established: %s", exc)
+        return UNESTABLISHED_DATA_STAMP
+
+
 def _attach_power_stream_policy(result: BenchmarkResults) -> BenchmarkResults:
     from benchbox.core.results.power_stream_policy import current_power_stream_policy
 
@@ -1745,8 +1767,14 @@ def run_benchmark_lifecycle(
     if phases.execute:
         announce_generation_estimate(QUERY_GENERATION, benchmark_config.name, benchmark_config.scale_factor)
 
+    from benchbox.core.validation.stream_checks import run_data_stamp_context
+
+    data_stamp = _pre_run_data_stamp(benchmark, dataset_identity_established and not _adapter_reused_database(adapter))
     try:
-        with sql_translation_context(strict=strict_translation) as translation_outcomes:
+        with (
+            sql_translation_context(strict=strict_translation) as translation_outcomes,
+            run_data_stamp_context(data_stamp),
+        ):
             result_obj = _execute_via_adapter(
                 adapter=adapter,
                 benchmark=benchmark,

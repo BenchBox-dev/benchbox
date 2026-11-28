@@ -507,8 +507,8 @@ class TestResultExporter:
         with open(json_path, encoding="utf-8") as f:
             data = json.load(f)
 
-        assert data["result_schema_version"] == "2.6"
-        assert data["version"] == "2.6"
+        assert data["result_schema_version"] == "2.7"
+        assert data["version"] == "2.7"
         assert data["benchmark"]["id"] == "tpch"
         assert data["benchmark"]["name"] == "TPC-H"
 
@@ -536,8 +536,8 @@ class TestResultExporter:
         with open(json_path, encoding="utf-8") as f:
             data = json.load(f)
 
-        assert data["result_schema_version"] == "2.6"
-        assert data["version"] == "2.6"
+        assert data["result_schema_version"] == "2.7"
+        assert data["version"] == "2.7"
         assert data["benchmark"]["name"] == "TPC-H"
         assert data["platform"]["name"] == "duckdb"
 
@@ -739,7 +739,7 @@ class TestResultExporter:
         loaded = self.exporter.load_result_from_file(exported["json"])
 
         assert loaded is not None
-        assert loaded["version"] == "2.6"
+        assert loaded["version"] == "2.7"
         assert loaded["data"]["benchmark"]["id"] == "tpch"
 
     def test_load_result_from_file_not_found(self):
@@ -825,8 +825,8 @@ class TestResultExporter:
 
         comparison = self.exporter.compare_results(baseline_path, current_path)
 
-        assert comparison["baseline_version"] == "2.6"
-        assert comparison["current_version"] == "2.6"
+        assert comparison["baseline_version"] == "2.7"
+        assert comparison["current_version"] == "2.7"
 
     def test_export_comparison_report(self):
 

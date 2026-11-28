@@ -16,7 +16,6 @@ from benchbox.core.expected_results.row_count_references import (
     has_reference,
     load_row_count_reference,
     reference_scales,
-    stream_query_results,
 )
 
 logger = logging.getLogger(__name__)
@@ -29,8 +28,7 @@ TPCH_RANGE_ROW_COUNT_BOUNDS: dict[str, tuple[int, int]] = {
 }
 
 TPCH_LOOSE_QUERY_IDS: frozenset[str] = frozenset({"16"})
-
-PARAMETER_SENSITIVE_QUERY_IDS: frozenset[str] = frozenset(TPCH_RANGE_ROW_COUNT_BOUNDS) | TPCH_LOOSE_QUERY_IDS
+TPCH_SCALE_INDEPENDENT_QUERY_IDS: frozenset[str] = frozenset({"1"})
 
 TPCH_QUERY_IDS: frozenset[str] = frozenset(str(number) for number in range(1, 23))
 
@@ -52,12 +50,8 @@ def get_tpch_expected_results(scale_factor: float = 1.0) -> BenchmarkExpectedRes
 
     query_results = {}
 
-    scale_independent_queries = {
-        "1": True,
-    }
-
     for query_id, row_count in row_counts.items():
-        is_scale_independent = scale_independent_queries.get(query_id, False)
+        is_scale_independent = query_id in TPCH_SCALE_INDEPENDENT_QUERY_IDS
 
         range_bounds = TPCH_RANGE_ROW_COUNT_BOUNDS.get(query_id)
         if range_bounds is not None:
@@ -104,9 +98,6 @@ def get_tpch_expected_results(scale_factor: float = 1.0) -> BenchmarkExpectedRes
             "total_queries": len(query_results),
             "value_digest_queries": sum(1 for r in query_results.values() if r.value_digest is not None),
         },
-        stream_results=stream_query_results(load_row_count_reference("tpch", 1.0))
-        if has_reference("tpch", 1.0)
-        else None,
     )
 
 
@@ -123,10 +114,8 @@ def _reference_expected_results(scale_factor: float) -> BenchmarkExpectedResults
             "reference_kind": reference.kind,
             "reference_scale_factor": scale_factor,
             "total_queries": len(query_results),
-            "parameter_sensitive_queries": sorted(reference.parameter_sensitive_query_ids, key=int),
             "provenance": dict(reference.provenance),
         },
-        stream_results=stream_query_results(reference),
     )
 
 

@@ -8,6 +8,8 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any
 
+from benchbox.core.results.query_status import within_tolerance_warning
+
 
 class ValidationMode(str, Enum):
     EXACT = "exact"
@@ -29,7 +31,6 @@ class ExpectedQueryResult:
     loose_tolerance_percent: float = 50.0
     notes: str | None = None
     value_digest: str | None = None
-    reference_parameters_only: bool = False
     reference_kind: str | None = None
     reference_label: str | None = None
 
@@ -184,7 +185,6 @@ class BenchmarkExpectedResults:
     query_results: dict[str, ExpectedQueryResult]
     metadata: dict[str, Any] | None = None
     known_query_ids: frozenset[str] | None = None
-    stream_results: dict[int, dict[str, ExpectedQueryResult]] | None = None
 
     def get_expected_result(self, query_id: str) -> ExpectedQueryResult | None:
         return self.query_results.get(query_id)
@@ -204,9 +204,43 @@ class ValidationResult:
     unvalidated: bool = False
     reference_kind: str | None = None
     reference_label: str | None = None
+    check: str | None = None
+    bound: str | None = None
+    seed: int | None = None
+    streams_index: int | None = None
+    stream_checked: bool = False
 
     def __post_init__(self):
         if self.expected_row_count is not None and self.actual_row_count is not None:
             self.difference = self.actual_row_count - self.expected_row_count
             if self.expected_row_count > 0:
                 self.difference_percent = (self.difference / self.expected_row_count) * 100.0
+
+
+def stream_check_fields(validation_result: Any) -> dict[str, Any]:
+    if not getattr(validation_result, "stream_checked", False):
+        return {}
+    fields: dict[str, Any] = {"seed": validation_result.seed, "streams_index": validation_result.streams_index}
+    if validation_result.check is not None:
+        fields["check"] = validation_result.check
+        fields["bound"] = validation_result.bound
+    return fields
+
+
+def row_count_validation_record(validation_result: Any, actual_row_count: int) -> dict[str, Any]:
+    record: dict[str, Any] = {"expected": validation_result.expected_row_count, "actual": actual_row_count}
+    record.update(stream_check_fields(validation_result))
+    expected = validation_result.expected_row_count
+    if not validation_result.is_valid:
+        return {**record, "status": "FAILED", "error": validation_result.error_message}
+    if validation_result.unvalidated:
+        record["status"] = "UNVALIDATED"
+    elif validation_result.validation_mode == ValidationMode.SKIP:
+        record["status"] = "SKIPPED"
+    elif expected not in (None, actual_row_count):
+        return {**record, "status": "SKIPPED", "warning": within_tolerance_warning(actual_row_count, expected)}
+    else:
+        return {**record, "status": "PASSED"}
+    if validation_result.warning_message:
+        record["warning"] = validation_result.warning_message
+    return record

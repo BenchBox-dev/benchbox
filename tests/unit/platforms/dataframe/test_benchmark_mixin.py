@@ -371,7 +371,10 @@ def test_tpch_reference_run_records_query_and_run_validation_evidence() -> None:
     )
 
     assert result.validation_status == "PASSED"
-    assert result.validation_details == {
+    details = dict(result.validation_details)
+    assert details.pop("stream_checks")["checks"] == {"exact": 1}
+    assert details.pop("reference_kinds")["engine_agreement"]["rows"] == 1
+    assert details == {
         "provider": "tpc_expected_row_counts",
         "benchmark": "tpch",
         "checked": 1,
@@ -379,7 +382,6 @@ def test_tpch_reference_run_records_query_and_run_validation_evidence() -> None:
         "failed": 0,
         "skipped": 0,
         "errors": 0,
-        "reference_kinds": {"tpc_answer_set": {"label": "TPC answer set", "rows": 1}},
     }
     assert result.execution_metadata["phase_status"]["validation"] == {"status": "PASSED"}
     assert build_result_payload(result)["phases"]["validation"] == {"status": "PASSED"}
@@ -387,6 +389,10 @@ def test_tpch_reference_run_records_query_and_run_validation_evidence() -> None:
         "expected": 4,
         "actual": 4,
         "status": "PASSED",
+        "check": "exact",
+        "bound": "exactly 4",
+        "seed": None,
+        "streams_index": None,
     }
 
 

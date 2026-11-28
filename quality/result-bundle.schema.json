@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://benchbox.dev/schemas/result-bundle-2.schema.json",
   "title": "BenchBox result bundle",
-  "result_schema_version": "2.6",
+  "result_schema_version": "2.7",
   "description": "Compatibility promise for major version 2. Within major version 2 the schema changes only in ways that keep every bundle that was valid under an earlier 2.x version valid: new optional keys, new optional blocks, and new enum values on fields that consumers are told to treat as open. Such a change raises the minor version (2.5 to 2.6) and is published at this same URL. A change that removes or renames a required key, changes the type of an existing key, narrows an accepted value set, or changes the meaning of an existing key requires major version 3, which is published at a new URL with a 3 in its name; this URL keeps serving major version 2. Consumers of major version 2 must ignore keys they do not recognise and must not rely on key order. Checks the BenchBox validator (SchemaV2Validator) enforces that JSON Schema cannot express and that this schema therefore omits: row_count_validation.actual must equal the query's rows, and a PASSED row_count_validation with an integer expected must have equal expected and actual (both compare two values in the instance); the validator matches row_count_validation.status case-insensitively while this schema lists only the normalised upper-case form; JSON Schema cannot tell 2 from 2.0, while the validator rejects a float for run.timing_method (including the net-estimate check), request_count, result_bytes and platform_timing.requests[].attempt; row_count_validation.expected and actual are the reverse, because the validator also coerces integral floats and numeric strings while this schema requires JSON integers; the vendor publication rules over provenance (a free or trial plan_tier or any preview_features entry needs vendor_permission, preview_features are refused outright for Databricks, self_run must not be false for BigQuery, vendor_notice needs sent_on and reference on the platforms whose terms require notice) depend on the platform name and are enforced by the validator only.",
   "type": "object",
   "required": [
@@ -736,9 +736,53 @@
                   "warning": {
                     "type": "string",
                     "maxLength": 500
+                  },
+                  "check": {
+                    "enum": [
+                      "exact",
+                      "invariant",
+                      "never_empty",
+                      "range",
+                      "structural"
+                    ]
+                  },
+                  "bound": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "seed": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "streams_index": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   }
                 },
-                "additionalProperties": false
+                "additionalProperties": false,
+                "dependentRequired": {
+                  "check": [
+                    "bound"
+                  ],
+                  "bound": [
+                    "check"
+                  ]
+                }
               },
               {
                 "type": "null"
@@ -756,7 +800,8 @@
         "2.3",
         "2.4",
         "2.5",
-        "2.6"
+        "2.6",
+        "2.7"
       ],
       "description": "Result schema version of this bundle. Legacy bundles may carry it as 'version' alone."
     },
@@ -831,6 +876,89 @@
     "tables": {},
     "tpc_compliant": {},
     "tuning": {},
+    "validation": {
+      "type": "object",
+      "required": [
+        "stream_checks"
+      ],
+      "properties": {
+        "stream_checks": {
+          "type": "object",
+          "required": [
+            "references",
+            "checks"
+          ],
+          "properties": {
+            "references": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "benchmark",
+                  "data_stamp",
+                  "file",
+                  "query_generation_hash",
+                  "sample_draws",
+                  "scale_factor",
+                  "sha256"
+                ],
+                "properties": {
+                  "benchmark": {
+                    "enum": [
+                      "tpcds",
+                      "tpch"
+                    ]
+                  },
+                  "scale_factor": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "file": {
+                    "type": "string",
+                    "pattern": "\\S"
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "data_stamp": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "query_generation_hash": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "sample_draws": {
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "checks": {
+              "type": "object",
+              "propertyNames": {
+                "enum": [
+                  "exact",
+                  "invariant",
+                  "never_empty",
+                  "range",
+                  "structural"
+                ]
+              },
+              "additionalProperties": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
     "version": {
       "enum": [
         "2.0",
@@ -839,7 +967,8 @@
         "2.3",
         "2.4",
         "2.5",
-        "2.6"
+        "2.6",
+        "2.7"
       ],
       "description": "Legacy spelling of result_schema_version; must match it when both are present."
     }
@@ -1109,6 +1238,98 @@
                   "2.2",
                   "2.3",
                   "2.4",
+                  "2.5",
+                  "2.6"
+                ]
+              }
+            }
+          },
+          {
+            "not": {
+              "required": [
+                "result_schema_version"
+              ]
+            },
+            "required": [
+              "version"
+            ],
+            "properties": {
+              "version": {
+                "enum": [
+                  "2.0",
+                  "2.1",
+                  "2.2",
+                  "2.3",
+                  "2.4",
+                  "2.5",
+                  "2.6"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "then": {
+        "properties": {
+          "queries": {
+            "items": {
+              "properties": {
+                "row_count_validation": {
+                  "not": {
+                    "anyOf": [
+                      {
+                        "required": [
+                          "bound"
+                        ]
+                      },
+                      {
+                        "required": [
+                          "check"
+                        ]
+                      },
+                      {
+                        "required": [
+                          "seed"
+                        ]
+                      },
+                      {
+                        "required": [
+                          "streams_index"
+                        ]
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "validation"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "if": {
+        "anyOf": [
+          {
+            "required": [
+              "result_schema_version"
+            ],
+            "properties": {
+              "result_schema_version": {
+                "enum": [
+                  "2.0",
+                  "2.1",
+                  "2.2",
+                  "2.3",
+                  "2.4",
                   "2.5"
                 ]
               }
@@ -1166,7 +1387,8 @@
                 "enum": [
                   "2.4",
                   "2.5",
-                  "2.6"
+                  "2.6",
+                  "2.7"
                 ]
               }
             }
@@ -1185,7 +1407,8 @@
                 "enum": [
                   "2.4",
                   "2.5",
-                  "2.6"
+                  "2.6",
+                  "2.7"
                 ]
               }
             }
@@ -1509,6 +1732,26 @@
         "properties": {
           "version": {
             "const": "2.6"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "result_schema_version",
+          "version"
+        ],
+        "properties": {
+          "result_schema_version": {
+            "const": "2.7"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "version": {
+            "const": "2.7"
           }
         }
       }

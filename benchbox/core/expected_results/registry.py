@@ -19,7 +19,6 @@ class LoadOutcome(str, Enum):
     HIT = "hit"
     NO_ANSWER_SET = "no_answer_set"
     ANSWER_FILES_MISSING = "answer_files_missing"
-    STREAM_NOT_REFERENCE_VALIDATED = "stream_not_reference_validated"
     PROVIDER_FAILED = "provider_failed"
     PROVIDER_TIMEOUT = "provider_timeout"
     QUERY_NOT_FOUND = "query_not_found"
@@ -70,7 +69,7 @@ class ExpectedResultsRegistry:
         if missing_files:
             return None, LoadOutcome.ANSWER_FILES_MISSING
 
-        if benchmark_results is None and sf != 1.0 and not (stream_id and stream_id > 0):
+        if benchmark_results is None and sf != 1.0:
             logger.debug(
                 f"No expected results at SF={sf} for benchmark '{benchmark_name}'. "
                 f"Trying SF=1.0 for scale-independent queries..."
@@ -98,13 +97,6 @@ class ExpectedResultsRegistry:
                 f"Validation will be skipped for this query."
             )
             return None, LoadOutcome.NO_ANSWER_SET
-
-        if stream_id is not None and stream_id > 0 and benchmark_key in ("tpch", "tpcds"):
-            streams = benchmark_results.stream_results or {}
-            if stream_id not in streams:
-                return None, LoadOutcome.STREAM_NOT_REFERENCE_VALIDATED
-            expected_result = streams[stream_id].get(query_id)
-            return (expected_result, LoadOutcome.HIT) if expected_result else (None, LoadOutcome.QUERY_NOT_FOUND)
 
         expected_result = benchmark_results.get_expected_result(query_id)
         if expected_result is None:

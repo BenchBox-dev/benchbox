@@ -15,8 +15,14 @@ if TYPE_CHECKING:
 DURATION_CONSISTENCY_TOLERANCE_MS = 1.0
 ROW_COUNT_VALIDATION_MESSAGE_MAX_CHARS = 500
 ROW_COUNT_VALIDATION_STATUSES = frozenset({"PASSED", "FAILED", "SKIPPED", "UNVALIDATED", "ERROR"})
-ROW_COUNT_VALIDATION_FIELDS = frozenset({"status", "expected", "actual", "error", "warning"})
+ROW_COUNT_VALIDATION_FIELDS = frozenset(
+    {"status", "expected", "actual", "error", "warning", "check", "bound", "seed", "streams_index"}
+)
 ROW_COUNT_VALIDATION_REQUIRED_FIELDS = frozenset({"status", "expected", "actual"})
+ROW_COUNT_VALIDATION_STREAM_FIELDS = frozenset({"check", "bound", "seed", "streams_index"})
+ROW_COUNT_VALIDATION_CHECKS = frozenset({"exact", "invariant", "range", "never_empty", "structural"})
+ROW_COUNT_VALIDATION_COUNT_CHECKS = frozenset({"exact", "invariant"})
+ROW_COUNT_VALIDATION_BOUND_MAX_CHARS = 120
 
 COMPACT_V2_QUERY_FIELDS = frozenset(
     {
@@ -345,6 +351,96 @@ def normalize_fetch_mode(value: Any) -> str | None:
         raise QueryExecutionContractError(str(exc)) from exc
 
 
+STREAM_CHECKS_BENCHMARKS = frozenset({"tpch", "tpcds"})
+STREAM_CHECKS_REFERENCE_FIELDS = frozenset(
+    {"benchmark", "scale_factor", "file", "sha256", "data_stamp", "query_generation_hash", "sample_draws"}
+)
+_HEX_64 = frozenset("0123456789abcdef")
+
+
+def _is_sha256(value: Any) -> bool:
+    return isinstance(value, str) and len(value) == 64 and set(value) <= _HEX_64
+
+
+def normalize_stream_checks(value: Any) -> dict[str, Any]:
+    if not isinstance(value, Mapping) or set(value) != {"references", "checks"}:
+        raise QueryExecutionContractError("validation.stream_checks must hold exactly references and checks")
+    references = value["references"]
+    if not isinstance(references, list):
+        raise QueryExecutionContractError("validation.stream_checks.references must be a list")
+    normalized_references = []
+    for reference in references:
+        if not isinstance(reference, Mapping) or set(reference) != STREAM_CHECKS_REFERENCE_FIELDS:
+            raise QueryExecutionContractError(
+                f"validation.stream_checks.references entries must hold {sorted(STREAM_CHECKS_REFERENCE_FIELDS)}"
+            )
+        scale = reference["scale_factor"]
+        if (
+            reference["benchmark"] not in STREAM_CHECKS_BENCHMARKS
+            or isinstance(scale, bool)
+            or not isinstance(scale, int | float)
+            or scale <= 0
+            or not isinstance(reference["file"], str)
+            or not reference["file"]
+            or not _is_sha256(reference["sha256"])
+            or not _is_sha256(reference["data_stamp"])
+            or not _is_sha256(reference["query_generation_hash"])
+            or isinstance(reference["sample_draws"], bool)
+            or not isinstance(reference["sample_draws"], int)
+            or reference["sample_draws"] < 1
+        ):
+            raise QueryExecutionContractError("validation.stream_checks.references entry is malformed")
+        normalized_references.append(dict(reference))
+    checks = value["checks"]
+    if not isinstance(checks, Mapping) or not set(checks) <= ROW_COUNT_VALIDATION_CHECKS:
+        raise QueryExecutionContractError("validation.stream_checks.checks must count known check kinds")
+    if any(isinstance(count, bool) or not isinstance(count, int) or count < 1 for count in checks.values()):
+        raise QueryExecutionContractError("validation.stream_checks.checks counts must be positive integers")
+    return {"references": normalized_references, "checks": dict(checks)}
+
+
+def _normalize_stream_check_fields(value: Mapping[str, Any]) -> dict[str, Any]:
+    fields: dict[str, Any] = {}
+    if "check" in value:
+        if value["check"] not in ROW_COUNT_VALIDATION_CHECKS:
+            raise QueryExecutionContractError(f"Unknown row_count_validation.check: {value['check']!r}")
+        bound = value.get("bound")
+        if not isinstance(bound, str) or not bound or len(bound) > ROW_COUNT_VALIDATION_BOUND_MAX_CHARS:
+            raise QueryExecutionContractError(
+                f"row_count_validation.bound must be a non-empty string of at most "
+                f"{ROW_COUNT_VALIDATION_BOUND_MAX_CHARS} characters when check is present"
+            )
+        fields["check"] = value["check"]
+        fields["bound"] = bound
+    elif "bound" in value:
+        raise QueryExecutionContractError("row_count_validation.bound requires row_count_validation.check")
+    for name in ("seed", "streams_index"):
+        if name in value:
+            raw = value[name]
+            if raw is not None and (isinstance(raw, bool) or not isinstance(raw, int) or raw < 0):
+                raise QueryExecutionContractError(f"row_count_validation.{name} must be a non-negative integer or null")
+            fields[name] = raw
+    return fields
+
+
+def _normalize_passed_status(status: str, check: str | None, counts: dict[str, int | None]) -> tuple[str, bool]:
+    if status != "PASSED":
+        return status, False
+    if check in ("range", "never_empty"):
+        if counts["expected"] is not None:
+            raise QueryExecutionContractError(f"PASSED {check} row_count_validation must not carry an expected count")
+        return status, False
+    if check == "structural":
+        raise QueryExecutionContractError("a structural check alone cannot pass row_count_validation")
+    if counts["expected"] is None:
+        return "SKIPPED", True
+    if counts["actual"] != counts["expected"]:
+        raise QueryExecutionContractError(
+            "PASSED row_count_validation requires equal integer expected and actual counts"
+        )
+    return status, False
+
+
 def normalize_row_count_validation(value: Any, *, rows_returned: int | None) -> dict[str, Any] | None:
     if value is None:
         return None
@@ -376,15 +472,10 @@ def normalize_row_count_validation(value: Any, *, rows_returned: int | None) -> 
         raise QueryExecutionContractError(
             f"row_count_validation.actual ({counts['actual']!r}) must match rows_returned ({rows_returned!r})"
         )
-    range_checked = status == "PASSED" and counts["expected"] is None
-    if range_checked:
-        status = "SKIPPED"
-    elif status == "PASSED" and counts["actual"] != counts["expected"]:
-        raise QueryExecutionContractError(
-            "PASSED row_count_validation requires equal integer expected and actual counts"
-        )
+    stream_fields = _normalize_stream_check_fields(value)
+    status, range_checked = _normalize_passed_status(status, stream_fields.get("check"), counts)
 
-    normalized: dict[str, Any] = {"status": status, **counts}
+    normalized: dict[str, Any] = {"status": status, **counts, **stream_fields}
     for field in ("error", "warning"):
         if field not in value:
             continue

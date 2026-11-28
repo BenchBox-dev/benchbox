@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from benchbox.core.errors import PlanCaptureError, SerializationError
+from benchbox.core.expected_results.models import row_count_validation_record
 from benchbox.core.results.builder import (
     _BENCHMARK_FAMILY,
     normalize_benchmark_id,
@@ -33,7 +34,6 @@ from benchbox.core.results.query_plan_models import (
     DEFAULT_RAW_OUTPUT_MAX_BYTES,
     DEFAULT_RAW_OUTPUT_POLICY,
 )
-from benchbox.core.results.query_status import within_tolerance_warning
 from benchbox.core.results.timer_scope import excluded_from_query_timer
 from benchbox.platforms.base.models import (
     MaintenanceOperation,
@@ -71,26 +71,6 @@ def materialized_result_validation(validator: MaterializedResultValidator) -> It
 
 def materialized_result_validation_active() -> bool:
     return _MATERIALIZED_RESULT_VALIDATOR.get() is not None
-
-
-def row_count_validation_record(validation_result: Any, actual_row_count: int) -> dict[str, Any]:
-    from benchbox.core.expected_results.models import ValidationMode
-
-    record: dict[str, Any] = {"expected": validation_result.expected_row_count, "actual": actual_row_count}
-    expected = validation_result.expected_row_count
-    if not validation_result.is_valid:
-        return {**record, "status": "FAILED", "error": validation_result.error_message}
-    if validation_result.unvalidated:
-        record["status"] = "UNVALIDATED"
-    elif validation_result.validation_mode == ValidationMode.SKIP:
-        record["status"] = "SKIPPED"
-    elif expected not in (None, actual_row_count):
-        return {**record, "status": "SKIPPED", "warning": within_tolerance_warning(actual_row_count, expected)}
-    else:
-        return {**record, "status": "PASSED"}
-    if validation_result.warning_message:
-        record["warning"] = validation_result.warning_message
-    return record
 
 
 def apply_materialized_result_validation(

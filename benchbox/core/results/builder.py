@@ -445,6 +445,13 @@ class ResultBuilder:
             ),
             failed_queries=len(failed_queries),
         )
+        from benchbox.core.validation.stream_checks import stream_checks_record
+
+        stream_checks = stream_checks_record(
+            normalize_benchmark_id(self._benchmark.name), self._benchmark.scale_factor, query_results_list
+        )
+        if stream_checks is not None:
+            self._validation_details = {**(self._validation_details or {}), "stream_checks": stream_checks}
         if rolled_status == "FAILED" or validation_status == "PASSED":
             validation_status = rolled_status
             if rolled_status == NO_REFERENCE_VALIDATION_STATUS:

@@ -6,10 +6,11 @@ import re
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from benchbox.core.expected_results.models import row_count_validation_record
 from benchbox.core.results.timer_scope import REQUEST_KIND_QUERY, RequestLedger, excluded_from_query_timer
 from benchbox.core.tuning.introspection import has_order_by_clause
 from benchbox.platforms.base.arrow_result import fetch_result
-from benchbox.platforms.base.result_capture import row_count_validation_record, strip_leading_sql_comments
+from benchbox.platforms.base.result_capture import strip_leading_sql_comments
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.cloud_storage import get_cloud_path_info, is_cloud_path
 from benchbox.utils.dialect_utils import translate_ddl
