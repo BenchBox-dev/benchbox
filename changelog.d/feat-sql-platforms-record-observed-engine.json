@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "added",
+      "breaking": false,
+      "text": "Databricks SQL, pg_duckdb and Velox results now record which execution engine actually ran the timed queries (Photon, DuckDB, Velox or standard), read from each query's own Query History metrics or plan, and say why when no evidence was available."
+    }
+  ]
+}

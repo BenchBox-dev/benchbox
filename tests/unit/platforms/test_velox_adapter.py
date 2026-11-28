@@ -576,9 +576,7 @@ class TestVeloxPlatformInfo:
         info = adapter.get_platform_info(connection=mock_spark)
 
         assert info["velox_active"] is True
-        receipt = info["configuration"]["execution_engine"]
-        assert receipt["observed"] == "velox"
-        assert receipt["observed_source"] == "explain"
+        assert info["configuration"]["execution_engine"]["observed"] == "not_captured"
 
     def test_velox_active_probe_false_without_velox_nodes(self, mock_pyspark):
         from benchbox.platforms.velox import VeloxAdapter
@@ -593,9 +591,7 @@ class TestVeloxPlatformInfo:
         info = adapter.get_platform_info(connection=mock_spark)
 
         assert info["velox_active"] is False
-        receipt = info["configuration"]["execution_engine"]
-        assert receipt["observed"] == "standard"
-        assert receipt["observed_source"] == "explain"
+        assert info["configuration"]["execution_engine"]["observed"] == "not_captured"
 
 
 class TestVeloxQueryPlan:
