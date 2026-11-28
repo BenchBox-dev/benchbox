@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from types import MappingProxyType
@@ -10,6 +11,8 @@ from benchbox.core.platform_manifest import (
     EXECUTION_ENGINE_CLASSES,
     get_all_platform_aliases,
 )
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from benchbox.core.platform_registry import ExecutionEngineCapability
@@ -121,14 +124,75 @@ class ObservationNotRecognizedError(Exception):
     pass
 
 
+@dataclass(frozen=True)
+class QueryObservationTarget:
+    connection: Any
+    query: str
+    query_id: str
+    statement_ids: tuple[str, ...] = ()
+    evidence: Any = None
+
+
 class ExecutionEngineHook:
     OBSERVED_ENGINE_SOURCE: ObservedSource = "none"
+    OBSERVATION_AT_RUN_END: bool = False
 
     def engine_observation_gap(self) -> str | None:
         return None
 
     def observe_execution_engine(self, lazy: Any) -> str | None:
         return None
+
+    def record_query_engine_observation(
+        self, connection: Any, query: str, query_id: str, statement_ids: Sequence[str] = ()
+    ) -> None:
+        if self.OBSERVED_ENGINE_SOURCE == "none" or self.engine_observation_gap() is not None:
+            return
+        target = QueryObservationTarget(connection, query, query_id, tuple(statement_ids))
+        if self.OBSERVATION_AT_RUN_END:
+            targets = getattr(self, "_engine_targets", None)
+            if targets is None:
+                targets = self._engine_targets = []
+            targets.append(target)
+            return
+        observations = getattr(self, "_engine_observations", None)
+        if observations is None:
+            observations = self._engine_observations = []
+        observations.append(self._observe_target(target))
+
+    def observe_run_end_targets(self, targets: Sequence[QueryObservationTarget]) -> list[str | None]:
+        return [self._observe_target(target) for target in targets]
+
+    def _observe_target(self, target: QueryObservationTarget) -> str | None:
+        from benchbox.core.results.timer_scope import outside_query_timer
+
+        try:
+            with outside_query_timer():
+                return self.observe_execution_engine(target)
+        except ObservationNotRecognizedError as exc:
+            logger.debug("Engine observation not recognized: %s", exc)
+            self._unrecognized_observations = getattr(self, "_unrecognized_observations", 0) + 1
+        except Exception as exc:
+            logger.debug("Engine observation failed: %s", exc)
+        return None
+
+    def finalize_query_engine_observation(self, receipt: Mapping[str, Any]) -> dict[str, Any]:
+        recorded = dict(receipt)
+        if self.OBSERVED_ENGINE_SOURCE == "none":
+            return recorded
+        if self.OBSERVATION_AT_RUN_END:
+            self._engine_observations = self.observe_run_end_targets(getattr(self, "_engine_targets", []))
+        observations = getattr(self, "_engine_observations", [])
+        gap = self.engine_observation_gap()
+        summary = summarize_observed_engines(
+            ExecutionEngineReceipt(**recorded), observations, self.OBSERVED_ENGINE_SOURCE, unavailable=gap
+        )
+        reason = summary.observed_reason
+        unrecognized = getattr(self, "_unrecognized_observations", 0)
+        if unrecognized and gap is None and summary.observed == NOT_CAPTURED:
+            reason = f"query evidence not recognized for {unrecognized} of {len(observations)} queries"
+        recorded.update(observed=summary.observed, observed_source=summary.observed_source, observed_reason=reason)
+        return recorded
 
     def resolve_execution_engine(self, requested: str) -> ExecutionEngineReceipt:
         return platform_default_receipt(str(getattr(self, "platform_name", type(self).__name__)), requested)
@@ -165,6 +229,7 @@ __all__ = [
     "ExecutionEngineResolution",
     "ExecutionEngineUnavailableError",
     "ObservedSource",
+    "QueryObservationTarget",
     "UnsupportedExecutionEngineError",
     "platform_default_receipt",
     "reject_engine_bypassing_benchmark",

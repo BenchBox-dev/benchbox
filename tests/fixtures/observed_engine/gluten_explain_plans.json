@@ -1,0 +1,13 @@
+{
+  "source": "Plan shapes follow the Gluten Velox backend documentation (https://apache.github.io/gluten/backends/velox/get-started/Velox.html): offloaded operators are *ExecTransformer nodes under VeloxColumnarToRowExec, a fallback shows GlutenRowToArrowColumnar or a vanilla ColumnarToRow, and AQE must be disabled for Gluten to validate the plan before execution.",
+  "plans": {
+    "offloaded": "== Parsed Logical Plan ==\nAggregate [count(1)]\n\n== Physical Plan ==\nVeloxColumnarToRowExec\n+- ^ RegularHashAggregateExecTransformer\n   +- ^ FileSourceScanExecTransformer parquet",
+    "vanilla": "== Parsed Logical Plan ==\nAggregate [count(1)]\n\n== Physical Plan ==\n*(1) HashAggregate(keys=[], functions=[count(1)])\n+- *(1) ColumnarToRow\n   +- FileScan parquet",
+    "fallback": "== Physical Plan ==\nVeloxColumnarToRowExec\n+- ^ ProjectExecTransformer\n   +- GlutenRowToArrowColumnar\n      +- Scan hive default.table",
+    "vanilla_transition_under_native": "== Physical Plan ==\nVeloxColumnarToRowExec\n+- ^ ProjectExecTransformer\n   +- RowToColumnar\n      +- Scan csv",
+    "adaptive_not_yet_planned": "== Physical Plan ==\nAdaptiveSparkPlan isFinalPlan=false\n+- HashAggregate(keys=[], functions=[count(1)])\n   +- FileScan parquet",
+    "adaptive_with_offload": "== Physical Plan ==\nAdaptiveSparkPlan isFinalPlan=false\n+- VeloxColumnarToRowExec\n   +- ^ RegularHashAggregateExecTransformer",
+    "no_physical_section": "== Parsed Logical Plan ==\nAggregate [count(1)]",
+    "empty_physical_section": "== Physical Plan =="
+  }
+}
