@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "Ship the TPC-DI incremental-update SQL files in the wheel alongside the ingest and historical SQL"
+}
