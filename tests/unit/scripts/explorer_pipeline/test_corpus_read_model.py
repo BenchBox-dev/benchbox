@@ -227,11 +227,13 @@ def test_a_partial_result_enters_both_the_power_and_the_throughput_cohort(tmp_pa
     db = _build(tmp_path, {"partial": _partial_run("partial")})
 
     with duckdb.connect(str(db), read_only=True) as con:
-        corpus_class, lanes = con.execute("SELECT corpus_class, corpus_lanes FROM results").fetchone()
+        result_row = con.execute("SELECT corpus_class, corpus_lanes FROM results").fetchone()
         phases = con.execute("SELECT phase, rank FROM benchmark_rankings ORDER BY phase").fetchall()
         scores = con.execute("SELECT lane, score IS NOT NULL FROM result_lane_scores ORDER BY lane").fetchall()
         lanes_of_medians = con.execute("SELECT lane FROM identity_medians ORDER BY lane").fetchall()
 
+    assert result_row is not None
+    corpus_class, lanes = result_row
     assert corpus_class == corpus_rule.CLASS_PARTIAL
     assert json.loads(lanes) == [corpus_rule.LANE_POWER_ONLY, corpus_rule.LANE_THROUGHPUT]
     assert phases == [("power", 1), ("throughput", 1)]
@@ -327,6 +329,7 @@ def test_labels_and_identity_come_from_the_rule_modules(tmp_path: Path) -> None:
             "row_count_evidence_label, iteration_label FROM results"
         ).fetchone()
 
+    assert row is not None
     labels, identity, version, is_release, observed, row_counts, iterations = row
     assert json.loads(labels) == [
         "Derived from TPC-H. These results do not comply with the TPC-H Specification "

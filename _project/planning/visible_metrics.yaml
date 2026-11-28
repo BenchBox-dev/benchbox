@@ -327,7 +327,7 @@ metrics:
   - table: results
     column: iteration_label
     kind: derived
-    canonical_ref: "_project.scripts.explorer_pipeline.corpus_outcome.iteration_label"
+    canonical_ref: "_project.scripts.explorer_pipeline.corpus_outcome.corpus_columns"
     tolerance: 0
     display_surfaces: [benchmark_index, result_detail]
     notes: "'Single iteration' when fewer than three measured iterations back the timings; null otherwise"
