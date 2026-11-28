@@ -10,7 +10,7 @@ from benchbox.core.expected_results.ssb_results import ssb_expected_row_counts
 from benchbox.core.results.query_status import (
     NO_REFERENCE_REASON,
     NO_REFERENCE_VALIDATION_STATUS,
-    unevidenced_validation_status,
+    row_evidence_roll_up,
 )
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
@@ -140,11 +140,7 @@ def test_dataframe_and_sql_runs_without_a_reference_record_the_same_status_and_r
 
     summary = validate_dataframe_query_results([measurement], benchmark_name=benchmark_name, scale_factor=scale_factor)
 
-    assert (
-        summary.status
-        == unevidenced_validation_status(sql_rows, reference_exists=False)
-        == NO_REFERENCE_VALIDATION_STATUS
-    )
+    assert summary.status == row_evidence_roll_up(sql_rows, reference_exists=False)[0] == NO_REFERENCE_VALIDATION_STATUS
     assert summary.details["reason"] == NO_REFERENCE_REASON
     assert measurement["row_count_validation"]["status"] == "UNVALIDATED"
     assert measurement["row_count_validation"]["warning"] == NO_REFERENCE_REASON
@@ -198,7 +194,7 @@ def test_missing_row_count_is_a_failed_success_contract() -> None:
     assert summary.status == "FAILED"
     assert summary.details["errors"] == 1
     assert measurement["status"] == "FAILED"
-    assert measurement["row_count_validation"]["status"] == "ERROR"
+    assert measurement["row_count_validation"]["status"] == "FAILED"
 
 
 def test_oracle_error_makes_the_run_uncertain_without_condemning_the_result() -> None:

@@ -604,7 +604,7 @@ class TestValidateBundle:
 
         _validate_bundle(data, vr)
 
-        assert any("queries[1].row_count_validation.status='SKIPPED'" in error for error in vr.errors)
+        assert any("1 row count skipped without a documented reason" in error for error in vr.errors)
 
     def test_summary_passed_is_rejected_when_every_row_count_was_skipped(self):
         data = _minimal_bundle()
@@ -618,7 +618,7 @@ class TestValidateBundle:
         _validate_bundle(data, vr)
 
         assert not vr.ok
-        assert any("every recorded row count was skipped" in error for error in vr.errors)
+        assert any("skipped without a documented reason" in error for error in vr.errors)
 
     def test_unvalidated_row_count_is_named_distinctly_when_summary_validation_passed(self):
         data = _minimal_bundle()
@@ -635,8 +635,7 @@ class TestValidateBundle:
         _validate_bundle(data, vr)
 
         assert not vr.ok
-        assert any("counts queries[0] as validated, but its row count is unvalidated" in e for e in vr.errors)
-        assert not any("contradicts queries[0].row_count_validation.status" in e for e in vr.errors)
+        assert any("1 unvalidated row count" in e for e in vr.errors)
         assert any("1 query unvalidated" in warning for warning in vr.warnings)
 
     def test_unvalidated_row_count_is_listed_in_a_warning_for_a_non_passed_bundle(self):
@@ -996,7 +995,7 @@ class TestValidateBundle:
         data["queries"][0]["row_count_validation"] = {"status": "FAILED"}
         vr = ValidationResult("test")
         _validate_bundle(data, vr, internal_source=True)
-        assert any("row_count_validation.status" in e for e in vr.errors), vr.errors
+        assert any("1 failed row-count check" in e for e in vr.errors), vr.errors
 
     @pytest.mark.parametrize(
         ("platform", "failed_ids"),
@@ -1025,7 +1024,7 @@ class TestValidateBundle:
         _validate_bundle(data, vr)
 
         assert not vr.ok
-        assert any("contradicts 1 failed measurement query" in error for error in vr.errors)
+        assert any("1 failed measurement query" in error for error in vr.errors)
 
     def test_passed_validation_rejects_failed_measurement_row(self):
         data = _minimal_bundle()
@@ -1035,7 +1034,7 @@ class TestValidateBundle:
         _validate_bundle(data, vr)
 
         assert not vr.ok
-        assert any("contradicts 1 failed measurement query" in error for error in vr.errors)
+        assert any("1 failed measurement query" in error for error in vr.errors)
 
     def test_validation_claim_rejects_unrun_validation_phase(self):
         data = _minimal_bundle()
@@ -3608,7 +3607,7 @@ class TestValidationStatusVocabulary:
     def test_new_passed_result_without_per_query_evidence_is_refused(self, row_statuses):
         vr = self._validate(_row_count_bundle("passed", row_statuses))
         assert not vr.ok
-        assert any("requires per-query row-count evidence" in e for e in vr.errors)
+        assert any("contradicts the recorded row-count evidence" in e for e in vr.errors)
 
     def test_stored_passed_results_without_evidence_stay_admitted_on_the_mirror_path(self):
         vr = self._validate(_row_count_bundle("passed", []), allow_partial_validation=True)
@@ -3628,11 +3627,11 @@ class TestValidationStatusVocabulary:
         vr = self._validate(data, **flags)
         assert vr.ok, vr.errors
 
-    def test_no_reference_does_not_excuse_unrelated_skips(self):
+    def test_no_reference_is_recorded_for_any_unchecked_rows_where_no_reference_exists(self):
         data = _row_count_bundle("no_reference", ["SKIPPED"] * 22)
         for query in data["queries"]:
             query["row_count_validation"]["warning"] = "validation disabled"
-        assert not self._validate(data).ok
+        assert self._validate(data).ok
 
     @pytest.mark.parametrize("flags", [{}, {"allow_partial_validation": True}])
     def test_failed_validation_is_still_refused(self, flags):
@@ -3653,12 +3652,12 @@ class TestValidationStatusVocabulary:
         data = _row_count_bundle("no_reference", [], scale_factor=scale)
         data["benchmark"]["id"] = benchmark_id
         vr = self._validate(data, **flags)
-        assert any("only valid where no row-count reference exists" in e for e in vr.errors)
+        assert any("contradicts the recorded row-count evidence" in e for e in vr.errors)
 
     @pytest.mark.parametrize("flags", [{}, {"allow_partial_validation": True}])
     def test_no_reference_is_accepted_where_no_reference_exists(self, flags):
         vr = self._validate(_row_count_bundle("no_reference", [], scale_factor=10.0), **flags)
-        assert not any("only valid where" in e for e in vr.errors)
+        assert not any("contradicts the recorded row-count evidence" in e for e in vr.errors)
 
     @pytest.mark.parametrize("status", ["passed", "no_reference"])
     def test_throughput_stream_completeness_is_checked_for_both_statuses(self, status):

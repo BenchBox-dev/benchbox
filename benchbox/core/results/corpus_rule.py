@@ -643,18 +643,7 @@ def _gateway_routed(data: Mapping[str, Any]) -> bool:
 
 
 def row_counts_checked(data: Mapping[str, Any]) -> bool:
-    queries = data.get("queries")
-    statuses: list[str] = []
-    for query in queries if isinstance(queries, list) else ():
-        if (
-            not isinstance(query, Mapping)
-            or str(query.get("run_type") or "measurement").strip().lower() != "measurement"
-        ):
-            continue
-        evidence = query.get("row_count_validation")
-        status = evidence.get("status") if isinstance(evidence, Mapping) else None
-        statuses.append(str(status or "").strip().upper())
-    return "PASSED" in statuses and "UNVALIDATED" not in statuses
+    return _QUERY_STATUS.row_counts_checked(data.get("queries"))
 
 
 def _status_text(value: Any) -> str | None:

@@ -7,7 +7,7 @@ from benchbox.core.expected_results.registry import ExpectedResultsRegistry, Loa
 from benchbox.core.results.query_status import (
     NO_REFERENCE_VALIDATION_STATUS,
     NOT_VALIDATED_VALIDATION_STATUS,
-    unevidenced_validation_status,
+    row_evidence_roll_up,
 )
 from benchbox.core.validation.query_validation import QueryValidator
 
@@ -69,7 +69,7 @@ def test_missing_answer_files_record_a_skipped_row_and_the_not_validated_run_sta
     assert result.is_valid
     assert not result.unvalidated
     assert "not installed" in (result.warning_message or "")
-    assert unevidenced_validation_status([row], reference_exists=True) == NOT_VALIDATED_VALIDATION_STATUS
+    assert row_evidence_roll_up([row], reference_exists=True)[0] == NOT_VALIDATED_VALIDATION_STATUS
 
 
 def test_no_reference_at_a_scale_records_an_unvalidated_row_and_the_no_reference_run_status() -> None:
@@ -80,7 +80,7 @@ def test_no_reference_at_a_scale_records_an_unvalidated_row_and_the_no_reference
     }
 
     assert result.unvalidated
-    assert unevidenced_validation_status([row], reference_exists=False) == NO_REFERENCE_VALIDATION_STATUS
+    assert row_evidence_roll_up([row], reference_exists=False)[0] == NO_REFERENCE_VALIDATION_STATUS
 
 
 def test_a_reference_present_validates_normally() -> None:
@@ -109,8 +109,8 @@ def test_positive_stream_can_have_its_own_reference() -> None:
 
 def test_skipped_rows_without_reference_are_no_reference() -> None:
     rows = [{"row_count_validation": {"status": "SKIPPED"}}]
-    assert unevidenced_validation_status(rows, reference_exists=False) == NO_REFERENCE_VALIDATION_STATUS
-    assert unevidenced_validation_status(rows, reference_exists=True) == NOT_VALIDATED_VALIDATION_STATUS
+    assert row_evidence_roll_up(rows, reference_exists=False)[0] == NO_REFERENCE_VALIDATION_STATUS
+    assert row_evidence_roll_up(rows, reference_exists=True)[0] == NOT_VALIDATED_VALIDATION_STATUS
 
 
 def test_positive_stream_without_reference_is_unvalidated() -> None:

@@ -39,11 +39,9 @@ from benchbox.core.results.models import (
 )
 from benchbox.core.results.platform_options import build_platform_options_capture
 from benchbox.core.results.query_status import (
-    NO_REFERENCE_REASON,
     NO_REFERENCE_VALIDATION_STATUS,
-    unchecked_row_count_evidence,
-    unevidenced_validation_status,
-    unvalidated_measurement_query_ids,
+    NOT_VALIDATED_VALIDATION_STATUS,
+    row_evidence_roll_up,
 )
 from benchbox.core.runner.conversion import FormatConversionOrchestrator
 from benchbox.core.schemas import (
@@ -233,33 +231,21 @@ def _row_count_reference_exists(result: BenchmarkResults) -> bool:
 
 
 def _mark_unvalidated_queries(result: BenchmarkResults) -> BenchmarkResults:
-    status = unevidenced_validation_status(
+    status, reason = row_evidence_roll_up(
         result.query_results,
         reference_exists=_row_count_reference_exists(result),
     )
-    if status is None:
+    if status not in {NO_REFERENCE_VALIDATION_STATUS, NOT_VALIDATED_VALIDATION_STATUS}:
         return result
     if (result.validation_status or "").upper() not in {"PASSED", "WARNINGS"}:
         return result
     result.validation_status = status
     result.validation_details = result.validation_details or {}
     if status == NO_REFERENCE_VALIDATION_STATUS:
-        result.validation_details.setdefault("reason", NO_REFERENCE_REASON)
+        result.validation_details.setdefault("reason", reason)
     warnings = result.validation_details.setdefault("warnings", [])
     if isinstance(warnings, list):
-        unvalidated = unvalidated_measurement_query_ids(result.query_results)
-        if unvalidated:
-            noun = "query" if len(unvalidated) == 1 else "queries"
-            warnings.append(
-                f"{len(unvalidated)} {noun} unvalidated: {NO_REFERENCE_REASON}; "
-                "row counts were not checked and are not counted as passed."
-            )
-        elif unchecked_row_count_evidence(result.query_results):
-            warnings.append(
-                "Every recorded row count was skipped; row counts were not checked and are not counted as passed."
-            )
-        else:
-            warnings.append(f"No per-query row-count evidence: {NO_REFERENCE_REASON}.")
+        warnings.append(f"{reason}; row counts were not checked and are not counted as passed.")
     return result
 
 

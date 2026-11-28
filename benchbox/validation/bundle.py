@@ -100,9 +100,6 @@ _corpus_rule = _load_corpus_rule_module()
 MIN_THROUGHPUT_STREAMS = _corpus_rule.min_throughput_streams()
 bundle_failed_query_count = _query_status.bundle_failed_query_count
 documented_exclusions_cover_failures = _query_status.documented_exclusions_cover_failures
-unchecked_row_count_evidence = _query_status.unchecked_row_count_evidence
-has_row_count_evidence = _query_status.has_row_count_evidence
-row_count_skip_is_documented = _query_status.row_count_skip_is_documented
 
 
 def _load_timing_field_helpers():
@@ -3107,71 +3104,27 @@ def _validate_execution_consistency(
         if no_reference
         else "summary.validation='passed'"
     )
-    if status == PUBLIC_CLEAN_VALIDATION_STATUS and not allow_partial_validation:
-        if not has_row_count_evidence(data.get("queries")):
-            vr.error(
-                "summary.validation='passed' requires per-query row-count evidence "
-                "(a measurement query with row_count_validation.status='PASSED' and none unvalidated); "
-                "a run with no row-count reference records 'no_reference'"
-            )
-    if no_reference:
-        benchmark_id, scale_factor = _bundle_benchmark_id(data), _bundle_scale_factor(data)
-        if _corpus_rule.row_count_reference_exists(benchmark_id, scale_factor):
-            vr.error(
-                f"{claim} is only valid where no row-count reference exists, but a reference is recorded for "
-                f"benchmark {benchmark_id!r} at scale factor {scale_factor:g}; record 'passed' with per-query evidence"
-            )
-
-    failed = 0 if documented else bundle_failed_query_count(data)
-    if failed > 0:
-        noun = "query" if failed == 1 else "queries"
-        vr.error(f"{claim} contradicts {failed} failed measurement {noun}")
-
     queries = data.get("queries")
-    if isinstance(queries, list):
-        for i, q in enumerate(queries):
-            if not isinstance(q, dict):
-                continue
-            rcv = q.get("row_count_validation")
-            if isinstance(rcv, dict):
-                rcv_status = rcv.get("status")
-                if rcv_status == "UNVALIDATED":
-                    if not no_reference:
-                        vr.error(
-                            f"{claim} counts queries[{i}] as validated, but its row count is "
-                            "unvalidated (no reference answers for this benchmark and scale factor)"
-                        )
-                elif rcv_status is not None and not (
-                    rcv_status == "PASSED"
-                    or (
-                        rcv_status == "SKIPPED"
-                        and (
-                            row_count_skip_is_documented(rcv)
-                            or (
-                                no_reference
-                                and isinstance(rcv.get("warning"), str)
-                                and rcv["warning"].startswith(_query_status.NO_REFERENCE_REASON)
-                            )
-                        )
-                    )
-                ):
-                    vr.error(f"{claim} contradicts queries[{i}].row_count_validation.status={rcv_status!r}")
-    if (
-        isinstance(queries, list)
-        and unchecked_row_count_evidence(queries)
-        and not (
-            no_reference
-            and all(
-                isinstance(q.get("row_count_validation", {}).get("warning"), str)
-                and q["row_count_validation"]["warning"].startswith(_query_status.NO_REFERENCE_REASON)
-                for q in queries
-                if isinstance(q, dict)
-                and isinstance(q.get("row_count_validation"), dict)
-                and q["row_count_validation"].get("status") == "SKIPPED"
-            )
-        )
-    ):
-        vr.error(f"{claim} counts row counts as validated, but every recorded row count was skipped")
+    failed = 0 if documented else bundle_failed_query_count(data)
+    rolled, reason = _query_status.row_evidence_roll_up(
+        queries,
+        reference_exists=_corpus_rule.row_count_reference_exists(
+            _bundle_benchmark_id(data), _bundle_scale_factor(data)
+        ),
+        failed_queries=failed,
+    )
+    recorded = _query_status.NO_REFERENCE_VALIDATION_STATUS if no_reference else _query_status.PASSED_VALIDATION_STATUS
+    carries_evidence = isinstance(queries, list) and any(
+        isinstance(q, dict) and isinstance(q.get("row_count_validation"), dict) for q in queries
+    )
+    unevidenced_exempt = (
+        recorded == _query_status.PASSED_VALIDATION_STATUS
+        and (allow_partial_validation or documented)
+        and not carries_evidence
+        and rolled in {_query_status.NO_REFERENCE_VALIDATION_STATUS, _query_status.NOT_VALIDATED_VALIDATION_STATUS}
+    )
+    if rolled != recorded and not unevidenced_exempt:
+        vr.error(f"{claim} contradicts the recorded row-count evidence: {reason}")
     _validate_throughput_stream_completeness(data, vr)
 
 

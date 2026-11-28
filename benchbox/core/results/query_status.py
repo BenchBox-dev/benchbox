@@ -19,6 +19,9 @@ PARAMETER_SENSITIVE_REASON = "parameter sensitive"
 NO_REFERENCE_VALIDATION_STATUS = "NO_REFERENCE"
 NO_REFERENCE_REASON = "no row-count reference at this scale factor"
 NOT_VALIDATED_VALIDATION_STATUS = "NOT_VALIDATED"
+PASSED_VALIDATION_STATUS = "PASSED"
+FAILED_VALIDATION_STATUS = "FAILED"
+PARTIAL_VALIDATION_STATUS = "PARTIAL"
 DOCUMENTED_ROW_COUNT_SKIP_REASONS: tuple[str, ...] = (
     DATA_REFRESHED_REASON,
     WITHIN_TOLERANCE_REASON,
@@ -125,69 +128,64 @@ def int_or_none(value: Any) -> int | None:
     return None
 
 
-def has_failed_query_validation(query_rows: Any) -> bool:
-    if not isinstance(query_rows, list):
-        return False
-    return any(
-        isinstance(query, dict)
-        and isinstance(evidence := query.get("row_count_validation"), dict)
-        and str(evidence.get("status") or "").strip().upper() == "FAILED"
-        for query in query_rows
-    )
-
-
-def unvalidated_measurement_query_ids(query_rows: Any) -> list[str]:
+def _row_statuses(query_rows: Any) -> list[tuple[bool, str, Mapping[str, Any]]]:
     if not isinstance(query_rows, list):
         return []
-    return [
-        str(query.get("query_id") or query.get("id"))
-        for query in query_rows
-        if isinstance(query, dict)
-        and str(query.get("run_type") or "measurement").strip().lower() == "measurement"
-        and isinstance(evidence := query.get("row_count_validation"), dict)
-        and str(evidence.get("status") or "").strip().upper() == "UNVALIDATED"
-    ]
-
-
-def unchecked_row_count_evidence(query_rows: Any) -> bool:
-    if not isinstance(query_rows, list):
-        return False
-    statuses = [
-        str(evidence.get("status") or "").strip().upper()
-        for query in query_rows
-        if isinstance(query, dict)
-        and str(query.get("run_type") or "measurement").strip().lower() == "measurement"
-        and isinstance(evidence := query.get("row_count_validation"), dict)
-    ]
-    return bool(statuses) and "PASSED" not in statuses and "SKIPPED" in statuses
-
-
-def _measurement_row_count_statuses(query_rows: Any) -> list[str]:
-    if not isinstance(query_rows, list):
-        return []
-    statuses: list[str] = []
+    rows: list[tuple[bool, str, Mapping[str, Any]]] = []
     for query in query_rows:
-        if not isinstance(query, dict) or str(query.get("run_type") or "measurement").strip().lower() != "measurement":
-            continue
-        evidence = query.get("row_count_validation")
-        statuses.append(str(evidence.get("status") or "").strip().upper() if isinstance(evidence, dict) else "")
-    return statuses
+        evidence = query.get("row_count_validation") if isinstance(query, Mapping) else None
+        if isinstance(evidence, Mapping):
+            measurement = str(query.get("run_type") or "measurement").strip().lower() == "measurement"
+            rows.append((measurement, str(evidence.get("status") or "").strip().upper(), evidence))
+    return rows
 
 
-def has_row_count_evidence(query_rows: Any) -> bool:
-    statuses = _measurement_row_count_statuses(query_rows)
+def row_counts_checked(query_rows: Any) -> bool:
+    statuses = [status for measurement, status, _ in _row_statuses(query_rows) if measurement]
     return "PASSED" in statuses and "UNVALIDATED" not in statuses
 
 
-def unevidenced_validation_status(query_rows: Any, *, reference_exists: bool) -> str | None:
-    unreferenced = NOT_VALIDATED_VALIDATION_STATUS if reference_exists else NO_REFERENCE_VALIDATION_STATUS
-    if unvalidated_measurement_query_ids(query_rows):
-        return unreferenced
-    if unchecked_row_count_evidence(query_rows):
-        return unreferenced
-    if _measurement_row_count_statuses(query_rows) and not has_row_count_evidence(query_rows):
-        return unreferenced
-    return None
+def has_failed_query_validation(query_rows: Any) -> bool:
+    return any(status == "FAILED" for _, status, _ in _row_statuses(query_rows))
+
+
+def _noun(count: int, singular: str, plural: str | None = None) -> str:
+    return singular if count == 1 else plural or f"{singular}s"
+
+
+def row_evidence_roll_up(query_rows: Any, *, reference_exists: bool, failed_queries: int = 0) -> tuple[str, str]:
+    rows = _row_statuses(query_rows)
+    failed = sum(1 for _, status, _ in rows if status == "FAILED")
+    if failed:
+        return FAILED_VALIDATION_STATUS, f"{failed} failed row-count {_noun(failed, 'check')}"
+    if failed_queries > 0:
+        return (
+            PARTIAL_VALIDATION_STATUS,
+            f"{failed_queries} failed measurement {_noun(failed_queries, 'query', 'queries')}",
+        )
+    unvalidated = sum(1 for _, status, _ in rows if status == "UNVALIDATED")
+    undocumented = sum(
+        1
+        for _, status, evidence in rows
+        if status not in {"PASSED", "UNVALIDATED"}
+        and not (status == "SKIPPED" and row_count_skip_is_documented(evidence))
+    )
+    if (
+        not unvalidated
+        and not undocumented
+        and any(measurement and status == "PASSED" for measurement, status, _ in rows)
+    ):
+        return PASSED_VALIDATION_STATUS, "row counts validated"
+    if not reference_exists:
+        return NO_REFERENCE_VALIDATION_STATUS, NO_REFERENCE_REASON
+    if unvalidated:
+        return NOT_VALIDATED_VALIDATION_STATUS, f"{unvalidated} unvalidated row {_noun(unvalidated, 'count')}"
+    if undocumented:
+        return (
+            NOT_VALIDATED_VALIDATION_STATUS,
+            f"{undocumented} row {_noun(undocumented, 'count')} skipped without a documented reason",
+        )
+    return NOT_VALIDATED_VALIDATION_STATUS, "no row count was checked"
 
 
 def _query_row_failed(query: Any) -> bool:

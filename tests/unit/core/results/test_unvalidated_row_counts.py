@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from benchbox.core.results.query_execution import normalize_row_count_validation
-from benchbox.core.results.query_status import unvalidated_measurement_query_ids
+from benchbox.core.results.query_status import row_evidence_roll_up
 from benchbox.core.runner.runner import _finalize_validation_metadata, _mark_unvalidated_queries
 from tests.fixtures.result_dict_fixtures import make_benchmark_results
 
@@ -37,17 +37,6 @@ def test_unvalidated_status_is_a_valid_row_count_validation_status():
     }
 
 
-def test_unvalidated_measurement_query_ids_ignores_warmups_and_other_statuses():
-    rows = [
-        _row("1", "UNVALIDATED"),
-        _row("2", "PASSED"),
-        _row("3", "SKIPPED"),
-        _row("4", "UNVALIDATED", run_type="warmup"),
-    ]
-
-    assert unvalidated_measurement_query_ids(rows) == ["1"]
-
-
 def test_passed_run_with_unvalidated_queries_is_not_reported_as_passed():
     result = make_benchmark_results(
         validation_status="PASSED",
@@ -59,7 +48,7 @@ def test_passed_run_with_unvalidated_queries_is_not_reported_as_passed():
 
     assert finalized.validation_status == "NO_REFERENCE"
     assert finalized.validation_details["reason"] == "no row-count reference at this scale factor"
-    assert any("2 queries unvalidated" in warning for warning in finalized.validation_details["warnings"])
+    assert any("no row-count reference" in warning for warning in finalized.validation_details["warnings"])
 
 
 def test_aggregated_passed_records_do_not_restore_passed_over_unvalidated_queries():
@@ -121,14 +110,14 @@ def test_passed_run_whose_row_counts_were_all_skipped_is_not_reported_as_passed(
     assert finalized.validation_status == "NOT_VALIDATED"
 
 
-def test_passed_run_with_skipped_beside_passed_row_counts_stays_passed():
+def test_passed_run_with_an_undocumented_skip_beside_passed_row_counts_is_not_reported_as_passed():
     result = make_benchmark_results(
         validation_status="PASSED",
         validation_details={"row_count_matches": True},
         query_results=[_row("1", "PASSED"), _row("2", "SKIPPED")],
     )
 
-    assert _finalize_validation_metadata(result, []).validation_status == "PASSED"
+    assert _finalize_validation_metadata(result, []).validation_status == "NO_REFERENCE"
 
 
 @pytest.mark.parametrize(
