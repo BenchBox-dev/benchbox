@@ -1,0 +1,26 @@
+{
+  "acceptance": [
+    "Root cause of SSB not_validated is recorded in context.",
+    "A local SSB SF 0.1 DuckDB power run reports summary.validation passed and stages with stage_seed_corpus_bundle.py.",
+    "A regression test covering SSB validation status is merged.",
+    "The owner's decision on failing or warning when a seed cell is skipped as ineligible is recorded, and implemented if chosen.",
+    "After the next scheduled seed run, the six SSB cells appear in the corpus PR."
+  ],
+  "context": "Found while verifying seed-corpus-capture-query-plans-20261127. Evidence: ~/Developer/benchmark_runs/seed-plans-20261127/noplans/results/ssb_sf01_duckdb_sql_20261127_205652_1339730c.json (no plan capture) reports not_validated.",
+  "description": "## Problem\nA local SSB SF 0.1 DuckDB power run on develop (2026-11-27) writes `summary.validation: \"not_validated\"` with or without `--capture-plans`. TPC-H SF 0.1 runs with the same command report `passed`. The per-query rows carry `rows` but no row-count validation fields. `results-data/validate_corpus.py` `admission_reason` then returns `validation_not_clean`, and `scripts/stage_seed_corpus_bundle.py` skips the bundle with \"Skipping ineligible bundle (validation_not_clean)\" and exits 0, so the seed workflow stays green while dropping the cell.\n\nThe live benchbox.dev corpus has SSB DuckDB seed results dated 2026-08-25, 2026-09-01 and 2026-10-01 (validation `passed`), and none from the 2026-11-01 run, which suggests the regression landed in October [inference: the 2026-11-01 run logs have expired].\n\n## Scope\nFind why SSB results no longer carry validation (missing expected row counts, or a change in how the validation phase result reaches the summary), restore it, and add a regression test that a clean SSB power run reports `passed`. Separately decide whether the seed workflow should fail, or at least warn, when a cell it ran is skipped as ineligible, so silent drops are visible.\n\n## Verification rubric\n- A local SSB SF 0.1 DuckDB power run reports `summary.validation: \"passed\"` and stages through `stage_seed_corpus_bundle.py`.\n- A regression test fails on current develop and passes with the fix.\n- After the next scheduled seed run, the corpus PR includes the six SSB cells.",
+  "links": [
+    "results-data/validate_corpus.py",
+    "scripts/stage_seed_corpus_bundle.py",
+    ".github/workflows/seed-corpus.yml"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8afb036c608ba6806b343500",
+      "at": "2026-11-28T01:57:54Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "a1c4e9b27f3d4c58b6e0d2f1a9c7e354",
+      "session_id": "fcabc717849d409bbc01a9206bfb26b3"
+    }
+  ]
+}
