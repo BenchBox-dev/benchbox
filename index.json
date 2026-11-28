@@ -17513,7 +17513,7 @@
         }
       },
       "integration_branch": "feat/tpcdi-incremental",
-      "integration_head": "63ebcaa6abc268f2dfcb1010e196d73b7435ca46",
+      "integration_head": "2bc79e35066e62884176f97c2fa7ae2e9bbeb74e",
       "integration_log": [
         {
           "at": "2026-11-28T02:18:52Z",
@@ -17609,6 +17609,20 @@
           "op_id": "73ab391860da4566956bac697dfce857",
           "previous_head": "1f8dea22ca8eedf6e20124a8e1ef8360259a64ce",
           "seq": 7
+        },
+        {
+          "at": "2026-11-28T17:43:32Z",
+          "changed_files": [
+            "benchbox/core/tpcdi/etl/staging.py"
+          ],
+          "head": "2bc79e35066e62884176f97c2fa7ae2e9bbeb74e",
+          "kind": "fix",
+          "op_id": "05e67d8a74e44381a41d182a3c87b853",
+          "previous_head": "63ebcaa6abc268f2dfcb1010e196d73b7435ca46",
+          "requires_acceptance": [
+            "tpcdi-incremental-dimensions-20261121"
+          ],
+          "seq": 8
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpcdi-incremental",
