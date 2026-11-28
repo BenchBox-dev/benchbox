@@ -45,6 +45,8 @@ RULE_LANE_PHASES = {
     corpus_rule.LANE_THROUGHPUT: "throughput",
 }
 
+UNLANED = "unlaned"
+
 Outcome = dict[str, Any]
 Snapshot = dict[str, Outcome]
 CohortKey = tuple[str, float, str, int | None]
@@ -216,11 +218,10 @@ def _today(
     item: _Loaded, ranks: Mapping[tuple[CohortKey, str], Outcome], keys: Mapping[str | None, CohortKey]
 ) -> Outcome:
     entry = item.entry
-    natural = next((key for key in keys.values() if key[2] == item.phase), next(iter(keys.values())))
     return {
         "class": entry.corpus_class,
         "score_source": entry.power_score_source,
-        **ranks[(natural, entry.result_id)],
+        "ranks": {lane or UNLANED: ranks[(key, entry.result_id)] for lane, key in keys.items()},
     }
 
 
@@ -331,13 +332,25 @@ def render(snapshot: Snapshot) -> str:
     return f'{{\n  "schema_version": {SNAPSHOT_SCHEMA_VERSION},\n  "results": {results}\n}}\n'
 
 
-def _primary_rule_lane(entry: Outcome) -> str | None:
-    today_phase = entry["today"].get("cohort", "").split("/")[2:3]
-    lanes = entry["rule"].get("ranks") or {}
-    for lane, rank in lanes.items():
-        if rank["cohort"].split("/")[2:3] == today_phase:
-            return lane
-    return next(iter(lanes), None)
+def _lane_reasons(today: Outcome | None, rule: Outcome | None) -> list[str]:
+    if today is None:
+        return ["pipeline lacks the lane"]
+    if rule is None:
+        return ["loses rank"] if today["rank"] is not None else []
+    reasons: list[str] = []
+    if today["rank"] is None and rule["rank"] is not None:
+        reasons.append("becomes ranked")
+    elif today["rank"] is not None and rule["rank"] is None:
+        reasons.append("loses rank")
+    elif today["rank"] != rule["rank"]:
+        reasons.append("rank changes")
+    if today["cohort"] != rule["cohort"]:
+        reasons.append("cohort changes")
+    if today["total"] != rule["total"]:
+        reasons.append("total changes")
+    if today["score"] != rule["score"]:
+        reasons.append("score changes")
+    return reasons
 
 
 def differences(snapshot: Snapshot) -> list[dict[str, Any]]:
@@ -346,34 +359,42 @@ def differences(snapshot: Snapshot) -> list[dict[str, Any]]:
         today, rule = entry["today"], entry["rule"]
         if "skipped" in today:
             continue
-        lane = _primary_rule_lane(entry)
-        rule_rank = rule["ranks"][lane] if lane else None
-        today_rank = today["rank"]
-        new_rank = rule_rank["rank"] if rule_rank else None
+        today_ranks, rule_ranks = today["ranks"], rule["ranks"]
         reasons: list[str] = []
         if rule["class"] == corpus_rule.CLASS_UNDETERMINED:
             reasons.append("undetermined: missing " + ", ".join(rule["missing_facts"]))
-        if today_rank is None and new_rank is not None:
-            reasons.append("becomes ranked")
-        elif today_rank is not None and new_rank is None:
-            reasons.append("loses rank")
-        elif today_rank != new_rank:
-            reasons.append("rank changes")
-        if rule_rank and today["cohort"] != rule_rank["cohort"]:
-            reasons.append("cohort changes")
+        first: tuple[Outcome | None, Outcome | None] | None = None
+        lanes = dict.fromkeys([*rule_ranks, *today_ranks])
+        for lane in lanes:
+            lane_today = today_ranks.get(lane)
+            lane_rule = rule_ranks.get(lane)
+            if lane_today is None and lane_rule is None:
+                continue
+            if lane == UNLANED and not rule_ranks:
+                lane_rule = None
+            elif lane == UNLANED:
+                continue
+            lane_reasons = _lane_reasons(lane_today, lane_rule)
+            if lane_reasons and first is None:
+                first = (lane_today, lane_rule)
+            reasons.extend(f"{lane}: {reason}" for reason in lane_reasons)
         if not reasons:
             continue
+        shown_today, shown_rule = first or (
+            next(iter(today_ranks.values()), None),
+            next(iter(rule_ranks.values()), None),
+        )
         rows.append(
             {
                 "path": name,
                 "today_class": today["class"],
-                "today_lane": today["cohort"],
-                "today_rank": today_rank,
-                "today_exclusion": today["exclusion_reason"],
+                "today_lane": shown_today["cohort"] if shown_today else None,
+                "today_rank": shown_today["rank"] if shown_today else None,
+                "today_exclusion": shown_today["exclusion_reason"] if shown_today else None,
                 "rule_class": rule["class"],
-                "rule_lane": rule_rank["cohort"] if rule_rank else None,
-                "rule_rank": new_rank,
-                "rule_exclusion": rule_rank["exclusion_reason"] if rule_rank else rule["held_reason"],
+                "rule_lane": shown_rule["cohort"] if shown_rule else None,
+                "rule_rank": shown_rule["rank"] if shown_rule else None,
+                "rule_exclusion": shown_rule["exclusion_reason"] if shown_rule else rule["held_reason"],
                 "reason": "; ".join(reasons),
             }
         )

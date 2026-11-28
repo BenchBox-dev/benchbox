@@ -398,3 +398,28 @@ def test_the_compliance_class_column_follows_the_rule_not_the_stamp(
 
     with duckdb.connect(str(db), read_only=True) as con:
         assert con.execute("SELECT compliance_class FROM results").fetchone() == (expected,)
+
+
+def _full_spec_run(stamp: str | None, validation: str) -> dict:
+    data = combined_bundle("one")
+    data["benchmark"]["compliance_class"] = stamp
+    data["summary"]["validation"] = validation
+    return data
+
+
+@pytest.mark.parametrize(
+    ("stamp", "validation", "expected"),
+    [
+        ("official", "passed", "official"),
+        (None, "passed", None),
+        ("unofficial_subscale", "passed", None),
+        ("official", "failed", None),
+    ],
+)
+def test_the_compliance_class_column_claims_official_only_where_the_writer_would(
+    tmp_path: Path, stamp: str | None, validation: str, expected: str | None
+) -> None:
+    db = _build(tmp_path, {"one": _full_spec_run(stamp, validation)})
+
+    with duckdb.connect(str(db), read_only=True) as con:
+        assert con.execute("SELECT corpus_class, compliance_class FROM results").fetchone() == ("full_spec", expected)

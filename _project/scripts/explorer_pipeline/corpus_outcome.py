@@ -6,7 +6,7 @@ from typing import Any
 
 from benchbox.core.execution_engine import NOT_CAPTURED
 from benchbox.core.results import comparison_identity, corpus_rule
-from benchbox.core.results.schema import NONSTANDARD_COMPLIANCE_CLASS, RECORDED_COMPLIANCE_CLASS_BY_RULE_CLASS
+from benchbox.core.results.schema import recorded_compliance_class
 
 LANE_PHASES = {
     corpus_rule.LANE_COMBINED: "combined",
@@ -52,10 +52,19 @@ def unranked_reason(outcome: corpus_rule.Outcome) -> str | None:
     return outcome.held_reason or f"not_ranked_{outcome.class_name}"
 
 
-def compliance_class(outcome: corpus_rule.Outcome) -> str | None:
-    if outcome.held_reason == corpus_rule.HELD_GATEWAY_ROUTED:
-        return NONSTANDARD_COMPLIANCE_CLASS
-    return RECORDED_COMPLIANCE_CLASS_BY_RULE_CLASS.get(outcome.class_name)
+def compliance_class(
+    outcome: corpus_rule.Outcome,
+    data: Mapping[str, Any],
+    *,
+    validation_status: str | None,
+    failed_query_count: int,
+) -> str | None:
+    facts = corpus_rule.facts_from_result(data, validation_status=validation_status, failed_queries=failed_query_count)
+    benchmark = data.get("benchmark")
+    stamp = benchmark.get("compliance_class") if isinstance(benchmark, Mapping) else None
+    return recorded_compliance_class(
+        outcome, facts, requested_class=stamp if isinstance(stamp, str) else None, validation_status=validation_status
+    )
 
 
 def observed_engine(recorded: str | None) -> str | None:
@@ -68,11 +77,15 @@ def corpus_columns(
     *,
     variant_id: str,
     recorded_observed_engine: str | None,
+    validation_status: str | None,
+    failed_query_count: int,
 ) -> dict[str, Any]:
     identity = comparison_identity.comparison_identity(data, variant_id)
     version = identity.comparison_version
     return {
-        "compliance_class": compliance_class(outcome),
+        "compliance_class": compliance_class(
+            outcome, data, validation_status=validation_status, failed_query_count=failed_query_count
+        ),
         "corpus_class": outcome.class_name,
         "corpus_lanes": list(outcome.lanes),
         "corpus_labels": list(outcome.labels),

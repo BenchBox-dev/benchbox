@@ -98,6 +98,8 @@ pytestmark = [
         "benchbox/core/results/schema_policy.py",
         "benchbox/core/results/corpus_rule_data.json",
         "scripts/generate_corpus_rule_data.py",
+        "scripts/corpus_compliance_snapshot.py",
+        "results-data/compliance-classes.json",
         "benchbox/core/results/corpus_rule.py",
         "benchbox/core/results/corpus_score.py",
         "benchbox/core/results/comparison_identity.py",

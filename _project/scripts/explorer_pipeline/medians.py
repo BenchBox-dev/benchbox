@@ -60,25 +60,49 @@ def _numeric(value: Any) -> bool:
     return isinstance(value, int | float) and not isinstance(value, bool)
 
 
-def _query_key(query: Mapping[str, Any]) -> tuple[str, ...]:
-    return (
-        str(query.get("test_type")),
-        str(query.get("stream")),
-        str(query.get("id", query.get("query_id"))),
-        str(query.get("iter", query.get("iteration"))),
-        str(query.get("run_type")),
-    )
-
-
-def _merge_queries(lists: Sequence[Sequence[Any]]) -> list[Any]:
-    indexed = [{_query_key(query): query for query in queries if isinstance(query, Mapping)} for queries in lists]
-    merged: list[Any] = []
-    for query in lists[0]:
-        if not isinstance(query, Mapping):
-            merged.append(copy.deepcopy(query))
+def _final_measured(data: Mapping[str, Any]) -> dict[str, list[Mapping[str, Any]]]:
+    queries = data.get("queries")
+    legacy = corpus_rule.legacy_query_timing_defaults(data)
+    default_run_type = "measurement" if legacy else None
+    default_iteration = 1 if legacy else 0
+    groups: dict[str, list[Mapping[str, Any]]] = defaultdict(list)
+    for query in queries if isinstance(queries, list) else []:
+        if not isinstance(query, Mapping) or query.get("run_type", default_run_type) != "measurement":
             continue
-        peers = [index[_query_key(query)] for index in indexed if _query_key(query) in index]
-        merged.append(_merge(peers))
+        if _iteration(query, default_iteration) > 0:
+            groups[str(query.get("test_type") or "power").lower()].append(query)
+    return {
+        group: [query for query in members if _iteration(query, default_iteration) == final]
+        for group, members in groups.items()
+        for final in [max(_iteration(query, default_iteration) for query in members)]
+    }
+
+
+def _iteration(query: Mapping[str, Any], default: int) -> int:
+    value = query.get("iter", query.get("iteration", default))
+    try:
+        return 0 if isinstance(value, bool) else int(value)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _median_queries(runs: Sequence[Mapping[str, Any]]) -> list[Any]:
+    finals = [_final_measured(run) for run in runs]
+    merged: list[Any] = []
+    for group in dict.fromkeys(group for final in finals for group in final):
+        peers: dict[tuple[str, str], list[Mapping[str, Any]]] = defaultdict(list)
+        for final in finals:
+            for query in final.get(group, ()):
+                peers[(str(query.get("stream")), str(query.get("id", query.get("query_id"))))].append(query)
+        target = max(_iteration(query, 0) for members in peers.values() for query in members)
+        for members in peers.values():
+            query = copy.deepcopy(dict(members[0]))
+            for key in _TIMING_KEYS:
+                values = [member[key] for member in members if _numeric(member.get(key))]
+                if values:
+                    query[key] = statistics.median(values)
+            query["iteration" if "iteration" in query and "iter" not in query else "iter"] = target
+            merged.append(query)
     return merged
 
 
@@ -90,8 +114,6 @@ def _merge(nodes: Sequence[Any]) -> Any:
             peers = [node[key] for node in nodes if isinstance(node, Mapping) and key in node]
             if key in _TIMING_KEYS and all(_numeric(peer) for peer in peers):
                 merged[key] = statistics.median(peers)
-            elif key == "queries" and all(isinstance(peer, list) for peer in peers):
-                merged[key] = _merge_queries(peers)
             else:
                 merged[key] = _merge(peers)
         return merged
@@ -101,7 +123,9 @@ def _merge(nodes: Sequence[Any]) -> Any:
 
 
 def median_result(results: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
-    return _merge(list(results))
+    merged = _merge([{key: value for key, value in run.items() if key != "queries"} for run in results])
+    merged["queries"] = _median_queries(results)
+    return merged
 
 
 def _lane_score(lane: str, data: Mapping[str, Any]) -> float | None:

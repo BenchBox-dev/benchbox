@@ -1922,6 +1922,8 @@ class BundleTransformer:
                 bundle_data,
                 variant_id=entry.variant_id,
                 recorded_observed_engine=bundle.platform.execution_engine.observed,
+                validation_status=entry.validation_status,
+                failed_query_count=failed_query_count,
             )
         )
         lane_entries, reason = self._ranking_reason(entry, outcome, bundle_data)
@@ -2126,7 +2128,12 @@ class BundleTransformer:
             update={
                 "ranking_exclusion_reason": reason,
                 "known_defect_reason": defect_reason,
-                "compliance_class": corpus_outcome.compliance_class(outcome),
+                "compliance_class": corpus_outcome.compliance_class(
+                    outcome,
+                    bundle_data,
+                    validation_status=detail.validation_status,
+                    failed_query_count=detail.failed_query_count,
+                ),
             }
         )
 

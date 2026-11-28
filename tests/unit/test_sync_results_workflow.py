@@ -18,6 +18,7 @@ pytestmark = [pytest.mark.unit, pytest.mark.medium]
 REPO_ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW_PATH = REPO_ROOT / ".github" / "workflows" / "sync-results-data-to-published.yml"
 BUNDLES_DIR = "results-data/bundles"
+RETIRED_MIRRORED_PATHS = frozenset({"scripts/unpublished_rule_rankings.txt"})
 
 
 def _run(cmd: list[str], *, cwd: Path) -> str:
@@ -506,15 +507,25 @@ def test_mirror_file_lists_cover_every_module_the_validators_load_by_path() -> N
     assert sorted(path for path in required if not _covered_by_git_add(path, add_targets)) == []
 
 
+def test_a_retired_mirrored_file_is_gone_from_the_source_and_still_listed_so_the_mirror_deletes_it() -> None:
+    triggers, compare_paths, copy_paths = _mirrored_runtime_paths()
+
+    for path in RETIRED_MIRRORED_PATHS:
+        assert not (REPO_ROOT / path).exists(), path
+        assert path in triggers
+        assert path in compare_paths
+        assert path in copy_paths
+
+
 def test_mirror_file_lists_name_only_repo_files_without_wildcards() -> None:
     triggers, compare_paths, copy_paths = _mirrored_runtime_paths()
 
     for path in copy_paths:
         assert "*" not in path
-        assert (REPO_ROOT / path).is_file(), path
+        assert (REPO_ROOT / path).is_file() or path in RETIRED_MIRRORED_PATHS, path
     for path in compare_paths:
         assert "*" not in path
-        assert (REPO_ROOT / path).exists(), path
+        assert (REPO_ROOT / path).exists() or path in RETIRED_MIRRORED_PATHS, path
     assert not [path for path in _git_add_targets() if "*" in path]
 
 

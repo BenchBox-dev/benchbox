@@ -83,6 +83,8 @@ file	benchbox/core/results/timing_fields.py
 file	benchbox/core/results/subscale_policy.py
 file	benchbox/core/results/corpus_rule_data.json
 file	scripts/generate_corpus_rule_data.py
+file	scripts/corpus_compliance_snapshot.py
+file	results-data/compliance-classes.json
 file	benchbox/core/results/corpus_rule.py
 file	benchbox/core/results/corpus_score.py
 file	benchbox/core/results/comparison_identity.py
