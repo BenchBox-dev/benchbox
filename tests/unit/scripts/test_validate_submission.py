@@ -3647,7 +3647,7 @@ class TestValidationStatusVocabulary:
         assert any("'no_reference' contradicts" in e for e in vr.errors)
 
     @pytest.mark.parametrize("flags", [{}, {"allow_partial_validation": True}])
-    @pytest.mark.parametrize(("benchmark_id", "scale"), [("tpch", 1.0), ("tpch", 0.01), ("tpcds", 0.1)])
+    @pytest.mark.parametrize(("benchmark_id", "scale"), [("tpch", 1.0), ("tpch", 0.01), ("tpcds", 0.1), ("ssb", 10.0)])
     def test_no_reference_is_refused_where_a_reference_exists(self, flags, benchmark_id, scale):
         data = _row_count_bundle("no_reference", [], scale_factor=scale)
         data["benchmark"]["id"] = benchmark_id

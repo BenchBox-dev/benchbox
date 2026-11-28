@@ -28,6 +28,7 @@ TPCH_RANGE_ROW_COUNT_BOUNDS: dict[str, tuple[int, int]] = {
 }
 
 TPCH_LOOSE_QUERY_IDS: frozenset[str] = frozenset({"16"})
+TPCH_SCALE_INDEPENDENT_QUERY_IDS: frozenset[str] = frozenset({"1"})
 
 TPCH_QUERY_IDS: frozenset[str] = frozenset(str(number) for number in range(1, 23))
 
@@ -49,12 +50,8 @@ def get_tpch_expected_results(scale_factor: float = 1.0) -> BenchmarkExpectedRes
 
     query_results = {}
 
-    scale_independent_queries = {
-        "1": True,
-    }
-
     for query_id, row_count in row_counts.items():
-        is_scale_independent = scale_independent_queries.get(query_id, False)
+        is_scale_independent = query_id in TPCH_SCALE_INDEPENDENT_QUERY_IDS
 
         range_bounds = TPCH_RANGE_ROW_COUNT_BOUNDS.get(query_id)
         if range_bounds is not None:

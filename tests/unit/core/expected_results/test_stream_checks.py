@@ -10,6 +10,7 @@ from benchbox.core.expected_results.query_generation import current_query_genera
 from benchbox.core.results.query_execution import normalize_row_count_validation
 from benchbox.core.results.query_status import (
     NO_REFERENCE_VALIDATION_STATUS,
+    NOT_VALIDATED_VALIDATION_STATUS,
     PASSED_VALIDATION_STATUS,
     row_count_skip_is_documented,
     row_evidence_roll_up,
@@ -305,6 +306,43 @@ def test_a_run_that_passed_a_check_rolls_up_passed(reference_dir) -> None:
     assert record["checks"] == {"invariant": 1, "never_empty": 1, "structural": 1}
     assert record["references"][0]["sample_draws"] == 521
     assert record["references"][0]["data_stamp"] == compute_base_constants_hash("tpcds")
+
+
+def test_a_reference_that_did_not_apply_is_not_listed_as_evidence(reference_dir) -> None:
+    rows = [
+        {
+            "run_type": "measurement",
+            "row_count_validation": row_count_validation_record(
+                _decide("tpcds", "4", 12, run_data_stamp="0" * 64, generation=QueryGeneration(seed=5)), 12
+            ),
+        },
+        {
+            "run_type": "measurement",
+            "row_count_validation": row_count_validation_record(
+                _decide("tpcds", "4", 12, data_refreshed=True, generation=QueryGeneration(seed=5)), 12
+            ),
+        },
+    ]
+
+    record = stream_checks.stream_checks_record("tpcds", 1.0, rows)
+
+    assert record["references"] == []
+    assert set(record["checks"]) == {"structural"}
+
+
+def test_a_differs_skip_beside_unvalidated_rows_is_not_validated(reference_dir) -> None:
+    differs = row_count_validation_record(
+        _decide("tpcds", "4", 12, run_data_stamp="0" * 64, generation=QueryGeneration(seed=5)), 12
+    )
+    unvalidated = row_count_validation_record(_decide("tpcds", "14", 7, generation=QueryGeneration(seed=5)), 7)
+    rows = [{"run_type": "measurement", "row_count_validation": value} for value in (differs, unvalidated)]
+
+    status, _ = row_evidence_roll_up(rows, reference_exists=True)
+    only_differs, reason = row_evidence_roll_up(rows[:1], reference_exists=True)
+
+    assert differs["status"] == "SKIPPED" and unvalidated["status"] == "UNVALIDATED"
+    assert status == NOT_VALIDATED_VALIDATION_STATUS
+    assert only_differs == NO_REFERENCE_VALIDATION_STATUS and "reference data differs" in reason
 
 
 def test_stream_checks_are_not_defined_for_other_benchmarks(reference_dir) -> None:

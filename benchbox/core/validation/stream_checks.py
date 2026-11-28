@@ -16,7 +16,12 @@ from benchbox.core.expected_results.row_count_references import (
     load_row_count_reference,
 )
 from benchbox.core.expected_results.structural_bounds import StructuralBound, structural_bound
-from benchbox.core.expected_results.tpch_results import TPCH_LOOSE_QUERY_IDS, TPCH_RANGE_ROW_COUNT_BOUNDS
+from benchbox.core.expected_results.tpcds_results import tpcds_known_query_ids
+from benchbox.core.expected_results.tpch_results import (
+    TPCH_LOOSE_QUERY_IDS,
+    TPCH_RANGE_ROW_COUNT_BOUNDS,
+    TPCH_SCALE_INDEPENDENT_QUERY_IDS,
+)
 from benchbox.core.results.query_status import (
     DATA_REFRESHED_REASON,
     NO_REFERENCE_REASON,
@@ -29,6 +34,7 @@ CHECK_INVARIANT = "invariant"
 CHECK_RANGE = "range"
 CHECK_NEVER_EMPTY = "never_empty"
 CHECK_STRUCTURAL = "structural"
+REFERENCE_CHECK_KINDS = (CHECK_EXACT, CHECK_INVARIANT, CHECK_RANGE, CHECK_NEVER_EMPTY)
 ROW_CHECK_KINDS = (CHECK_EXACT, CHECK_INVARIANT, CHECK_RANGE, CHECK_NEVER_EMPTY, CHECK_STRUCTURAL)
 TPCH_RANGE_SCALE = 1.0
 LOOSE_TOLERANCE = 0.5
@@ -250,7 +256,8 @@ def decide_row_count(
     scale = float(scale_factor or 1.0)
     statement = normalize_statement_id(benchmark, query_id)
     reference = reference_for(benchmark, scale)
-    if reference is not None and statement not in QUERY_IDS[benchmark]:
+    multi_part_parent = benchmark == "tpcds" and statement in tpcds_known_query_ids()
+    if reference is not None and statement not in QUERY_IDS[benchmark] and not multi_part_parent:
         return ValidationResult(
             is_valid=False,
             query_id=str(query_id),
@@ -282,9 +289,25 @@ def decide_row_count(
         if data_refreshed
         else None
     )
+    if reference is not None and statement not in QUERY_IDS[benchmark]:
+        return _result(
+            statement,
+            actual_row_count,
+            generation,
+            valid=True,
+            unvalidated=True,
+            skip=(
+                f"Unvalidated: query '{query_id}' is a multi-part {benchmark} template whose row counts are "
+                f"recorded per part. The row count was not checked and is not counted as passed. "
+                f"Actual rows returned: {actual_row_count}"
+            ),
+        )
     if reference is None:
         if refreshed_skip is not None:
             return refreshed_skip()
+        fallback = _scale_independent_decision(benchmark, statement, actual_row_count, generation)
+        if fallback is not None:
+            return fallback
         result = _result(
             statement,
             actual_row_count,
@@ -321,6 +344,32 @@ def decide_row_count(
         )
     return _decide_against_reference(
         benchmark, statement, actual_row_count, scale, generation, reference, bound, refreshed_skip
+    )
+
+
+def _scale_independent_decision(
+    benchmark: str, statement: str, actual: int, generation: QueryGeneration
+) -> ValidationResult | None:
+    if benchmark != "tpch" or statement not in TPCH_SCALE_INDEPENDENT_QUERY_IDS:
+        return None
+    recorded = reference_for(benchmark, TPCH_RANGE_SCALE)
+    if recorded is None:
+        return None
+    expected = recorded.streams[0].row_counts[statement]
+    if actual != expected:
+        return _failure(
+            statement,
+            benchmark,
+            actual,
+            generation,
+            CHECK_EXACT,
+            f"exactly {expected}",
+            "scale-independent count from the scale factor 1 reference",
+            None,
+            expected,
+        )
+    return _result(
+        statement, actual, generation, valid=True, check=CHECK_EXACT, bound=f"exactly {expected}", expected=expected
     )
 
 
@@ -450,7 +499,8 @@ def stream_checks_record(benchmark_id: str, scale_factor: float, query_rows: lis
         return None
     reference = reference_for(benchmark, float(scale_factor))
     references = []
-    if reference is not None and reference.file_sha256 and reference.integrity is not None:
+    reference_applied = any(kind in counts for kind in REFERENCE_CHECK_KINDS)
+    if reference_applied and reference is not None and reference.file_sha256 and reference.integrity is not None:
         references.append(
             {
                 "benchmark": benchmark,

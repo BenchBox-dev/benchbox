@@ -55,8 +55,8 @@ class TestScaleFactorHandling:
         )
 
         assert result.is_valid
-        assert result.unvalidated
-        assert result.expected_row_count is None
+        assert result.expected_row_count == 4
+        assert result.validation_mode == ValidationMode.EXACT
 
     def test_scale_dependent_query_skipped_at_sf_10(self):
         validator = QueryValidator()
@@ -215,5 +215,6 @@ class TestScaleFactorHandling:
 
         assert all(r.is_valid for r in results)
 
-        assert [r.expected_row_count for r in results] == [4, None, None, 4]
-        assert [r.unvalidated for r in results] == [False, True, True, False]
+        expected_counts = [r.expected_row_count for r in results]
+        assert len(set(expected_counts)) == 1
+        assert expected_counts[0] == 4

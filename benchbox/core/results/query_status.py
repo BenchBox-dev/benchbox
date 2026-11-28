@@ -178,12 +178,6 @@ def row_evidence_roll_up(query_rows: Any, *, reference_exists: bool, failed_quer
         and any(measurement and status == "PASSED" for measurement, status, _ in rows)
     ):
         return PASSED_VALIDATION_STATUS, "row counts validated"
-    reference_differs = any(
-        status == "SKIPPED" and str(evidence.get("warning") or "").startswith(f"{REFERENCE_DATA_DIFFERS_REASON}:")
-        for _, status, evidence in rows
-    )
-    if reference_differs:
-        return NO_REFERENCE_VALIDATION_STATUS, f"{NO_REFERENCE_REASON}; {REFERENCE_DATA_DIFFERS_REASON}"
     if not reference_exists:
         return NO_REFERENCE_VALIDATION_STATUS, NO_REFERENCE_REASON
     if unvalidated:
@@ -193,6 +187,11 @@ def row_evidence_roll_up(query_rows: Any, *, reference_exists: bool, failed_quer
             NOT_VALIDATED_VALIDATION_STATUS,
             f"{undocumented} row {_noun(undocumented, 'count')} skipped without a documented reason",
         )
+    if any(
+        status == "SKIPPED" and str(evidence.get("warning") or "").startswith(f"{REFERENCE_DATA_DIFFERS_REASON}:")
+        for _, status, evidence in rows
+    ):
+        return NO_REFERENCE_VALIDATION_STATUS, f"{NO_REFERENCE_REASON}; {REFERENCE_DATA_DIFFERS_REASON}"
     return NOT_VALIDATED_VALIDATION_STATUS, "no row count was checked"
 
 

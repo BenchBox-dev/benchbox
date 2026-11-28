@@ -195,7 +195,7 @@ def test_classified_timeout_is_unchanged(monkeypatch):
     assert "Timed out" in (result.error_message or "")
 
 
-@pytest.mark.parametrize("query_id", ["24a", "24b", "39a", "39b"])
+@pytest.mark.parametrize("query_id", ["24a", "24b", "39a", "39b", "24", "39"])
 def test_tpcds_sf1_multi_part_queries_do_not_fail_the_lookup(query_id):
     from benchbox.core.expected_results.row_count_references import load_row_count_reference
 

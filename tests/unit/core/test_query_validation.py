@@ -217,14 +217,18 @@ class TestTPCHSubscaleRowCountReference:
         assert result.check == "exact"
         assert result.expected_row_count == 296
 
-    def test_unrecorded_scale_factor_is_unvalidated_but_structural_bounds_still_run(self):
+    def test_unrecorded_scale_factor_is_unvalidated_but_structural_bounds_and_scale_independent_counts_still_run(self):
         validator = QueryValidator()
 
         unvalidated = validator.validate_query_result("tpch", "4", 5, scale_factor=0.5)
         too_many = validator.validate_query_result("tpch", "3", 11, scale_factor=0.5)
+        scale_independent = validator.validate_query_result("tpch", "1", 4, scale_factor=0.5)
+        wrong_scale_independent = validator.validate_query_result("tpch", "1", 3, scale_factor=0.5)
 
         assert unvalidated.unvalidated and unvalidated.validation_mode == ValidationMode.SKIP
         assert not too_many.is_valid and too_many.check == "structural"
+        assert scale_independent.validation_mode == ValidationMode.EXACT and scale_independent.is_valid
+        assert not wrong_scale_independent.is_valid
 
     def test_reference_files_are_well_formed_and_bound_to_the_query_generation(self):
         from benchbox.core.expected_results.query_generation import current_query_generation_stamp

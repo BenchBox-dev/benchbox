@@ -100,5 +100,5 @@ def test_positive_stream_without_reference_is_unvalidated() -> None:
     registry = ExpectedResultsRegistry()
     registry.register_provider("tpch", _no_reference)
     validator.registry = registry
-    result = validator.validate_query_result("tpch", "1", 4, 10.0, stream_id=1)
+    result = validator.validate_query_result("tpch", "2", 4, 10.0, stream_id=1)
     assert result.unvalidated
