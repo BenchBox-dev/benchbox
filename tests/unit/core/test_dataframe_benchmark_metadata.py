@@ -16,7 +16,7 @@ pytestmark = [
         ("read_primitives", True),
         ("write_primitives", True),
         ("tpcds_obt", True),
-        ("tpcdi", True),
+        ("tpcdi", False),
     ],
 )
 def test_supports_dataframe_flags(benchmark_name: str, expected: bool) -> None:

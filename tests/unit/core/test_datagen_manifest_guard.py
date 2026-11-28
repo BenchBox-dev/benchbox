@@ -12,7 +12,6 @@ from benchbox.core.datavault.etl.transformer import DataVaultETLTransformer
 from benchbox.core.flightdata.downloader import FlightDataDownloader
 from benchbox.core.h2odb.generator import H2ODataGenerator
 from benchbox.core.ssb.generator import SSBDataGenerator
-from benchbox.core.tpcdi.generator.manifest import ManifestMixin
 from benchbox.core.tpch.generator import TPCHDataGenerator
 from benchbox.core.tpch_skew.generator import TPCHSkewDataGenerator
 from benchbox.core.tpch_skew.skew_config import SkewConfiguration
@@ -29,16 +28,6 @@ pytestmark = [
 Writer = Callable[[dict], None]
 
 
-class _TpcdiHarness(ManifestMixin):
-    scale_factor = 0.01
-    max_workers = 1
-    compression_type = "none"
-    compression_level = None
-
-    def should_use_compression(self) -> bool:
-        return False
-
-
 def _ssb(tmp_path: Path) -> Writer:
     gen = SSBDataGenerator(scale_factor=0.0001, output_dir=tmp_path)
     return lambda paths: gen._write_manifest(tmp_path, paths)
@@ -47,10 +36,6 @@ def _ssb(tmp_path: Path) -> Writer:
 def _tpch_skew(tmp_path: Path) -> Writer:
     gen = TPCHSkewDataGenerator(scale_factor=0.01, output_dir=tmp_path, skew_config=SkewConfiguration())
     return gen._write_manifest
-
-
-def _tpcdi(tmp_path: Path) -> Writer:
-    return lambda paths: _TpcdiHarness()._write_manifest(tmp_path, {name: str(path) for name, path in paths.items()})
 
 
 def _datavault(tmp_path: Path) -> Writer:
@@ -89,7 +74,6 @@ def _scan(tmp_path: Path) -> Writer:
 _REJECTING_WRITERS = {
     "ssb": (_ssb, {}),
     "tpch_skew": (_tpch_skew, {}),
-    "tpcdi": (_tpcdi, {}),
     "datavault": (_datavault, {}),
     "flightdata": (_flightdata, {}),
     "tpch": (_tpch, {"customer": []}),

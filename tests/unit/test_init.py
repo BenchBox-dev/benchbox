@@ -15,14 +15,6 @@ pytestmark = [
 ]
 
 
-try:
-    import pandas
-
-    PANDAS_AVAILABLE = True
-except ImportError:
-    PANDAS_AVAILABLE = False
-
-
 @pytest.mark.unit
 class TestPackageInit:
     def test_version_exists(self):
@@ -61,7 +53,6 @@ class TestLazyImports:
         assert hasattr(read_primitives_class, "__name__")
         assert read_primitives_class.__name__ == "ReadPrimitives"
 
-    @pytest.mark.skipif(not PANDAS_AVAILABLE, reason="pandas not installed (required for TPCDI)")
     def test_lazy_import_tpcdi(self):
         tpcdi_class = benchbox.TPCDI
         assert tpcdi_class is not None
@@ -124,39 +115,30 @@ class TestLazyImports:
         assert write_primitives_class.__name__ == "WritePrimitives"
         assert read_primitives_class.__name__ == "ReadPrimitives"
 
-    @pytest.mark.skipif(not PANDAS_AVAILABLE, reason="pandas not installed (required for TPCDI)")
     def test_lazy_import_failure_provides_actionable_message(self, monkeypatch):
         importlib.import_module("benchbox.__init__")
 
         lazy_cache = benchbox.__getattr__.__globals__["_lazy_cache"]
         lazy_cache.clear()
-        import benchbox as benchbox_package
+        monkeypatch.setitem(
+            benchbox._BENCHMARK_REGISTRY,
+            "NeedsExtra",
+            benchbox._BenchmarkSpec("needs_extra_stub", "NeedsExtra", ("stubextra",)),
+        )
 
-        module_dict = benchbox_package.__dict__
-        had_existing_attr = "TPCDI" in module_dict
-        existing_attr = module_dict.get("TPCDI") if had_existing_attr else None
-        if had_existing_attr:
-            del module_dict["TPCDI"]
-
-        simulated_error = ModuleNotFoundError("No module named 'pandas'", name="pandas")
-        lazy_cache["TPCDI"] = simulated_error
-        assert lazy_cache["TPCDI"] is simulated_error
+        simulated_error = ModuleNotFoundError("No module named 'stubpkg'", name="stubpkg")
+        lazy_cache["NeedsExtra"] = simulated_error
+        assert lazy_cache["NeedsExtra"] is simulated_error
 
         try:
             with pytest.raises(ImportError) as excinfo:
-                _ = benchbox.TPCDI
+                _ = benchbox.NeedsExtra
 
             message = str(excinfo.value)
-            assert "'pandas'" in message
-            assert "tpcdi" in message
-            assert "benchbox[tpcdi]" in message or "--extra tpcdi" in message
+            assert "'stubpkg'" in message
+            assert "stubextra" in message
+            assert "benchbox[stubextra]" in message or "--extra stubextra" in message
             assert "Version Information" in message
             assert "Original error" in message
         finally:
             lazy_cache.clear()
-            if had_existing_attr and existing_attr is not None:
-                benchbox_package.TPCDI = existing_attr
-            else:
-                from benchbox.tpcdi import TPCDI as _TPCDI
-
-                benchbox_package.TPCDI = _TPCDI

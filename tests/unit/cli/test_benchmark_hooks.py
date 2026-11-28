@@ -113,7 +113,6 @@ def _register_real_benchmark_specs():
     import benchbox.core.joinorder.benchmark
     import benchbox.core.joinorder_synthetic.benchmark
     import benchbox.core.nyctaxi.benchmark
-    import benchbox.core.tpcdi.benchmark
     import benchbox.core.tpcds_obt.benchmark
     import benchbox.core.tpch_skew.benchmark
     import benchbox.core.tsbs_devops.benchmark
