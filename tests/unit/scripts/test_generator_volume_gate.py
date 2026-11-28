@@ -45,10 +45,6 @@ def test_a_generator_spec_change_selects_its_benchmark() -> None:
     assert gate.affected_benchmarks(["benchbox/core/tsbs_devops/generator_specs.yaml"]) == ["tsbs_devops"]
 
 
-def test_tpcdi_generator_paths_select_nothing_while_it_is_outside_the_gate() -> None:
-    assert gate.affected_benchmarks(["benchbox/core/tpcdi/generator/facts.py", "benchbox/core/tpcdi/scaling.py"]) == []
-
-
 def test_a_shared_primitives_generator_change_selects_both_primitives_benchmarks() -> None:
     assert gate.affected_benchmarks(["benchbox/core/primitives/generator_base.py"]) == [
         "write_primitives",
@@ -466,7 +462,6 @@ def test_the_workflow_path_filter_fires_only_for_paths_the_gate_selects() -> Non
         "benchbox/core/amplab/source_generators.py",
         "benchbox/core/amplab/generator/helper.py",
         "benchbox/core/vector_search/generator/helper.py",
-        "benchbox/core/tpcdi/scaling.pyc",
         "benchbox/core/primitives/catalog/loader.py",
     ]
     for path in candidates:

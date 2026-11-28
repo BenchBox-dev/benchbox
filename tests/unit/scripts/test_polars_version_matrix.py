@@ -134,7 +134,7 @@ def test_spec_records_versions_scales_setups_and_qualification_hash() -> None:
     assert POLARS.benchmarks == (("tpch", 10.0), ("tpcds", 10.0), ("clickbench", 10.0), ("ssb", 10.0))
     assert POLARS.thread_count == 10
     assert POLARS.rounds == 3
-    assert POLARS.iterations == 1
+    assert POLARS.iterations == 3
 
 
 def test_committed_qualification_matches_the_pinned_hash_and_clears_every_cell() -> None:
@@ -173,11 +173,11 @@ def test_shuffle_seed_is_never_a_workload_seed() -> None:
     assert not any("12345" in line.replace("seed 12345", "") for line in lines)
 
 
-def test_cell_command_pins_rechunk_engine_and_single_iteration() -> None:
+def test_cell_command_pins_rechunk_engine_and_three_measured_iterations() -> None:
     cell = next(item for item in POLARS.cells() if item.setup == "B")
     command = runner.cell_command(POLARS, cell)
 
-    assert command[command.index("--iterations") + 1] == "1"
+    assert command[command.index("--iterations") + 1] == "3"
     assert command[command.index("--platform") + 1] == "polars-df"
     assert command[command.index("rechunk=false") - 1 : command.index("rechunk=false") + 1] == [
         "--platform-option",
@@ -185,6 +185,37 @@ def test_cell_command_pins_rechunk_engine_and_single_iteration() -> None:
     ]
     assert command[command.index("--execution-engine") + 1] == "in-memory"
     assert not any(part.startswith("engine=") for part in command)
+
+
+def test_benchmark_selection_plans_only_the_selected_benchmarks(capsys: pytest.CaptureFixture[str]) -> None:
+    argv = [
+        "--output-dir",
+        "unused",
+        "--shuffle-seed",
+        "1",
+        "--dry-run",
+        "--benchmark",
+        "ssb",
+        "--benchmark",
+        "clickbench",
+    ]
+    assert runner.main(argv) == 0
+
+    lines = capsys.readouterr().out.splitlines()
+    invocations = [line for line in lines if line.startswith("round ")]
+    selected = POLARS.select(["ssb", "clickbench"])
+    assert selected.benchmarks == (("clickbench", 10.0), ("ssb", 10.0))
+    assert selected.query_counts == {"clickbench": 43, "ssb": 13}
+    assert len(invocations) == selected.expected_invocations == 78
+    assert {line.split()[4].split("/")[0] for line in invocations} == {"ssb", "clickbench"}
+    assert not any(name in line.split() for line in lines for name in ("tpch", "tpcds"))
+
+
+def test_benchmark_selection_refuses_a_benchmark_outside_the_spec() -> None:
+    with pytest.raises(SystemExit):
+        runner.main(["--output-dir", "unused", "--shuffle-seed", "1", "--dry-run", "--benchmark", "tpcdi"])
+    with pytest.raises(ValueError, match="tpcdi"):
+        POLARS.select(["tpcdi"])
 
 
 def test_cell_command_passes_the_cell_limit_and_the_outside_kill_waits_a_minute_longer() -> None:
@@ -271,7 +302,7 @@ def test_outcome_classes_follow_the_resource_policy(kwargs: dict[str, Any], expe
     assert runner.classify_outcome(POLARS, **arguments) == expected
 
 
-def test_result_extraction_records_engine_runtime_and_per_query_row_counts() -> None:
+def test_result_extraction_keeps_the_final_measured_iteration_and_requires_every_iteration() -> None:
     cell = next(
         item for item in POLARS.cells() if item.benchmark == "tpch" and item.setup == "C" and item.version == "2.0.0"
     )
@@ -280,7 +311,16 @@ def test_result_extraction_records_engine_runtime_and_per_query_row_counts() -> 
         for number in range(1, 23)
     ]
     queries += [
-        {"id": str(number), "stream": 0, "run_type": "measurement", "rows": number, "ms": 2.0, "status": "SUCCESS"}
+        {
+            "id": str(number),
+            "stream": 0,
+            "iter": iteration,
+            "run_type": "measurement",
+            "rows": number,
+            "ms": 10.0 * iteration,
+            "status": "SUCCESS",
+        }
+        for iteration in (1, 2, 3)
         for number in range(1, 23)
     ]
     payload = {
@@ -294,16 +334,26 @@ def test_result_extraction_records_engine_runtime_and_per_query_row_counts() -> 
                 "polars_runtime_version": cell.version,
             },
         },
-        "summary": {"validation": "uncertain", "queries": {"total": 22, "failed": 0, "passed": 22}},
+        "summary": {"validation": "uncertain", "queries": {"total": 66, "failed": 0, "passed": 66}},
         "queries": queries,
     }
 
     extracted = runner.extract_result(payload, POLARS, cell)
 
     assert extracted["result_ok"] is True
-    assert extracted["queries"]["0:7"] == {"rows": 7, "status": "SUCCESS", "ms": 2.0}
+    assert extracted["measured_iterations"] == 3
+    assert extracted["queries"]["0:7"] == {"rows": 7, "status": "SUCCESS", "ms": 30.0}
     assert len(extracted["queries"]) == 22
     assert extracted["collect_engine_argument"] == "streaming"
+    single = {
+        **payload,
+        "summary": {"validation": "uncertain", "queries": {"total": 22, "failed": 0, "passed": 22}},
+        "queries": [query for query in queries if query.get("iter", 1) == 1],
+    }
+    assert runner.extract_result(single, POLARS, cell)["checks"]["iteration_count_matches"] is False
+    short_first = [query for query in queries if not (query.get("iter") == 1 and query["id"] == "1")]
+    uneven = {**payload, "queries": [*short_first, next(q for q in queries if q.get("iter") == 2 and q["id"] == "2")]}
+    assert runner.extract_result(uneven, POLARS, cell)["checks"]["query_count_matches"] is False
     payload["platform"]["config"]["rechunk_effective"] = True
     assert runner.extract_result(payload, POLARS, cell)["result_ok"] is False
 
@@ -338,7 +388,7 @@ def test_result_extraction_reads_the_execution_engine_receipt() -> None:
         "queries": queries,
     }
 
-    extracted = runner.extract_result(payload, POLARS, cell)
+    extracted = runner.extract_result(payload, replace(POLARS, iterations=1), cell)
 
     assert extracted["result_ok"] is True
     assert extracted["engine_requested"] == "streaming"
@@ -483,12 +533,16 @@ def test_shared_runner_serves_the_polars_dry_run(capsys: pytest.CaptureFixture[s
     assert capsys.readouterr().out.splitlines() == GOLDEN_DRY_RUN.read_text(encoding="utf-8").splitlines()
 
 
-def test_shared_analyzer_serves_the_polars_spec(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("benchmarks", [None, ["ssb", "clickbench"]])
+def test_shared_analyzer_serves_the_polars_spec(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, benchmarks: list[str] | None
+) -> None:
     from scripts import analyze_version_matrix as shared_analyzer
     from scripts.version_matrix_specs import SPECS
 
+    ran = POLARS.select(benchmarks) if benchmarks else POLARS
     records = []
-    for cell in POLARS.cells():
+    for cell in ran.cells():
         for index in (1, 2, 3):
             record = _record(index, cell.version, cell.setup, 100.0)
             record["benchmark"] = cell.benchmark
@@ -504,7 +558,7 @@ def test_shared_analyzer_serves_the_polars_spec(tmp_path: Path, monkeypatch: pyt
         encoding="utf-8",
     )
     spec = replace(POLARS, qualification_sha256=hashlib.sha256(qualification_path.read_bytes()).hexdigest())
-    manifest_path = _write_manifest(tmp_path, spec, records)
+    manifest_path = _write_manifest(tmp_path, spec.select(ran.benchmark_ids), records)
     monkeypatch.setitem(SPECS, "polars", spec)
     output_dir = tmp_path / "out"
 
@@ -518,6 +572,7 @@ def test_shared_analyzer_serves_the_polars_spec(tmp_path: Path, monkeypatch: pyt
                 str(qualification_path),
                 "--output-dir",
                 str(output_dir),
+                *[argument for name in benchmarks or () for argument in ("--benchmark", name)],
             ]
         )
         == 0
@@ -526,4 +581,5 @@ def test_shared_analyzer_serves_the_polars_spec(tmp_path: Path, monkeypatch: pyt
     result = json.loads((output_dir / "polars-version-matrix-analysis.json").read_text(encoding="utf-8"))
     assert result["comparison_count"] == len(result["comparisons"])
     assert all(cell["qualified"] for cell in result["cells"])
+    assert {cell["benchmark"] for cell in result["cells"]} == set(ran.benchmark_ids)
     assert (output_dir / "polars-version-matrix-comparisons.csv").is_file()

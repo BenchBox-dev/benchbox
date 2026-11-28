@@ -288,7 +288,7 @@ See [Platform Documentation](https://benchbox.dev/docs/platforms/index.html) for
 **Tuning:** [`tunings/duckdb/tpcds_tuned.yaml`](tunings/duckdb/tpcds_tuned.yaml), [`tunings/databricks/tpcds_tuned.yaml`](tunings/databricks/tpcds_tuned.yaml)
 
 ### TPC-DI (Data Integration)
-TPC-DI is unavailable while BenchBox reworks it to run the specification's workload (historical load, two incremental updates, automated audit). Earlier BenchBox TPC-DI results were withdrawn.
+TPC-DI is unavailable while BenchBox reworks it to run the specification's workload (historical load, two incremental updates, automated audit). The historical load (Batch 1) runs on DuckDB and is audited; the incremental updates (Batches 2 and 3) are not done yet. Earlier BenchBox TPC-DI results were withdrawn.
 
 ### SSB (Star Schema Benchmark)
 **Best for:** Star schema queries, data warehouse analytics, BI workloads

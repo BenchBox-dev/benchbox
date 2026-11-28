@@ -207,7 +207,6 @@ def test_tpcdi_explicit_override_rederives_etl_dirs(tmp_path, monkeypatch):
     assert benchmark.source_dir == explicit / "source"
     assert benchmark.staging_dir == explicit / "staging"
     assert benchmark.warehouse_dir == explicit / "warehouse"
-    assert Path(str(benchmark.data_generator.output_dir)) == explicit
 
 
 def test_databricks_output_root_propagates_without_rewrap(tmp_path):

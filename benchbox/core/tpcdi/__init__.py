@@ -1,12 +1,8 @@
 # Copyright 2026 Joe Harris / BenchBox Project
 
-# TPC Benchmark™ DI (TPC-DI) - Copyright © Transaction Processing Performance Council
-# This implementation is based on the TPC-DI specification.
-
 # Licensed under the MIT License. See LICENSE file in the project root for details.
 
 from .benchmark import TPCDIBenchmark
-from .generator import TPCDIDataGenerator
 from .schema import (
     DIMACCOUNT,
     DIMCOMPANY,
@@ -22,7 +18,6 @@ from .schema import (
 
 __all__ = [
     "TPCDIBenchmark",
-    "TPCDIDataGenerator",
     "DIMCUSTOMER",
     "DIMACCOUNT",
     "DIMSECURITY",

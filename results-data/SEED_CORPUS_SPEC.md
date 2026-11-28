@@ -285,6 +285,19 @@ maintenance are excluded from those runs to keep CI runtime bounded and to stand
 the comparison surface on single-stream power timings. Throughput bundles can still be
 committed; they form their own cohorts as described under the depth requirement.
 
+### Query plans
+
+Every seed-corpus cell that is not `official: true` runs with `--capture-plans`
+(estimated `EXPLAIN` plans, no `ANALYZE`). Plan capture runs outside the query timer,
+so it does not change measured times. The staging script anonymizes the
+`{run_id}.plans.json` companion next to the bundle, and the Explorer's plan viewer
+loads it. A plan that fails to capture is recorded in the companion and does not fail
+the cell.
+
+The official SF 1 cells do not capture plans. A multi-stream run keeps one plan per
+query per stream, so their companions would be several megabytes for TPC-H and tens
+of megabytes for TPC-DS, beyond what the Explorer's plan viewer loads.
+
 ## Storage Layout
 
 Both of the following layouts are valid because the explorer pipeline and validator

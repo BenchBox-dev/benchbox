@@ -2743,16 +2743,6 @@ functions:
   classification: ignore_with_rationale
   rationale: "External vs native table mode dispatch determines fundamentally different execution paths (external skips schema creation, calls different adapter methods, populates different phase metadata)."
 
-- key: "benchbox/core/tpcdi/_legacy_etl/customer_mgmt_processor.py:parse_file"
-  file: "benchbox/core/tpcdi/_legacy_etl/customer_mgmt_processor.py"
-  line: 194
-  function: "parse_file"
-  score: 12
-  band: ceiling
-  module_family: "benchbox/core"
-  classification: ignore_with_rationale
-  rationale: "XML action type dispatch (NEW/UPDCUST → customer, ADDACCT → account, INACT → inactivate). Each action type extracts different data from different XML elements. Namespace resilience adds unavoidable branching."
-
 - key: "benchbox/cli/commands/compare_plans.py:_output_summary_text"
   file: "benchbox/cli/commands/compare_plans.py"
   line: 338
@@ -3070,17 +3060,6 @@ functions:
   module_family: "benchbox/utils"
   classification: ignore_with_rationale
   rationale: "Driver resolution must reconcile no-package platforms, current-env matches, isolated runtime reuse, auto-install policy, and fallback error reporting. The branching is the contract for deterministic driver selection."
-
-- key: "benchbox/core/tpcdi/_legacy_etl/sql_backend.py:_build_safe_where_clause"
-  file: "benchbox/core/tpcdi/_legacy_etl/sql_backend.py"
-  line: 174
-  function: "_build_safe_where_clause"
-  score: 12
-  band: ceiling
-  module_family: "benchbox/core"
-  classification: simplify_now
-  rationale: "The function mixed two independent validation paths: parameterized dict conditions and raw SQL-string validation. Splitting the two flows removes accidental branching without changing the security rules."
-  refactor_strategy: "Extract _build_parameterized_where_clause(), _validate_sql_where_clause(), and _validate_where_clause_identifiers(). Keep the public helper as a thin dispatcher."
 
 - key: "benchbox/core/tpcdi/etl/transformations.py:_apply_vectorized_conversions"
   file: "benchbox/core/tpcdi/etl/transformations.py"

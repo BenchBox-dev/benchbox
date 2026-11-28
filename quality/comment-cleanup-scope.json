@@ -233,18 +233,6 @@
       ]
     },
     {
-      "id": "tpcdi-generation-source-slice",
-      "owner": "comment-cleanup-tpcdi-generation",
-      "state": "blocked",
-      "blocking_disposition": "Source slice is verified; preserve generator and manifest contracts.",
-      "priority": 20,
-      "selectors": [
-        {
-          "prefix": "benchbox/core/tpcdi/generator/"
-        }
-      ]
-    },
-    {
       "id": "tpcdi-runtime-source-slice",
       "owner": "comment-cleanup-tpcdi-runtime",
       "state": "blocked",
@@ -261,28 +249,10 @@
           "path": "benchbox/core/tpcdi/config.py"
         },
         {
-          "path": "benchbox/core/tpcdi/financial_data.py"
-        },
-        {
-          "path": "benchbox/core/tpcdi/loader.py"
-        },
-        {
-          "path": "benchbox/core/tpcdi/metrics.py"
-        },
-        {
           "path": "benchbox/core/tpcdi/schema.py"
         },
         {
           "path": "benchbox/core/tpcdi/schema_specs.yaml"
-        },
-        {
-          "path": "benchbox/core/tpcdi/source_generators.py"
-        },
-        {
-          "path": "benchbox/core/tpcdi/validation.py"
-        },
-        {
-          "prefix": "benchbox/core/tpcdi/_legacy_etl/"
         },
         {
           "prefix": "benchbox/core/tpcdi/etl/"
@@ -4213,10 +4183,10 @@
     },
     {
       "path": "COPYRIGHT.md",
-      "blob_sha256": "9b167331e0959dde40fdc467de85055724531e0b3001d7891da671bedbeee2d3",
+      "blob_sha256": "a86a5e92f8eeedba1ef4bac32f010dbcd80b1e2dce67c27718787693753fe33a",
       "byte_start": 0,
-      "byte_end": 8794,
-      "retained_sha256": "9b167331e0959dde40fdc467de85055724531e0b3001d7891da671bedbeee2d3",
+      "byte_end": 9083,
+      "retained_sha256": "a86a5e92f8eeedba1ef4bac32f010dbcd80b1e2dce67c27718787693753fe33a",
       "governing_requirement": "This authored summary repeats legal and benchmark acknowledgements but is not independently established as a governing instrument.",
       "source_identity": "ed5c263c513ba65499f4918d3a7de607f280c65b:COPYRIGHT.md",
       "owner": "comment-cleanup-scope-policy",

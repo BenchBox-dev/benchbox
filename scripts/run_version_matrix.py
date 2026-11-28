@@ -14,6 +14,7 @@ import subprocess
 import sys
 import threading
 import time
+from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from importlib import metadata
@@ -564,28 +565,45 @@ def extract_result(payload: dict[str, Any], spec: MatrixSpec, cell: Cell) -> dic
     config = platform_info.get("config") if isinstance(platform_info.get("config"), dict) else {}
     summary = payload.get("summary") if isinstance(payload.get("summary"), dict) else {}
     counts = summary.get("queries") if isinstance(summary.get("queries"), dict) else {}
-    queries: dict[str, dict[str, Any]] = {}
-    for query in payload.get("queries", []):
-        if isinstance(query, dict) and query.get("run_type") == "measurement":
-            queries[f"{query.get('stream')}:{query.get('id')}"] = {
-                "rows": query.get("rows"),
-                "status": query.get("status"),
-                "ms": query.get("ms"),
-            }
+    measured = [
+        query
+        for query in payload.get("queries", [])
+        if isinstance(query, dict) and query.get("run_type") == "measurement"
+    ]
+    rows_by_iteration = Counter(query.get("iter", 1) for query in measured)
+    distinct_by_iteration = Counter(
+        iteration
+        for iteration, _, _ in {(query.get("iter", 1), query.get("stream"), query.get("id")) for query in measured}
+    )
+    iterations = sorted(rows_by_iteration)
+    queries = {
+        f"{query.get('stream')}:{query.get('id')}": {
+            "rows": query.get("rows"),
+            "status": query.get("status"),
+            "ms": query.get("ms"),
+        }
+        for query in measured
+        if query.get("iter", 1) == iterations[-1]
+    }
     receipt = platform_info.get("execution_engine")
     if not isinstance(receipt, dict):
         receipt = config.get("execution_engine") if isinstance(config.get("execution_engine"), dict) else {}
     requested = receipt.get("requested", config.get("engine_requested"))
     expected = spec.query_counts[cell.benchmark]
+    expected_iterations = spec.iterations or 1
     checks = {
         "rechunk_effective_false": config.get("rechunk_effective") is False,
         "engine_matches": requested == cell.engine,
         "polars_version_matches": platform_info.get("version") == cell.version,
-        "query_count_matches": counts.get("total") == expected and len(queries) == expected,
+        "iteration_count_matches": len(iterations) == expected_iterations,
+        "query_count_matches": counts.get("total") == expected * expected_iterations
+        and len(queries) == expected
+        and all(rows_by_iteration[i] == distinct_by_iteration[i] == expected for i in iterations),
         "no_failed_queries": counts.get("failed") == 0,
     }
     return {
         "validation": summary.get("validation"),
+        "measured_iterations": len(iterations),
         "query_total": counts.get("total"),
         "query_failed": counts.get("failed"),
         "rechunk_effective": config.get("rechunk_effective"),
@@ -835,8 +853,19 @@ def main(argv: list[str] | None = None, *, spec: MatrixSpec | None = None, descr
     parser.add_argument("--first-round", type=int, default=1, help="Index of the first round")
     parser.add_argument("--rounds", type=int, default=None, help="Number of rounds to run")
     parser.add_argument("--qualification", type=Path, default=None, help="Qualification file named by the spec")
+    parser.add_argument(
+        "--benchmark",
+        action="append",
+        default=None,
+        help="Run only this benchmark of the spec; repeat to select several",
+    )
     args = parser.parse_args(argv)
     selected = spec or SPECS[args.engine]
+    if args.benchmark:
+        try:
+            selected = selected.select(args.benchmark)
+        except ValueError as exc:
+            parser.error(str(exc))
     repo_root = REPO_ROOT
     output_dir = args.output_dir.expanduser().resolve()
     if selected.setup_versions:

@@ -129,20 +129,10 @@ class TestPythonEntryPoints:
         ("method", "args"),
         [
             ("generate_data", ()),
-            ("run_full_benchmark", (object(),)),
-            ("run_etl_benchmark", (object(),)),
-            ("calculate_official_metrics", (object(), object())),
-            ("execute_dataframe_workload", ()),
-            ("get_queries", ()),
             ("get_query", ("Q1",)),
             ("run_benchmark", (object(),)),
             ("run_benchmark", (object(), [])),
             ("run_benchmark", (object(), ["Q1"], False, False)),
-            ("run_etl_pipeline", (object(),)),
-            ("generate_source_data", ()),
-            ("load_data_to_database", (object(),)),
-            ("create_schema", (object(),)),
-            ("validate_etl_results", (object(),)),
         ],
     )
     def test_core_class_refuses(self, core: TPCDIBenchmark, method: str, args: tuple) -> None:
@@ -155,16 +145,11 @@ class TestPythonEntryPoints:
         ("method", "args"),
         [
             ("generate_data", ()),
-            ("run_full_benchmark", (object(),)),
-            ("run_etl_benchmark", (object(),)),
-            ("calculate_official_metrics", (object(), object())),
             ("get_queries", ()),
             ("get_query", ("Q1",)),
             ("run_benchmark", (object(),)),
             ("run_benchmark", (object(), [])),
             ("run_benchmark", (object(), ["Q1"], False, False)),
-            ("run_etl_pipeline", (object(),)),
-            ("generate_source_data", ()),
         ],
     )
     def test_facade_refuses(self, facade: TPCDI, method: str, args: tuple) -> None:
