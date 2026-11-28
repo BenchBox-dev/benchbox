@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "Both checkouts set `persist-credentials: false`.",
+    "Only the push, pull-request and over-ceiling issue steps receive `CROSS_SURFACE_BASELINE_PR_TOKEN`, and a workflow test pins the per-step token list.",
+    "One dispatch made under the dispatch rule pushes and opens its pull requests. Record the run id in context."
+  ],
+  "description": "#### Problem\n`.github/workflows/fast-duration-baseline-refresh.yml` checks out with `token: ${{ secrets.CROSS_SURFACE_BASELINE_PR_TOKEN || github.token }}` in two places (`uses` and `token` at lines 28–31 and 307–310).\n- `actions/checkout` persists that credential in `.git/config` by default, so every later step in the job can read it, including steps that run repository Python through `uv run`.\n- The same token also goes as `GH_TOKEN` to steps that need it:\n  - the push and pull-request steps;\n  - \"Report the over-ceiling baseline and stop\" (lines 179–202, `gh issue create`/`edit`).\n- It also goes to read-only steps:\n  - both \"Find earlier refresh pull requests left open\" steps (236–247 and 429–440).\n- The fetch steps (43 and 322) get `secrets.GITHUB_TOKEN` and run repository Python.\n- This was raised in hosted finding D4 on #4541, which removed only the npm step.\n\n#### Change\n1. Set `persist-credentials: false` on both checkouts.\n2. Pass `CROSS_SURFACE_BASELINE_PR_TOKEN` only to the steps that push, open or close pull requests, or create or edit the over-ceiling issue. Read-only `gh` steps use `github.token`.\n3. Push with the pattern in `omp-pin-bump.yml` lines 125–139 (`git -c http.https://github.com/.extraheader=…`) inside the push step.\n4. Add a workflow test that lists exactly which steps receive each token.\n\n#### Decision gates\n- Changing which secret or identity commits is the owner's decision and out of scope.\n- Show the owner the per-step token table before merge.\n- **Dispatch rule:** dispatch the workflow to verify only when no fast-tier refresh pull request is open, and with the owner's go-ahead for the medium-shard pull request the run would supersede.\n\n#### Guardrails\n- Keep the commit author unchanged.\n- Never print the token: no `set -x` in steps that hold it.\n- Edit only `fast-duration-baseline-refresh.yml`, its tests, and its row in `docs/internal/dev-loop-property-ledger.md` (line 179) if the permission description changes.\n- Make no change to source-run selection or to the baseline.\n\n#### Verification rubric\n- **Pass:** the workflow test asserts `persist-credentials: false` on every checkout and pins the exact steps that receive each token. One permitted dispatch pushes and opens its refresh pull requests, with the run id recorded.\n- **Fail:** a step outside push, pull-request and issue handling that can read the write token.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4ee2124a787b6f05e0bc0950",
+      "at": "2026-11-28T13:03:22Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "3c584b0009851c9c09e043c74fdf3e5d",
+      "session_id": "1d89ef118510408e88eb75fe7b796609"
+    }
+  ]
+}

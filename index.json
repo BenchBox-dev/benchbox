@@ -34686,6 +34686,15 @@
       "status": "blocked",
       "title": "Test whether a scheduled baseline refresh merges without re-authoring its commit"
     },
+    "fast-baseline-refresh-token-scope-20261126": {
+      "claim": null,
+      "needs": [
+        "fast-baseline-refresh-4548-land-and-weekly-repeat-20261126"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Give the refresh workflow's write token only to the steps that push, open or close pull requests, or file the over-ceiling issue"
+    },
     "fast-baseline-reproduce-as-review-evidence-and-refresh-cadence-20261120": {
       "claim": null,
       "needs": [
