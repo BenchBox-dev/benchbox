@@ -20536,7 +20536,7 @@
         }
       },
       "integration_branch": "feat/validation-core",
-      "integration_head": "a16854e59306f2691c36d31d0a8c76d648face63",
+      "integration_head": "9b77607d6f6acd394584c195f25de30a2c48ce54",
       "integration_log": [
         {
           "at": "2026-11-27T14:59:12Z",
@@ -20805,6 +20805,20 @@
             "crr-v2-measured-stream-integrity-checks"
           ],
           "seq": 8
+        },
+        {
+          "at": "2026-11-28T18:38:35Z",
+          "changed_files": [
+            "benchbox/core/validation/stream_checks.py"
+          ],
+          "head": "9b77607d6f6acd394584c195f25de30a2c48ce54",
+          "kind": "fix",
+          "op_id": "41ea9e8302de5eb90678cda6c62c6986",
+          "previous_head": "a16854e59306f2691c36d31d0a8c76d648face63",
+          "requires_acceptance": [
+            "crr-v2-measured-stream-integrity-checks"
+          ],
+          "seq": 9
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-validation-core",
