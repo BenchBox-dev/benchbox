@@ -5871,7 +5871,7 @@
         }
       },
       "integration_branch": "feat/explorer-data-r2",
-      "integration_head": "274a57eca445b8a04febdd15e7b00b6c6f7ae9ac",
+      "integration_head": "4dced48a917e7900ce5dc8a377f51e79eef7821a",
       "integration_log": [
         {
           "at": "2026-11-27T16:35:55Z",
@@ -6152,6 +6152,21 @@
             "crr-b3-pipeline-emits-rule-outcome-and-medians"
           ],
           "seq": 7
+        },
+        {
+          "at": "2026-11-28T13:22:21Z",
+          "changed_files": [
+            "_project/planning/visible_metrics.yaml",
+            "tests/unit/scripts/explorer_pipeline/test_corpus_read_model.py"
+          ],
+          "head": "4dced48a917e7900ce5dc8a377f51e79eef7821a",
+          "kind": "fix",
+          "op_id": "f7de4bd1f86b37cee13f7457c0b4ffe0",
+          "previous_head": "274a57eca445b8a04febdd15e7b00b6c6f7ae9ac",
+          "requires_acceptance": [
+            "crr-b3-pipeline-emits-rule-outcome-and-medians"
+          ],
+          "seq": 8
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-explorer-data-r2",
