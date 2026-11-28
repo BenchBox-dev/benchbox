@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "The monthly seed corpus now runs its power-only TPC-H and SSB cells with --capture-plans, so those published seed results carry a query plans companion that the Explorer's plan viewer can show. The official SF 1 full-specification cells do not capture plans yet."
+}

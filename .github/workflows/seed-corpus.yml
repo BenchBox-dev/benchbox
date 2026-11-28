@@ -183,6 +183,8 @@ jobs:
           if [ "${{ matrix.official }}" = "true" ]; then
             command+=(--official --seed 42)
             command+=(--streams "${{ matrix.streams }}")
+          else
+            command+=(--capture-plans)
           fi
           if [ "${{ matrix.official }}" = "true" ] && [ "${{ matrix.benchmark }}" = "tpch" ]; then
             command+=(--benchmark-option tpch_refresh_functions=true)
