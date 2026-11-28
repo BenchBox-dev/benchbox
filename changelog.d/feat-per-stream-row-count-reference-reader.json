@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "added",
+      "breaking": false,
+      "text": "Row-count references for TPC-H, TPC-DS and SSB are read from one per-stream reader that records generator, data checksum, reference engines, date and agreement, and validator output names the reference kind"
+    }
+  ]
+}

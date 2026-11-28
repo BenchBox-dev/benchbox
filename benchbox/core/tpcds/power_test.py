@@ -19,10 +19,7 @@ from benchbox.core.plan_capture_phase import (
 from benchbox.core.result_receipt import cursor_result_count
 from benchbox.core.results.fetch_mode import ConversionClock
 from benchbox.core.results.platform_timing import deferred_platform_timing
-from benchbox.core.validation.query_validation import (
-    clear_reference_seed_context,
-    set_reference_seed_context,
-)
+from benchbox.core.validation.stream_checks import QueryGeneration
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.run_deadline import TIMED_OUT_QUERY_STATUS, failed_query_status, stop_requested_before_query
 
@@ -301,31 +298,27 @@ class TPCDSPowerTest:
             query_result["start_monotonic"] = query_start
             try:
                 if hasattr(connection, "set_query_context"):
-                    connection.set_query_context(query_display_id, stream_id=self.config.stream_id)
-                from benchbox.core.expected_results.tpcds_results import tpcds_subscale_reference_seed
+                    connection.set_query_context(
+                        query_display_id,
+                        stream_id=self.config.stream_id,
+                        generation=QueryGeneration(seed=stream_param_seed),
+                    )
+                cursor = connection.execute(query_text)
 
-                set_reference_seed_context(
-                    tpcds_subscale_reference_seed(self.config.seed, self.config.stream_id, self.config.scale_factor)
-                )
-                try:
-                    cursor = connection.execute(query_text)
+                if hasattr(cursor, "platform_result"):
+                    result_dict = cursor.platform_result
+                    propagate_row_count_validation(result_dict, query_result)
+                    if result_dict.get("status") == "FAILED":
+                        error_msg = result_dict.get(
+                            "error", result_dict.get("row_count_validation_error", "Query validation failed")
+                        )
+                        raise RuntimeError(error_msg)
+                    propagate_query_execution_metadata(result_dict, query_result)
 
-                    if hasattr(cursor, "platform_result"):
-                        result_dict = cursor.platform_result
-                        propagate_row_count_validation(result_dict, query_result)
-                        if result_dict.get("status") == "FAILED":
-                            error_msg = result_dict.get(
-                                "error", result_dict.get("row_count_validation_error", "Query validation failed")
-                            )
-                            raise RuntimeError(error_msg)
-                        propagate_query_execution_metadata(result_dict, query_result)
+                result_count = cursor_result_count(cursor)
 
-                    result_count = cursor_result_count(cursor)
-
-                    if hasattr(connection, "commit"):
-                        connection.commit()
-                finally:
-                    clear_reference_seed_context()
+                if hasattr(connection, "commit"):
+                    connection.commit()
             finally:
                 self.captured_items.append((label, query_text))
 

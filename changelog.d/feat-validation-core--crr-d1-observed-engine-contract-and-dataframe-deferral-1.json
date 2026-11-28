@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "Test-only change: the Dask distributed-setup test no longer leaves its fake Client and LocalCluster installed for later tests"
+}

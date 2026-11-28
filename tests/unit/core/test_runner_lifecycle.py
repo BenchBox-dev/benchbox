@@ -720,7 +720,7 @@ def test_preflight_and_manifest_validation(tmp_path):
     stages = result.validation_details.get("stages", [])
     stage_names = {stage["stage"] for stage in stages}
     assert {"preflight", "post_generation_manifest"} <= stage_names
-    assert result.validation_status in {"PASSED", "WARNINGS"}
+    assert result.validation_status == "NOT_VALIDATED"
 
 
 @pytest.mark.unit

@@ -180,16 +180,13 @@ def generate_datasets(scale: float, benchmarks: list[str], scratch: Path) -> dic
 
 
 def expected_row_counts(scale: float) -> dict[str, dict[str, int]]:
-    from benchbox.core.expected_results.loader import load_tpch_subscale_row_counts
-    from benchbox.core.expected_results.tpcds_results import tpcds_subscale_expected_row_counts
+    from benchbox.core.expected_results.row_count_references import has_reference, load_row_count_reference
 
     counts: dict[str, dict[str, int]] = {}
-    try:
-        counts["tpch"] = dict(load_tpch_subscale_row_counts(scale).row_counts)
-    except FileNotFoundError:
-        pass
-    tpcds = tpcds_subscale_expected_row_counts(scale)
-    if tpcds is not None:
+    if has_reference("tpch", scale):
+        counts["tpch"] = dict(load_row_count_reference("tpch", scale).streams[0].row_counts)
+    if has_reference("tpcds", scale):
+        tpcds = dict(load_row_count_reference("tpcds", scale).streams[0].row_counts)
         counts["tpcds"] = {
             query: tpcds[TPCDS_MULTI_PART.get(query, query)]
             for query in map(str, range(1, 100))

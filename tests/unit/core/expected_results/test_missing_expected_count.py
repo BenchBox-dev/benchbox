@@ -8,6 +8,7 @@ from benchbox.core.expected_results.models import (
 from benchbox.core.expected_results.registry import ExpectedResultsRegistry, LoadOutcome
 from benchbox.core.results.query_execution import ROW_COUNT_VALIDATION_MESSAGE_MAX_CHARS
 from benchbox.core.validation.query_validation import QueryValidator
+from benchbox.core.validation.stream_checks import QueryGeneration, query_generation_context
 
 pytestmark = [
     pytest.mark.unit,
@@ -131,27 +132,21 @@ def test_tpch_typo_fails_and_real_query_passes():
     assert not real.unvalidated
 
 
-def test_tpcds_subscale_gap_is_unvalidated_and_unknown_variant_fails():
-    validator = QueryValidator()
+def test_tpcds_every_query_has_a_count_and_unknown_variant_fails():
+    from benchbox.core.expected_results.row_count_references import load_row_count_reference
 
-    gap = validator.validate_query_result("tpcds", "21", 3, 0.1)
+    validator = QueryValidator()
+    recorded = load_row_count_reference("tpcds", 0.1).streams[0].row_counts["21"]
+
+    with query_generation_context(QueryGeneration(seed=1001)):
+        referenced = validator.validate_query_result("tpcds", "21", recorded, 0.1)
     typo = validator.validate_query_result("tpcds", "14c", 3, 0.1)
 
-    assert gap.is_valid
-    assert gap.unvalidated
+    assert referenced.is_valid
+    assert not referenced.unvalidated
+    assert referenced.expected_row_count == recorded
     assert not typo.is_valid
     assert not typo.unvalidated
-
-
-def test_non_reference_stream_remains_a_skip_not_unvalidated():
-    validator = QueryValidator()
-
-    result = validator.validate_query_result("tpch", "1", 4, 1.0, stream_id=3)
-
-    assert result.is_valid
-    assert not result.unvalidated
-    assert result.validation_mode == ValidationMode.SKIP
-    assert "stream 3" in (result.warning_message or "")
 
 
 def test_exact_entry_without_an_expected_count_fails_validation():
@@ -192,7 +187,7 @@ def test_classified_timeout_is_unchanged(monkeypatch):
         lambda *args, **kwargs: (None, LoadOutcome.PROVIDER_TIMEOUT),
     )
 
-    result = validator.validate_query_result("tpch", "1", 4, 1.0)
+    result = validator.validate_query_result("ssb", "1.1", 4, 1.0)
 
     assert not result.is_valid
     assert not result.unvalidated
@@ -202,19 +197,24 @@ def test_classified_timeout_is_unchanged(monkeypatch):
 
 @pytest.mark.parametrize("query_id", ["24a", "24b", "39a", "39b", "24", "39"])
 def test_tpcds_sf1_multi_part_queries_do_not_fail_the_lookup(query_id):
-    result = QueryValidator().validate_query_result("tpcds", query_id, 5, 1.0)
+    from benchbox.core.expected_results.row_count_references import load_row_count_reference
+
+    recorded = load_row_count_reference("tpcds", 1.0).streams[0].row_counts
+    actual = recorded.get(query_id, 5)
+
+    result = QueryValidator().validate_query_result("tpcds", query_id, actual, 1.0)
 
     assert result.is_valid
     assert not (result.error_message or "")
 
 
 def test_tpcds_known_query_ids_need_no_answer_files(monkeypatch):
-    from benchbox.core.expected_results import tpcds_results
+    from benchbox.core.expected_results import loader, tpcds_results
 
     def boom(*args, **kwargs):
         raise AssertionError("answer files must not be loaded")
 
-    monkeypatch.setattr(tpcds_results, "load_tpcds_expected_results", boom)
+    monkeypatch.setattr(loader, "load_tpcds_expected_results", boom)
 
     known = tpcds_results.tpcds_known_query_ids()
 

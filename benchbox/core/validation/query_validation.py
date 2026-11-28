@@ -11,78 +11,16 @@ importlib.import_module("benchbox.core.expected_results")
 from benchbox.core.expected_results.models import ExpectedQueryResult, ValidationMode, ValidationResult
 from benchbox.core.expected_results.registry import LoadOutcome, get_registry
 from benchbox.core.expected_results.ssb_results import normalize_ssb_query_id
-from benchbox.core.expected_results.tpcds_results import (
-    TPCDS_PARAMETER_SENSITIVE_QUERY_IDS as _TPCDS_PARAMETER_SENSITIVE_QUERY_IDS,
-)
-from benchbox.core.expected_results.tpch_results import (
-    PARAMETER_SENSITIVE_QUERY_IDS as _TPCH_PARAMETER_SENSITIVE_QUERY_IDS,
-)
-from benchbox.core.results.query_status import DATA_REFRESHED_REASON, PARAMETER_SENSITIVE_REASON
+from benchbox.core.results.query_status import DATA_REFRESHED_REASON
+from benchbox.core.validation.stream_checks import canonical_benchmark, current_query_generation, decide_row_count
 
 logger = logging.getLogger(__name__)
-
-_PARAMETER_SENSITIVE_QUERY_IDS_BY_BENCHMARK: dict[str, frozenset[str]] = {
-    "tpch": _TPCH_PARAMETER_SENSITIVE_QUERY_IDS,
-    "tpc-h": _TPCH_PARAMETER_SENSITIVE_QUERY_IDS,
-    "tpcds": _TPCDS_PARAMETER_SENSITIVE_QUERY_IDS,
-    "tpc-ds": _TPCDS_PARAMETER_SENSITIVE_QUERY_IDS,
-}
-
-
-_NON_REFERENCE_SEED_EXCLUDED_BENCHMARKS: frozenset[str] = frozenset({"tpcds", "tpc-ds"})
-_stream_seed_override_warned: set[str] = set()
-_stream_seed_override_lock = threading.Lock()
-
-
-def reset_stream_seed_override_warnings() -> None:
-    with _stream_seed_override_lock:
-        _stream_seed_override_warned.clear()
-
-
-def _warn_stream_seed_override_once(benchmark_type: str, requested_mode: ValidationMode | None) -> None:
-    if requested_mode is None or requested_mode is ValidationMode.SKIP:
-        return
-    key = f"{benchmark_type.lower()}:{requested_mode.value}"
-    with _stream_seed_override_lock:
-        if key in _stream_seed_override_warned:
-            return
-        _stream_seed_override_warned.add(key)
-    logger.warning(
-        "Row-count validation mode '%s' was requested for '%s', but queries run with stream-seeded parameters "
-        "that differ from the answer-set parameters, so answer-set row counts are not checked for them.",
-        requested_mode.value,
-        benchmark_type,
-    )
-
-
-def get_parameter_sensitive_query_ids(benchmark_type: str) -> frozenset[str]:
-    return _PARAMETER_SENSITIVE_QUERY_IDS_BY_BENCHMARK.get(benchmark_type.lower(), frozenset())
-
-
-_reference_seed_state = threading.local()
-
-
-def _set_thread_context(state: threading.local, attribute: str, value: object) -> None:
-    setattr(state, attribute, value)
-
-
-def set_reference_seed_context(is_reference_seed: bool | None) -> None:
-    _set_thread_context(_reference_seed_state, "is_reference_seed", is_reference_seed)
-
-
-def get_reference_seed_context() -> bool | None:
-    return getattr(_reference_seed_state, "is_reference_seed", None)
-
-
-def clear_reference_seed_context() -> None:
-    _reference_seed_state.is_reference_seed = None
-
 
 _data_state_state = threading.local()
 
 
 def set_data_refreshed_context(data_refreshed: bool) -> None:
-    _set_thread_context(_data_state_state, "data_refreshed", data_refreshed)
+    _data_state_state.data_refreshed = data_refreshed
 
 
 def get_data_refreshed_context() -> bool:
@@ -121,6 +59,15 @@ def validation_mode_context(mode: ValidationMode | None) -> Iterator[None]:
         set_validation_mode_context(previous)
 
 
+def validation_skipped_by_configuration(benchmark_type: str) -> bool:
+    if benchmark_type.lower() not in ("tpcds", "tpc-ds"):
+        return False
+    context_mode = get_validation_mode_context()
+    if context_mode is not None:
+        return context_mode is ValidationMode.SKIP
+    return os.environ.get("BENCHBOX_QUERY_VALIDATION_MODE", "").strip().lower() in ("skip", "disabled")
+
+
 class QueryValidator:
     def __init__(self):
         from benchbox.core.expected_results import register_all_providers
@@ -128,17 +75,6 @@ class QueryValidator:
         register_all_providers()
 
         self.registry = get_registry()
-
-    @staticmethod
-    def _resolve_tpcds_run_mode(benchmark_type: str) -> ValidationMode | None:
-        if benchmark_type.lower() != "tpcds":
-            return None
-        context_mode = get_validation_mode_context()
-        if context_mode is not None:
-            return context_mode
-        from benchbox.core.expected_results.tpcds_results import get_query_validation_mode
-
-        return get_query_validation_mode()
 
     def _normalize_query_id(self, benchmark_type: str, query_id: str | int) -> str:
         import re
@@ -161,33 +97,6 @@ class QueryValidator:
 
         return query_id_str
 
-    def _apply_tpcds_validation_mode(
-        self,
-        benchmark_type: str,
-        scale_factor: float | None,
-        expected_result: ExpectedQueryResult,
-    ) -> ExpectedQueryResult:
-        if benchmark_type.lower() not in ("tpcds", "tpc-ds"):
-            return expected_result
-        import dataclasses
-
-        context_mode = get_validation_mode_context()
-        env_mode_str = os.environ.get("BENCHBOX_QUERY_VALIDATION_MODE")
-        if (scale_factor or 1.0) == 1.0:
-            run_mode = self._resolve_tpcds_run_mode(benchmark_type)
-            if run_mode is not None and run_mode != expected_result.validation_mode:
-                return dataclasses.replace(expected_result, validation_mode=run_mode)
-        elif context_mode is not None:
-            if context_mode != expected_result.validation_mode:
-                return dataclasses.replace(expected_result, validation_mode=context_mode)
-        elif env_mode_str is not None:
-            norm_env = env_mode_str.strip().lower()
-            if norm_env in ("skip", "disabled"):
-                return dataclasses.replace(expected_result, validation_mode=ValidationMode.SKIP)
-            if norm_env in ("exact", "loose", "range"):
-                return dataclasses.replace(expected_result, validation_mode=ValidationMode(norm_env))
-        return expected_result
-
     @staticmethod
     def _without_reference(
         benchmark_type: str,
@@ -202,13 +111,6 @@ class QueryValidator:
                 f"Reference answer files for benchmark '{benchmark_type}' at scale factor {scale_factor or 1.0} "
                 f"are not installed (query '{query_id}'). Row counts were not checked. "
                 f"Actual rows returned: {actual_row_count}"
-            )
-            unvalidated = False
-        elif load_outcome is LoadOutcome.STREAM_NOT_REFERENCE_VALIDATED:
-            warning = (
-                f"Query '{query_id}' executed on stream {stream_id}. "
-                f"Answer files only available for stream 0 in '{benchmark_type}' benchmark. "
-                f"Validation skipped. Actual rows returned: {actual_row_count}"
             )
             unvalidated = False
         else:
@@ -239,6 +141,25 @@ class QueryValidator:
         if actual_row_count < 0:
             raise ValueError(f"actual_row_count must be non-negative, got {actual_row_count} for query '{query_id}'")
 
+        if canonical_benchmark(benchmark_type) is not None:
+            if validation_skipped_by_configuration(benchmark_type):
+                return ValidationResult(
+                    is_valid=True,
+                    query_id=str(query_id),
+                    expected_row_count=None,
+                    actual_row_count=actual_row_count,
+                    validation_mode=ValidationMode.SKIP,
+                    warning_message="TPC-DS query validation is skipped by configuration",
+                )
+            return decide_row_count(
+                benchmark_type,
+                query_id,
+                actual_row_count,
+                scale_factor,
+                generation=current_query_generation(),
+                data_refreshed=get_data_refreshed_context(),
+            )
+
         query_id_str = str(query_id)
 
         query_id_normalized = self._normalize_query_id(benchmark_type, query_id)
@@ -257,27 +178,11 @@ class QueryValidator:
                 ),
             )
 
-        if get_reference_seed_context() is False and benchmark_type.lower() in _NON_REFERENCE_SEED_EXCLUDED_BENCHMARKS:
-            _warn_stream_seed_override_once(benchmark_type, self._resolve_tpcds_run_mode(benchmark_type))
-            return ValidationResult(
-                is_valid=True,
-                query_id=query_id_str,
-                expected_row_count=None,
-                actual_row_count=actual_row_count,
-                validation_mode=ValidationMode.SKIP,
-                warning_message=(
-                    f"Query '{query_id}' ran with stream-seeded parameters that differ from the "
-                    f"'{benchmark_type}' answer-set parameters. Row-count validation excluded. "
-                    f"Actual rows returned: {actual_row_count}"
-                ),
-            )
-
         expected_result, load_outcome = self.registry.get_expected_result_detailed(
             benchmark_type, query_id_normalized, scale_factor, stream_id
         )
 
         if load_outcome in (LoadOutcome.PROVIDER_FAILED, LoadOutcome.PROVIDER_TIMEOUT):
-            requested_mode = self._resolve_tpcds_run_mode(benchmark_type)
             if load_outcome is LoadOutcome.PROVIDER_FAILED:
                 error_msg = (
                     f"Expected-results provider failed for query '{query_id}' in benchmark "
@@ -297,12 +202,9 @@ class QueryValidator:
                 query_id=query_id_str,
                 expected_row_count=None,
                 actual_row_count=actual_row_count,
-                validation_mode=requested_mode or ValidationMode.SKIP,
+                validation_mode=ValidationMode.SKIP,
                 error_message=error_msg,
             )
-
-        if expected_result is not None:
-            expected_result = self._apply_tpcds_validation_mode(benchmark_type, scale_factor, expected_result)
 
         if load_outcome is LoadOutcome.QUERY_NOT_FOUND:
             return ValidationResult(
@@ -325,36 +227,25 @@ class QueryValidator:
                 benchmark_type, query_id_str, actual_row_count, scale_factor, stream_id, load_outcome
             )
 
-        if get_reference_seed_context() is False and expected_result.reference_parameters_only:
-            return ValidationResult(
-                is_valid=True,
-                query_id=query_id_str,
-                expected_row_count=None,
-                actual_row_count=actual_row_count,
-                validation_mode=ValidationMode.SKIP,
-                warning_message=(
-                    f"{PARAMETER_SENSITIVE_REASON}: query '{query_id}' row count at scale factor {scale_factor} "
-                    f"depends on the substitution parameters; the '{benchmark_type}' reference count holds only "
-                    f"for qgen default parameters. Row-count validation excluded. "
-                    f"Actual rows returned: {actual_row_count}"
-                ),
-            )
+        result = self._validate_against_reference(
+            benchmark_type, query_id, query_id_str, query_id_normalized, actual_row_count, scale_factor, expected_result
+        )
+        result.reference_kind = expected_result.reference_kind
+        result.reference_label = expected_result.reference_label
+        if expected_result.reference_label and not result.is_valid and result.error_message:
+            result.error_message = f"{result.error_message}\n  Reference: {expected_result.reference_label}"
+        return result
 
-        if get_reference_seed_context() is False and query_id_normalized in get_parameter_sensitive_query_ids(
-            benchmark_type
-        ):
-            if (
-                expected_result.expected_row_count_min is not None
-                and expected_result.expected_row_count_max is not None
-            ):
-                return self._validate_range(
-                    query_id_str,
-                    expected_result.expected_row_count_min,
-                    expected_result.expected_row_count_max,
-                    actual_row_count,
-                )
-            return expected_result.validate_loose(actual_row_count, scale_factor)
-
+    def _validate_against_reference(
+        self,
+        benchmark_type: str,
+        query_id: str | int,
+        query_id_str: str,
+        query_id_normalized: str,
+        actual_row_count: int,
+        scale_factor: float | None,
+        expected_result: ExpectedQueryResult,
+    ) -> ValidationResult:
         expected_count = expected_result.get_expected_count(scale_factor)
 
         if expected_result.validation_mode == ValidationMode.EXACT and expected_count is None:

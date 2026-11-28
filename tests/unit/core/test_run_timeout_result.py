@@ -212,7 +212,7 @@ def test_an_error_before_the_limit_is_still_an_error(monkeypatch) -> None:
 def test_the_exported_bundle_carries_the_status_and_the_timeout_block(timed_out_result, tmp_path) -> None:
     bundle = _export(timed_out_result, tmp_path)
 
-    assert bundle["version"] == "2.6"
+    assert bundle["version"] == "2.7"
     assert bundle["summary"]["validation"] == "timed_out"
     assert bundle["execution"]["timeout"] == {"timeout_seconds": 5, "phase": "execute", "query_id": "Q5"}
     SchemaV2Validator().validate(bundle)

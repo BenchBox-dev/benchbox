@@ -3,21 +3,20 @@ from pathlib import Path
 
 import pytest
 
-from benchbox.core.expected_results.loader import (
-    TPCH_SUBSCALE_ROW_COUNT_SCALE_FACTORS,
-    load_tpch_subscale_row_counts,
-)
 from benchbox.core.expected_results.models import (
     BenchmarkExpectedResults,
     ExpectedQueryResult,
     ValidationMode,
 )
 from benchbox.core.expected_results.registry import ExpectedResultsRegistry, get_registry
-from benchbox.core.validation.query_validation import (
-    QueryValidator,
-    clear_reference_seed_context,
-    set_reference_seed_context,
+from benchbox.core.expected_results.row_count_references import (
+    load_row_count_reference,
+    reference_path,
+    reference_scales,
+    validate_payload,
 )
+from benchbox.core.validation.query_validation import QueryValidator
+from benchbox.core.validation.stream_checks import QueryGeneration, query_generation_context
 
 pytestmark = [
     pytest.mark.unit,
@@ -71,22 +70,19 @@ class TestQueryValidatorExactModeSafeguards:
             assert (result.error_message is None) is valid
 
     def test_integration_with_real_tpcds_variants(self):
-        from benchbox.core.expected_results.loader import load_tpcds_expected_results
-
         validator = QueryValidator()
 
-        tpcds_results = load_tpcds_expected_results(scale_factor=1.0)
+        recorded = load_row_count_reference("tpcds", 1.0).streams[0].row_counts
 
-        if "14" in tpcds_results and "14a" in tpcds_results:
-            result = validator.validate_query_result(
-                benchmark_type="tpcds",
-                query_id="14a",
-                actual_row_count=tpcds_results["14a"],
-                scale_factor=1.0,
-            )
+        result = validator.validate_query_result(
+            benchmark_type="tpcds",
+            query_id="14a",
+            actual_row_count=recorded["14a"],
+            scale_factor=1.0,
+        )
 
-            assert result.is_valid is True, f"Variant 14a validation should not fail: {result.error_message}"
-            assert result.validation_mode in (ValidationMode.EXACT, ValidationMode.SKIP, ValidationMode.RANGE)
+        assert result.is_valid is True, f"Variant 14a validation should not fail: {result.error_message}"
+        assert result.validation_mode == ValidationMode.EXACT
 
 
 class TestQueryValidatorVariantHandling:
@@ -169,12 +165,11 @@ class TestTPCHSubscaleRowCountReference:
     def _fresh_registry(self):
         get_registry().clear_cache()
         yield
-        clear_reference_seed_context()
         get_registry().clear_cache()
 
     @pytest.mark.parametrize("scale_factor", [0.01, 0.1])
     def test_every_reference_count_passes_exactly(self, scale_factor):
-        counts = load_tpch_subscale_row_counts(scale_factor).row_counts
+        counts = load_row_count_reference("tpch", scale_factor).streams[0].row_counts
         validator = QueryValidator()
 
         for query_id, count in counts.items():
@@ -190,66 +185,67 @@ class TestTPCHSubscaleRowCountReference:
         assert result.validation_mode == ValidationMode.EXACT
         assert result.expected_row_count == 1
 
-    def test_parameter_sensitive_query_is_skipped_for_other_parameters(self):
-        reference = load_tpch_subscale_row_counts(0.01)
-        assert {"2", "9", "21"} <= reference.parameter_sensitive_query_ids
-        set_reference_seed_context(False)
+    def test_an_invariant_statement_is_checked_for_other_parameters(self):
+        reference = load_row_count_reference("tpch", 0.01)
+        query_id, count = next(iter(sorted(reference.integrity.invariant_counts.items(), key=lambda i: int(i[0]))))
 
-        result = QueryValidator().validate_query_result("tpch", "2", 3, scale_factor=0.01)
+        with query_generation_context(QueryGeneration(seed=7)):
+            ok = QueryValidator().validate_query_result("tpch", query_id, count, scale_factor=0.01)
+            bad = QueryValidator().validate_query_result("tpch", query_id, count + 1, scale_factor=0.01)
 
-        assert result.is_valid is True
-        assert result.validation_mode == ValidationMode.SKIP
-        assert "qgen default parameters" in result.warning_message
+        assert ok.is_valid and ok.check in ("invariant", "structural") and ok.seed == 7
+        assert not bad.is_valid
 
-    def test_fixed_cardinality_query_is_still_checked_for_other_parameters(self):
-        set_reference_seed_context(False)
+    def test_a_varying_statement_must_still_return_rows_for_other_parameters(self):
+        reference = load_row_count_reference("tpch", 0.01)
+        varying = next(
+            query_id
+            for query_id in reference.integrity.never_empty
+            if query_id not in reference.integrity.invariant_counts
+        )
 
-        result = QueryValidator().validate_query_result("tpch", "4", 4, scale_factor=0.01)
+        with query_generation_context(QueryGeneration(seed=7)):
+            result = QueryValidator().validate_query_result("tpch", varying, 0, scale_factor=0.01)
 
-        assert result.is_valid is False
-        assert result.validation_mode == ValidationMode.EXACT
+        assert not result.is_valid
+        assert result.check in ("never_empty", "structural", "range")
 
-    def test_parameter_sensitive_query_is_exact_at_the_reference_parameters(self):
-        set_reference_seed_context(True)
-
+    def test_a_statement_is_exact_at_the_default_parameters(self):
         result = QueryValidator().validate_query_result("tpch", "16", 295, scale_factor=0.01)
 
         assert result.is_valid is False
+        assert result.check == "exact"
         assert result.expected_row_count == 296
 
-    def test_unrecorded_scale_factor_keeps_the_scale_independent_fallback(self):
+    def test_unrecorded_scale_factor_is_unvalidated_but_structural_bounds_and_scale_independent_counts_still_run(self):
         validator = QueryValidator()
 
-        assert validator.validate_query_result("tpch", "1", 4, scale_factor=0.5).validation_mode == ValidationMode.EXACT
-        assert validator.validate_query_result("tpch", "4", 5, scale_factor=0.5).validation_mode == ValidationMode.SKIP
+        unvalidated = validator.validate_query_result("tpch", "4", 5, scale_factor=0.5)
+        too_many = validator.validate_query_result("tpch", "3", 11, scale_factor=0.5)
+        scale_independent = validator.validate_query_result("tpch", "1", 4, scale_factor=0.5)
+        wrong_scale_independent = validator.validate_query_result("tpch", "1", 3, scale_factor=0.5)
 
-    def test_reference_files_are_well_formed_and_query_template_bound(self):
-        import hashlib
+        assert unvalidated.unvalidated and unvalidated.validation_mode == ValidationMode.SKIP
+        assert not too_many.is_valid and too_many.check == "structural"
+        assert scale_independent.validation_mode == ValidationMode.EXACT and scale_independent.is_valid
+        assert not wrong_scale_independent.is_valid
 
-        from benchbox.core.expected_results.loader import tpch_subscale_row_count_reference_path
+    def test_reference_files_are_well_formed_and_bound_to_the_query_generation(self):
+        from benchbox.core.expected_results.query_generation import current_query_generation_stamp
 
-        root = Path(__file__).resolve().parents[3] / "_sources" / "tpc-h" / "dbgen"
-        for scale_factor in TPCH_SUBSCALE_ROW_COUNT_SCALE_FACTORS:
-            payload = json.loads(tpch_subscale_row_count_reference_path(scale_factor).read_text(encoding="utf-8"))
-            template = payload["provenance"]["query_template_digest"]
-            digest = hashlib.sha256()
-            for relative in template["templates"]:
-                digest.update(relative.encode("utf-8") + b"\0" + (root / relative).read_bytes())
-            assert digest.hexdigest() == template["sha256"], scale_factor
+        for scale_factor in reference_scales("tpch"):
+            payload = json.loads(reference_path("tpch", scale_factor).read_text(encoding="utf-8"))
+            validate_payload(payload, f"tpch sf{scale_factor:g}")
+            assert payload["provenance"]["generator"]["query_generation"] == current_query_generation_stamp("tpch")
             assert set(payload["provenance"]["engines"]) == {"duckdb", "datafusion"}
 
     @pytest.mark.parametrize(
         ("field", "value"),
-        [("reference_seed", 7), ("scale_factor", 0.1), ("row_counts", {"1": 4})],
+        [("benchmark", "ssb"), ("scale_factor", 1), ("streams", {"0": {"row_counts": {"1": 4}}})],
     )
-    def test_malformed_reference_is_rejected(self, monkeypatch, tmp_path, field, value):
-        from benchbox.core.expected_results import loader
-
-        source = json.loads(loader.tpch_subscale_row_count_reference_path(0.01).read_text(encoding="utf-8"))
+    def test_malformed_reference_is_rejected(self, field, value):
+        source = json.loads(reference_path("tpch", 0.01).read_text(encoding="utf-8"))
         source[field] = value
-        target = tmp_path / "tpch_row_counts_sf0.01.json"
-        target.write_text(json.dumps(source), encoding="utf-8")
-        monkeypatch.setattr(loader, "tpch_subscale_row_count_reference_path", lambda scale_factor: target)
 
         with pytest.raises(ValueError):
-            loader.load_tpch_subscale_row_counts(0.01)
+            validate_payload(source, "tpch_row_counts_sf0.01.json")

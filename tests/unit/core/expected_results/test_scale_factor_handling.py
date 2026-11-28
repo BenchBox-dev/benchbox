@@ -72,7 +72,7 @@ class TestScaleFactorHandling:
         assert result.unvalidated
         assert result.validation_mode == ValidationMode.SKIP
         assert result.warning_message is not None
-        assert "no reference answers exist" in result.warning_message
+        assert "no row-count reference" in result.warning_message
 
     def test_validation_with_none_scale_factor_defaults_to_1(self):
         validator = QueryValidator()

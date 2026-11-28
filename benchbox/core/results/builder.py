@@ -43,10 +43,8 @@ from benchbox.core.results.query_normalizer import (
     format_query_id,
 )
 from benchbox.core.results.query_status import (
-    NO_REFERENCE_REASON,
     NO_REFERENCE_VALIDATION_STATUS,
-    has_failed_query_validation,
-    unevidenced_validation_status,
+    row_evidence_roll_up,
 )
 from benchbox.core.results.subscale_policy import gateway_routed, platform_info_gateway, routed_compliance_class
 from benchbox.core.results.timer_scope import effective_timing_method
@@ -440,21 +438,24 @@ class ResultBuilder:
         platform_environment = self._build_platform_environment_metadata(platform_info)
 
         validation_status = self._validation_status
-        if has_failed_query_validation(query_results_list):
-            validation_status = "FAILED"
-        elif failed_queries and validation_status == "PASSED":
-            validation_status = "PARTIAL"
-        elif validation_status == "PASSED" and (
-            unevidenced_status := unevidenced_validation_status(
-                query_results_list,
-                reference_exists=row_count_reference_exists(
-                    normalize_benchmark_id(self._benchmark.name), self._benchmark.scale_factor
-                ),
-            )
-        ):
-            validation_status = unevidenced_status
-            if unevidenced_status == NO_REFERENCE_VALIDATION_STATUS:
-                self._validation_details = {"reason": NO_REFERENCE_REASON, **(self._validation_details or {})}
+        rolled_status, rolled_reason = row_evidence_roll_up(
+            query_results_list,
+            reference_exists=row_count_reference_exists(
+                normalize_benchmark_id(self._benchmark.name), self._benchmark.scale_factor
+            ),
+            failed_queries=len(failed_queries),
+        )
+        from benchbox.core.validation.stream_checks import stream_checks_record
+
+        stream_checks = stream_checks_record(
+            normalize_benchmark_id(self._benchmark.name), self._benchmark.scale_factor, query_results_list
+        )
+        if stream_checks is not None:
+            self._validation_details = {**(self._validation_details or {}), "stream_checks": stream_checks}
+        if rolled_status == "FAILED" or validation_status == "PASSED":
+            validation_status = rolled_status
+            if rolled_status == NO_REFERENCE_VALIDATION_STATUS:
+                self._validation_details = {"reason": rolled_reason, **(self._validation_details or {})}
 
         return BenchmarkResults(
             benchmark_name=self._benchmark.display_name or self._benchmark.name,

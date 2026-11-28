@@ -7,7 +7,7 @@ from benchbox.core.expected_results.registry import ExpectedResultsRegistry, Loa
 from benchbox.core.results.query_status import (
     NO_REFERENCE_VALIDATION_STATUS,
     NOT_VALIDATED_VALIDATION_STATUS,
-    unevidenced_validation_status,
+    row_evidence_roll_up,
 )
 from benchbox.core.validation.query_validation import QueryValidator
 
@@ -69,7 +69,7 @@ def test_missing_answer_files_record_a_skipped_row_and_the_not_validated_run_sta
     assert result.is_valid
     assert not result.unvalidated
     assert "not installed" in (result.warning_message or "")
-    assert unevidenced_validation_status([row], reference_exists=True) == NOT_VALIDATED_VALIDATION_STATUS
+    assert row_evidence_roll_up([row], reference_exists=True)[0] == NOT_VALIDATED_VALIDATION_STATUS
 
 
 def test_no_reference_at_a_scale_records_an_unvalidated_row_and_the_no_reference_run_status() -> None:
@@ -80,7 +80,7 @@ def test_no_reference_at_a_scale_records_an_unvalidated_row_and_the_no_reference
     }
 
     assert result.unvalidated
-    assert unevidenced_validation_status([row], reference_exists=False) == NO_REFERENCE_VALIDATION_STATUS
+    assert row_evidence_roll_up([row], reference_exists=False)[0] == NO_REFERENCE_VALIDATION_STATUS
 
 
 def test_a_reference_present_validates_normally() -> None:
@@ -89,28 +89,25 @@ def test_a_reference_present_validates_normally() -> None:
     assert result.is_valid and not result.unvalidated and result.expected_row_count == 4
 
 
-@pytest.mark.parametrize("bench_id", ["tpch", "tpcds"])
-def test_stream_reference_depends_on_scale_and_stream(bench_id) -> None:
-    registry = ExpectedResultsRegistry()
-    registry.register_provider(bench_id, lambda sf: _has_reference(sf) if sf == 1 else None)
-    assert registry.get_expected_result_detailed(bench_id, "1", 10, 1)[1] is LoadOutcome.NO_ANSWER_SET
-    assert registry.get_expected_result_detailed(bench_id, "1", 1, 1)[1] is LoadOutcome.STREAM_NOT_REFERENCE_VALIDATED
-
-
-def test_positive_stream_can_have_its_own_reference() -> None:
-    registry = ExpectedResultsRegistry()
-    answers = _has_reference(1)
-    answers.stream_results = {1: {"1": ExpectedQueryResult(query_id="1", expected_row_count=9)}}
-    registry.register_provider("tpch", lambda sf: answers)
-    result, outcome = registry.get_expected_result_detailed("tpch", "1", 1, 1)
-    assert outcome is LoadOutcome.HIT
-    assert result.expected_row_count == 9
-
-
 def test_skipped_rows_without_reference_are_no_reference() -> None:
-    rows = [{"row_count_validation": {"status": "SKIPPED"}}]
-    assert unevidenced_validation_status(rows, reference_exists=False) == NO_REFERENCE_VALIDATION_STATUS
-    assert unevidenced_validation_status(rows, reference_exists=True) == NOT_VALIDATED_VALIDATION_STATUS
+    rows = [{"row_count_validation": {"status": "SKIPPED", "warning": "no row-count reference at this scale factor"}}]
+    assert row_evidence_roll_up(rows, reference_exists=False)[0] == NO_REFERENCE_VALIDATION_STATUS
+    assert row_evidence_roll_up(rows, reference_exists=True)[0] == NOT_VALIDATED_VALIDATION_STATUS
+
+
+@pytest.mark.parametrize(
+    "evidence",
+    [
+        {"status": "SKIPPED"},
+        {"status": "SKIPPED", "warning": "validation disabled"},
+        {"status": "ERROR", "warning": "no row-count reference at this scale factor"},
+    ],
+)
+@pytest.mark.parametrize("reference_exists", [False, True])
+def test_unrelated_skips_and_error_rows_are_never_no_reference(evidence, reference_exists) -> None:
+    rows = [{"row_count_validation": {"status": "UNVALIDATED"}}, {"row_count_validation": evidence}]
+
+    assert row_evidence_roll_up(rows, reference_exists=reference_exists)[0] == NOT_VALIDATED_VALIDATION_STATUS
 
 
 def test_positive_stream_without_reference_is_unvalidated() -> None:
@@ -118,5 +115,5 @@ def test_positive_stream_without_reference_is_unvalidated() -> None:
     registry = ExpectedResultsRegistry()
     registry.register_provider("tpch", _no_reference)
     validator.registry = registry
-    result = validator.validate_query_result("tpch", "1", 4, 10.0, stream_id=1)
+    result = validator.validate_query_result("tpch", "2", 4, 10.0, stream_id=1)
     assert result.unvalidated

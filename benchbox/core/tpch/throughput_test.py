@@ -44,10 +44,9 @@ from benchbox.core.tpch.refresh import (
 )
 from benchbox.core.validation.query_validation import (
     clear_data_refreshed_context,
-    clear_reference_seed_context,
     set_data_refreshed_context,
-    set_reference_seed_context,
 )
+from benchbox.core.validation.stream_checks import QueryGeneration
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.run_deadline import TIMED_OUT_QUERY_STATUS, failed_query_status
 
@@ -641,8 +640,10 @@ class TPCHThroughputTest:
                     label = f"Stream_{stream_id}_Position_{position + 1}_Query_{query_id}"
                     try:
                         if hasattr(connection, "set_query_context"):
-                            connection.set_query_context(query_id)
-                        set_reference_seed_context(False)
+                            connection.set_query_context(
+                                query_id,
+                                generation=QueryGeneration(seed=_derive_query_seed(seed, stream_id, position)),
+                            )
                         set_data_refreshed_context(config.refresh_functions)
 
                         cursor = connection.execute(query_text)
@@ -660,7 +661,6 @@ class TPCHThroughputTest:
                         if hasattr(connection, "commit"):
                             connection.commit()
                     finally:
-                        clear_reference_seed_context()
                         clear_data_refreshed_context()
                         if hasattr(self, "captured_items"):
                             self.captured_items.append((label, query_text))

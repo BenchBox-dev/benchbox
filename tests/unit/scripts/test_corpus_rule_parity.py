@@ -315,9 +315,8 @@ def test_no_reference_claims_match_every_path(tmp_path, monkeypatch, scale, shap
         []
         if admitted
         else [
-            "summary.validation='no_reference' is only valid where no row-count reference exists, "
-            "but a reference is recorded for benchmark 'tpch' at scale factor 1; "
-            "record 'passed' with per-query evidence"
+            "summary.validation='no_reference' contradicts the recorded row-count evidence: "
+            "22 row counts skipped without a documented reason"
         ]
     )
     assert classify_result_path(path) is (

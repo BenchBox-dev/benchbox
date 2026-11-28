@@ -5,26 +5,19 @@ from dataclasses import dataclass
 from typing import Any
 
 from benchbox.core.expected_results import has_row_count_reference
-from benchbox.core.expected_results.models import ValidationMode, ValidationResult
-from benchbox.core.expected_results.ssb_results import normalize_ssb_query_id, ssb_expected_row_counts
-from benchbox.core.expected_results.tpcds_results import (
-    tpcds_known_query_ids,
-    tpcds_subscale_expected_row_counts,
-    tpcds_subscale_reference_seed,
-)
+from benchbox.core.expected_results.models import ValidationMode, ValidationResult, row_count_validation_record
+from benchbox.core.expected_results.row_count_references import RowCountReference, load_row_count_reference
+from benchbox.core.expected_results.ssb_results import normalize_ssb_query_id
 from benchbox.core.results.query_status import (
     NO_REFERENCE_REASON,
     NO_REFERENCE_VALIDATION_STATUS,
+    NOT_VALIDATED_VALIDATION_STATUS,
+    PASSED_VALIDATION_STATUS,
     row_count_skip_is_documented,
-    within_tolerance_warning,
+    row_evidence_roll_up,
 )
-from benchbox.core.validation.query_validation import (
-    QueryValidator,
-    get_data_refreshed_context,
-    get_reference_seed_context,
-    set_data_refreshed_context,
-    set_reference_seed_context,
-)
+from benchbox.core.validation.query_validation import validation_skipped_by_configuration
+from benchbox.core.validation.stream_checks import QueryGeneration, decide_row_count, reference_for
 
 _MAX_EVIDENCE_MESSAGE_CHARS = 500
 
@@ -87,8 +80,8 @@ def validate_dataframe_query_results(
 
     if benchmark_id == "ssb":
         evidence["provider"] = "ssb_expected_row_counts"
-    if benchmark_id == "tpcds" and tpcds_subscale_expected_row_counts(scale_factor) is not None:
-        evidence["provider"] = "tpcds_subscale_expected_row_counts"
+    if benchmark_id == "tpcds":
+        evidence["provider"] = "tpcds_row_count_reference"
 
     reason = _reference_unavailable_reason(benchmark_id, scale_factor, seed)
     if reason:
@@ -111,19 +104,11 @@ def validate_dataframe_query_results(
         return DataFrameQueryValidationSummary(status, evidence)
 
     evidence["skipped"] += selected_skips
-    documented_skips = evidence.get("documented_skips", 0)
-    if evidence["failed"]:
-        status = "FAILED"
-    elif execution_failures:
-        status = "PARTIAL"
-    elif evidence["errors"] or evidence["skipped"] > documented_skips:
-        status = "UNCERTAIN"
-    elif evidence["checked"] and evidence["checked"] + documented_skips == len(successful_rows):
-        status = "PASSED"
-    elif documented_skips:
-        status = "UNCERTAIN"
-    else:
-        status = "NOT_RUN"
+    status, _ = row_evidence_roll_up(successful_rows, reference_exists=True, failed_queries=execution_failures)
+    if status == NOT_VALIDATED_VALIDATION_STATUS or (
+        status == PASSED_VALIDATION_STATUS and evidence["skipped"] > evidence.get("documented_skips", 0)
+    ):
+        status = "UNCERTAIN" if successful_rows or evidence["skipped"] else "NOT_RUN"
     return DataFrameQueryValidationSummary(status, evidence)
 
 
@@ -144,8 +129,6 @@ def _unavailable_status(
 def _reference_unavailable_reason(benchmark_id: str, scale_factor: float, seed: int | None) -> str | None:
     if not has_row_count_reference(benchmark_id, scale_factor):
         return NO_REFERENCE_REASON
-    if benchmark_id == "tpcds" and tpcds_subscale_expected_row_counts(scale_factor) is None:
-        return "TPC-DS expected row counts are not seed-aligned with this DataFrame run"
     return None
 
 
@@ -157,126 +140,73 @@ def _apply_reference_row_counts(
     seed: int | None = None,
 ) -> str | None:
     if benchmark_id == "ssb":
-        counts = ssb_expected_row_counts(scale_factor) or {}
+        try:
+            reference = load_row_count_reference(benchmark_id, scale_factor)
+        except Exception as exc:
+            return _record_oracle_initialization_error(successful_rows, evidence, exc)
         _apply_row_count_oracle(
             successful_rows,
-            lambda query_id, actual, row: _validate_ssb_row_count(counts, query_id, actual),
+            lambda query_id, actual, row: _validate_ssb_row_count(reference, query_id, actual),
             evidence,
         )
         return None
-    if benchmark_id == "tpcds":
-        counts = tpcds_subscale_expected_row_counts(scale_factor)
-        if counts is not None:
-            _apply_row_count_oracle(
-                successful_rows,
-                lambda query_id, actual, row: _validate_tpcds_subscale_row_count(
-                    counts, query_id, actual, _tpcds_row_reference_parameters(seed, row, scale_factor)
-                ),
-                evidence,
-            )
-            return None
-    from benchbox.core.tpch.benchmark import binds_answer_set_parameters
-
-    previous = get_reference_seed_context()
-    set_reference_seed_context(
-        tpcds_subscale_reference_seed(seed, 0, scale_factor)
-        if benchmark_id == "tpcds"
-        else binds_answer_set_parameters(seed)
-    )
     try:
-        return _apply_expected_row_counts(successful_rows, benchmark_id, scale_factor, evidence)
-    finally:
-        set_reference_seed_context(previous)
+        reference_for(benchmark_id, scale_factor)
+    except Exception as exc:
+        return _record_oracle_initialization_error(successful_rows, evidence, exc)
+    _apply_row_count_oracle(
+        successful_rows,
+        lambda query_id, actual, row: _decide_stream_row(benchmark_id, scale_factor, query_id, actual, row, seed),
+        evidence,
+    )
+    return None
 
 
-def _tpcds_row_reference_parameters(seed: int | None, row: dict[str, Any], scale_factor: float) -> bool:
+def _row_stream(row: dict[str, Any]) -> int:
     stream_id = row.get("stream_id", row.get("stream"))
-    if stream_id is not None and not (
-        isinstance(stream_id, int) and not isinstance(stream_id, bool) and stream_id == 0
-    ):
-        return False
-    return tpcds_subscale_reference_seed(seed, 0, scale_factor)
+    if isinstance(stream_id, int) and not isinstance(stream_id, bool) and stream_id >= 0:
+        return stream_id
+    return 0
 
 
-def _normalize_tpcds_query_id(query_id: object) -> str:
-    import re
+def _row_generation(benchmark_id: str, row: dict[str, Any], seed: int | None) -> QueryGeneration:
+    recorded = row.get("generation")
+    if isinstance(recorded, QueryGeneration):
+        return recorded
+    stream = _row_stream(row)
+    if benchmark_id == "tpcds":
+        from benchbox.core.tpcds.power_test import power_parameter_seed
 
-    match = re.fullmatch(r"[Qq]?(\d+)([a-dA-D]?)", str(query_id).strip())
-    if not match:
-        return str(query_id).strip()
-    return f"{int(match.group(1))}{match.group(2).lower()}"
+        return QueryGeneration(seed=power_parameter_seed(seed, stream))
+    from benchbox.core.tpch.benchmark import power_stream_seed
+
+    return QueryGeneration(seed=power_stream_seed(seed, stream))
 
 
-def _validate_tpcds_subscale_row_count(
-    counts: dict[str, int], query_id: str, actual_row_count: int, is_reference_seed: bool
+def _decide_stream_row(
+    benchmark_id: str, scale_factor: float, query_id: str, actual: int, row: dict[str, Any], seed: int | None
 ) -> ValidationResult:
-    import os
-
-    from benchbox.core.validation.query_validation import get_validation_mode_context
-
-    context_mode = get_validation_mode_context()
-    raw_env = os.environ.get("BENCHBOX_QUERY_VALIDATION_MODE", "").strip().lower()
-    if context_mode == ValidationMode.SKIP or raw_env in ("skip", "disabled"):
+    if validation_skipped_by_configuration(benchmark_id):
         return ValidationResult(
             is_valid=True,
             query_id=query_id,
             expected_row_count=None,
-            actual_row_count=actual_row_count,
+            actual_row_count=actual,
             validation_mode=ValidationMode.SKIP,
             warning_message="TPC-DS query validation is skipped by configuration",
         )
-
-    normalized = _normalize_tpcds_query_id(query_id)
-    if not is_reference_seed:
-        return ValidationResult(
-            is_valid=True,
-            query_id=query_id,
-            expected_row_count=None,
-            actual_row_count=actual_row_count,
-            validation_mode=ValidationMode.SKIP,
-            warning_message=f"TPC-DS query {query_id!r} is parameter-sensitive and this run does not use the reference parameters",
-        )
-    expected = counts.get(normalized)
-    if expected is None:
-        if normalized in tpcds_known_query_ids():
-            return ValidationResult(
-                is_valid=True,
-                query_id=query_id,
-                expected_row_count=None,
-                actual_row_count=actual_row_count,
-                validation_mode=ValidationMode.SKIP,
-                warning_message=(
-                    f"Unvalidated: no TPC-DS subscale row count is recorded for query {query_id!r} at this "
-                    "scale factor. The row count was not checked and is not counted as passed."
-                ),
-                unvalidated=True,
-            )
-        return ValidationResult(
-            is_valid=False,
-            query_id=query_id,
-            expected_row_count=None,
-            actual_row_count=actual_row_count,
-            validation_mode=ValidationMode.EXACT,
-            error_message=(
-                f"Row-count lookup failed: TPC-DS query {query_id!r} is not in the reference row counts. "
-                "Check the query id and variant key. The query is not treated as validated."
-            ),
-        )
-    is_valid = actual_row_count == expected
-    return ValidationResult(
-        is_valid=is_valid,
-        query_id=query_id,
-        expected_row_count=expected,
-        actual_row_count=actual_row_count,
-        validation_mode=ValidationMode.EXACT,
-        error_message=None
-        if is_valid
-        else f"Query {query_id} returned {actual_row_count} rows; expected {expected} for this scale factor",
+    return decide_row_count(
+        benchmark_id,
+        query_id,
+        actual,
+        scale_factor,
+        generation=_row_generation(benchmark_id, row, seed),
+        data_refreshed=bool(row.get("data_refreshed")),
     )
 
 
-def _validate_ssb_row_count(counts: dict[str, int], query_id: str, actual_row_count: int) -> ValidationResult:
-    expected = counts.get(normalize_ssb_query_id(query_id))
+def _validate_ssb_row_count(reference: RowCountReference, query_id: str, actual_row_count: int) -> ValidationResult:
+    expected = reference.streams[0].row_counts.get(normalize_ssb_query_id(query_id))
     if expected is None:
         return ValidationResult(
             is_valid=False,
@@ -299,46 +229,24 @@ def _validate_ssb_row_count(counts: dict[str, int], query_id: str, actual_row_co
         error_message=None
         if is_valid
         else f"Query {query_id} returned {actual_row_count} rows; expected {expected} for this scale factor",
+        reference_kind=reference.kind,
+        reference_label=reference.label,
     )
 
 
-def _apply_expected_row_counts(
-    successful_rows: list[dict[str, Any]],
-    benchmark_id: str,
-    scale_factor: float,
-    evidence: dict[str, Any],
-) -> str | None:
-
-    try:
-        validator = QueryValidator()
-    except Exception as exc:
-        message = _bounded_message(f"Row-count oracle failed to initialize: {type(exc).__name__}: {exc}")
-        for row in successful_rows:
-            row["row_count_validation"] = {
-                "status": "ERROR",
-                "expected": None,
-                "actual": row.get("rows_returned"),
-                "error": message,
-            }
-        evidence["errors"] = len(successful_rows)
-        return message
-
-    def _validate(query_id: str, actual: int, row: dict[str, Any]) -> ValidationResult:
-        previous_refreshed = get_data_refreshed_context()
-        set_data_refreshed_context(bool(row.get("data_refreshed")))
-        try:
-            return validator.validate_query_result(
-                benchmark_type=benchmark_id,
-                query_id=query_id,
-                actual_row_count=actual,
-                scale_factor=scale_factor,
-                stream_id=row.get("stream_id") if row.get("test_type") == "throughput" else None,
-            )
-        finally:
-            set_data_refreshed_context(previous_refreshed)
-
-    _apply_row_count_oracle(successful_rows, _validate, evidence)
-    return None
+def _record_oracle_initialization_error(
+    successful_rows: list[dict[str, Any]], evidence: dict[str, Any], exc: Exception
+) -> str:
+    message = _bounded_message(f"Row-count oracle failed to initialize: {type(exc).__name__}: {exc}")
+    for row in successful_rows:
+        row["row_count_validation"] = {
+            "status": "ERROR",
+            "expected": None,
+            "actual": row.get("rows_returned"),
+            "error": message,
+        }
+    evidence["errors"] = len(successful_rows)
+    return message
 
 
 def _apply_row_count_oracle(
@@ -368,37 +276,29 @@ def _apply_row_count_oracle(
             evidence["errors"] += 1
             continue
 
-        row_count_validation: dict[str, Any] = {
-            "expected": result.expected_row_count,
-            "actual": actual_row_count,
-        }
-        if result.unvalidated and result.is_valid:
-            row_count_validation["status"] = "UNVALIDATED"
-            if result.warning_message:
-                row_count_validation["warning"] = _bounded_message(result.warning_message)
-            evidence["skipped"] += 1
-        elif result.validation_mode == ValidationMode.SKIP:
-            row_count_validation["status"] = "SKIPPED"
-            if result.warning_message:
-                row_count_validation["warning"] = _bounded_message(result.warning_message)
-            evidence["skipped"] += 1
-        elif result.is_valid and result.expected_row_count not in (None, actual_row_count):
-            row_count_validation["status"] = "SKIPPED"
-            row_count_validation["warning"] = within_tolerance_warning(actual_row_count, result.expected_row_count)
-            evidence["skipped"] += 1
-        elif result.is_valid:
-            row_count_validation["status"] = "PASSED"
+        row_count_validation = row_count_validation_record(result, actual_row_count)
+        for message_field in ("error", "warning"):
+            if message_field in row_count_validation:
+                row_count_validation[message_field] = _bounded_message(row_count_validation[message_field] or "")
+        if result.reference_kind and result.reference_label and result.expected_row_count is not None:
+            kinds = evidence.setdefault("reference_kinds", {})
+            kinds[result.reference_kind] = {
+                "label": result.reference_label,
+                "rows": kinds.get(result.reference_kind, {}).get("rows", 0) + 1,
+            }
+        status = row_count_validation["status"]
+        if status == "PASSED":
             evidence["checked"] += 1
             evidence["passed"] += 1
-        else:
-            message = _bounded_message(result.error_message or "Row-count validation failed")
-            row_count_validation["status"] = "FAILED"
-            row_count_validation["error"] = message
+        elif status == "FAILED":
+            row_count_validation["error"] = row_count_validation.get("error") or "Row-count validation failed"
             row["status"] = "FAILED"
-            row["error"] = message
+            row["error"] = row_count_validation["error"]
             evidence["checked"] += 1
             evidence["failed"] += 1
-        if row_count_validation["status"] == "SKIPPED" and row_count_skip_is_documented(row_count_validation):
+        else:
+            evidence["skipped"] += 1
+        if status == "SKIPPED" and row_count_skip_is_documented(row_count_validation):
             evidence["documented_skips"] = evidence.get("documented_skips", 0) + 1
         row["row_count_validation"] = row_count_validation
 
@@ -429,7 +329,7 @@ def _attach_skipped_validation(row: dict[str, Any], warning: str, status: str = 
 def _attach_validation_error(row: dict[str, Any], message: str) -> None:
     row["rows_returned"] = None
     row["row_count_validation"] = {
-        "status": "ERROR",
+        "status": "FAILED",
         "expected": None,
         "actual": None,
         "error": message,

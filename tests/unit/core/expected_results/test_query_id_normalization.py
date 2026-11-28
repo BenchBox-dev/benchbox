@@ -128,15 +128,19 @@ class TestQueryIDNormalization:
 
     def test_normalize_tpcds_query_ids(self, validator):
 
+        from benchbox.core.expected_results.row_count_references import load_row_count_reference
+
+        recorded = load_row_count_reference("tpcds", 1.0).streams[0].row_counts["1"]
+
         result = validator.validate_query_result(
             benchmark_type="tpcds",
             query_id="Q1",
-            actual_row_count=101,
+            actual_row_count=recorded,
             scale_factor=1.0,
         )
         assert result.is_valid
-        assert result.validation_mode.value == "skip"
-        assert result.expected_row_count is None
+        assert result.validation_mode.value == "exact"
+        assert result.expected_row_count == recorded
 
     def test_normalize_non_tpc_benchmark_preserves_id(self, validator):
         result = validator.validate_query_result(

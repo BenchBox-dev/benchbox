@@ -15,7 +15,8 @@ from benchbox.core.tpch.dataframe_refresh import DataFrameRefresher, execute_ref
 from benchbox.core.tpch.dataframe_throughput import DataFrameTPCHThroughputTest
 from benchbox.core.tpch.platform_power import _power_test_error_result
 from benchbox.core.tpch.refresh import TPCHRefreshUpdateSet, generate_refresh_update_sets
-from benchbox.core.tpch.throughput_test import TPCHThroughputTestConfig
+from benchbox.core.tpch.throughput_test import TPCHThroughputTestConfig, _derive_query_seed
+from benchbox.core.validation.stream_checks import QueryGeneration
 from benchbox.platforms.base.execution import TestDriversMixin, _throughput_config_options, _throughput_row_status
 from benchbox.platforms.base.result_capture import ResultCaptureMixin
 
@@ -164,6 +165,7 @@ def run_throughput(
     rows = []
     for stream in result.stream_results:
         for query_result in stream.query_results:
+            position = query_result.get("position")
             row = {
                 "query_id": query_result.get("query_id"),
                 "execution_time_seconds": query_result.get("execution_time_seconds", 0.0),
@@ -175,6 +177,10 @@ def run_throughput(
                 "run_type": "measurement",
             }
             row["data_refreshed"] = plan is not None
+            if isinstance(position, int) and position >= 1:
+                row["generation"] = QueryGeneration(
+                    seed=_derive_query_seed(config.base_seed + stream.stream_id, stream.stream_id, position - 1)
+                )
             if not query_result.get("success"):
                 row["error"] = query_result.get("error", "Unknown error")
             propagate_query_execution_metadata(query_result, row)

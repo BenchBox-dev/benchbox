@@ -275,39 +275,6 @@ class TestRunLocalPolicy:
         assert outcomes[0].validation_mode == ValidationMode.EXACT
         assert outcomes[0].is_valid is False
 
-    def test_concurrent_modes_cannot_contaminate_one_another(self, policy_validator):
-        outcomes = {}
-
-        def run_with_mode(name, mode, actual):
-            set_validation_mode_context(mode)
-            try:
-                outcomes[name] = policy_validator.validate_query_result(
-                    benchmark_type="tpcds",
-                    query_id="1",
-                    actual_row_count=actual,
-                    scale_factor=1.0,
-                )
-            finally:
-                clear_validation_mode_context()
-
-        threads = [
-            threading.Thread(target=run_with_mode, args=("exact", ValidationMode.EXACT, 100)),
-            threading.Thread(target=run_with_mode, args=("loose", ValidationMode.LOOSE, 140)),
-            threading.Thread(target=run_with_mode, args=("skip", ValidationMode.SKIP, 999)),
-        ]
-        for thread in threads:
-            thread.start()
-        for thread in threads:
-            thread.join(timeout=10)
-
-        assert outcomes["exact"].validation_mode == ValidationMode.EXACT
-        assert outcomes["exact"].is_valid
-        assert outcomes["loose"].validation_mode == ValidationMode.LOOSE
-        assert outcomes["loose"].is_valid
-        assert outcomes["skip"].validation_mode == ValidationMode.SKIP
-        assert outcomes["skip"].is_valid
-        assert policy_validator.provider_calls["count"] == 1
-
     def test_exact_mode_still_fails_mismatches(self, policy_validator):
         set_validation_mode_context(ValidationMode.EXACT)
         try:
@@ -336,46 +303,6 @@ class TestRunLocalPolicy:
         )
 
         assert result.validation_mode == ValidationMode.SKIP
-        assert result.is_valid
-
-    def test_sequential_runs_do_not_bake_policy_into_cache(self, policy_validator, fresh_registry):
-        import benchbox.core.expected_results.tpcds_results as tpcds_results
-
-        tpcds_results.set_config_validation_mode("exact")
-        exact_result = policy_validator.validate_query_result(
-            benchmark_type="tpcds", query_id="1", actual_row_count=100, scale_factor=1.0
-        )
-        tpcds_results.set_config_validation_mode("skip")
-        skip_result = policy_validator.validate_query_result(
-            benchmark_type="tpcds", query_id="1", actual_row_count=100, scale_factor=1.0
-        )
-
-        assert exact_result.validation_mode == ValidationMode.EXACT
-        assert skip_result.validation_mode == ValidationMode.SKIP
-        cached = fresh_registry._cache["tpcds"][1.0].query_results["1"]
-        assert cached.validation_mode == ValidationMode.SKIP
-        assert policy_validator.provider_calls["count"] == 1
-
-    def test_cached_objects_are_never_mutated_by_validation(self, policy_validator, fresh_registry):
-        set_validation_mode_context(ValidationMode.EXACT)
-        try:
-            policy_validator.validate_query_result(
-                benchmark_type="tpcds", query_id="1", actual_row_count=100, scale_factor=1.0
-            )
-        finally:
-            clear_validation_mode_context()
-
-        cached = fresh_registry._cache["tpcds"][1.0].query_results["1"]
-        assert cached.validation_mode == ValidationMode.SKIP
-
-    def test_environment_fallback_still_applies_without_context(self, policy_validator, monkeypatch):
-        monkeypatch.setenv("BENCHBOX_QUERY_VALIDATION_MODE", "loose")
-
-        result = policy_validator.validate_query_result(
-            benchmark_type="tpcds", query_id="1", actual_row_count=140, scale_factor=1.0
-        )
-
-        assert result.validation_mode == ValidationMode.LOOSE
         assert result.is_valid
 
     def test_run_context_beats_environment(self, policy_validator, monkeypatch):
@@ -466,15 +393,6 @@ class TestOutcomeDistinction:
         assert not result.is_valid
         assert result.error_message is not None
         assert "Timed out" in result.error_message
-
-    def test_non_reference_stream_keeps_stream_skip(self, policy_validator):
-        result = policy_validator.validate_query_result(
-            benchmark_type="tpcds", query_id="1", actual_row_count=5, scale_factor=1.0, stream_id=2
-        )
-
-        assert result.is_valid
-        assert result.validation_mode == ValidationMode.SKIP
-        assert "stream 2" in result.warning_message
 
     def test_sf1_fallback_failure_propagates_provider_outcome(self, fresh_registry):
 

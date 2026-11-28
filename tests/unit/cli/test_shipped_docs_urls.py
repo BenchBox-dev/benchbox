@@ -268,7 +268,6 @@ _CONTRIBUTOR_REFERENCE_ALLOWED_FILES = frozenset(
         "benchbox/sql_compat/baseline_tool.py",
         "benchbox/sql_compat/inventory.py",
         "benchbox/core/expected_results/reference_digests/tpch_value_digests_sf1.json",
-        "benchbox/core/expected_results/reference_digests/tpcds_subscale_row_counts.json",
         "benchbox/core/tuning/profiles/template_evidence.yaml",
     }
 )

@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from benchbox.core.expected_results.models import ValidationMode
+    from benchbox.core.validation.stream_checks import QueryGeneration
     from benchbox.platforms.base.adapter import PlatformAdapter
 
 logger = logging.getLogger(__name__)
@@ -184,10 +185,14 @@ class PlatformAdapterConnection:
         self.scale_factor: float | None = None
         self._current_query_id: str = "unknown_query"
         self._current_stream_id: int | None = None
+        self._current_generation: QueryGeneration | None = None
 
-    def set_query_context(self, query_id: str, stream_id: int | None = None) -> None:
+    def set_query_context(
+        self, query_id: str, stream_id: int | None = None, generation: QueryGeneration | None = None
+    ) -> None:
         self._current_query_id = query_id
         self._current_stream_id = stream_id
+        self._current_generation = generation
 
     def execute(self, query: str, parameters: tuple | list | None = None):
         if self._maintenance_mode:
@@ -200,8 +205,9 @@ class PlatformAdapterConnection:
             return self.connection.execute(query, parameters)
 
         from benchbox.core.validation.query_validation import validation_mode_context
+        from benchbox.core.validation.stream_checks import query_generation_context
 
-        with validation_mode_context(self.validation_mode):
+        with validation_mode_context(self.validation_mode), query_generation_context(self._current_generation):
             result = self.platform_adapter.execute_query(
                 self.connection,
                 query,

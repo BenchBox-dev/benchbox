@@ -15,6 +15,7 @@ from benchbox.core.tpcds.throughput_test import TPCDSThroughputTest, TPCDSThroug
 from benchbox.core.tpch.benchmark import TPCHBenchmark
 from benchbox.core.tpch.refresh import TPCHRefreshUpdateSet, generate_refresh_update_sets
 from benchbox.core.tpch.throughput_test import TPCHThroughputTest, TPCHThroughputTestConfig
+from benchbox.core.validation.stream_checks import UNESTABLISHED_DATA_STAMP, run_data_stamp_context
 from benchbox.platforms import sqlite as sqlite_module
 from benchbox.platforms.base.connection_wrappers import (
     PlatformAdapterConnection,
@@ -360,7 +361,8 @@ class TestTPCDSThroughputOnSQLite:
         config = TPCDSThroughputTestConfig(
             scale_factor=scale_factor, num_streams=num_streams, base_seed=7, queries_per_stream=4
         )
-        return test.run(config)
+        with run_data_stamp_context(UNESTABLISHED_DATA_STAMP):
+            return test.run(config)
 
     def test_answer_set_row_counts_do_not_fail_seeded_streams_in_exact_mode(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch

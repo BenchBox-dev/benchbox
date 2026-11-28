@@ -16,13 +16,8 @@ from benchbox.core.tpcds.throughput_test import TPCDSThroughputTest, TPCDSThroug
 from benchbox.core.tpch.benchmark import TPCHBenchmark
 from benchbox.core.tpch.streams import TPCHStreams
 from benchbox.core.tpch.throughput_test import TPCHThroughputTest, TPCHThroughputTestConfig
-from benchbox.core.validation.query_validation import (
-    QueryValidator,
-    _stream_seed_override_warned,
-    clear_reference_seed_context,
-    set_reference_seed_context,
-    set_validation_mode_context,
-)
+from benchbox.core.validation.query_validation import QueryValidator, set_validation_mode_context
+from benchbox.core.validation.stream_checks import QueryGeneration, query_generation_context
 from benchbox.platforms.base.connection_wrappers import PlatformAdapterConnection, require_throughput_stream_capability
 from benchbox.platforms.sqlite import SQLiteAdapter
 from benchbox.utils.dialect_utils import SQLTranslationError, UnknownSqlDialectError, sql_translation_context
@@ -169,33 +164,38 @@ class TestTPCHPregenerationTranslationContext:
         assert all(isinstance(entry, str) for entry in streams[1])
 
 
-class TestTPCDSStreamSeedValidationPolicy:
+class TestMeasuredStreamRowChecks:
     @pytest.fixture(autouse=True)
     def _exact_mode(self) -> Any:
         set_validation_mode_context(ValidationMode.EXACT)
         yield
         set_validation_mode_context(None)
-        clear_reference_seed_context()
 
-    def test_exact_mode_row_count_mismatch_fails_without_a_stream_seed_context(self) -> None:
-        result = QueryValidator().validate_query_result("tpcds", "3", 70, scale_factor=1.0, stream_id=0)
+    def test_a_row_count_mismatch_fails_at_the_reference_seed(self) -> None:
+        from benchbox.core.expected_results.row_count_references import load_row_count_reference
+
+        count = load_row_count_reference("tpcds", 1.0).streams[0].row_counts["3"]
+        with query_generation_context(QueryGeneration(seed=1001)):
+            result = QueryValidator().validate_query_result("tpcds", "3", count + 1, scale_factor=1.0, stream_id=0)
 
         assert result.is_valid is False
-        assert result.validation_mode is ValidationMode.EXACT
+        assert result.check == "exact"
 
-    def test_stream_seeded_queries_are_excluded_from_answer_set_row_counts(self) -> None:
-        set_reference_seed_context(False)
+    def test_throughput_stream_rows_are_checked_and_never_excluded(self) -> None:
+        from benchbox.core.expected_results.row_count_references import load_row_count_reference
 
-        result = QueryValidator().validate_query_result("tpcds", "3", 70, scale_factor=1.0, stream_id=0)
+        reference = load_row_count_reference("tpcds", 1.0)
+        entry = reference.exact_stream(42, 1)
+        wrong = entry.row_counts["3"] + 1
+        with query_generation_context(QueryGeneration(seed=42, streams_index=1)):
+            result = QueryValidator().validate_query_result("tpcds", "3", wrong, scale_factor=1.0, stream_id=1)
 
-        assert result.is_valid is True
-        assert result.validation_mode is ValidationMode.SKIP
-        assert "excluded" in result.warning_message
+        assert result.is_valid is False
+        assert (result.check, result.seed, result.streams_index) == ("exact", 42, 1)
 
-    def test_tpch_non_reference_seed_policy_is_unchanged(self) -> None:
-        set_reference_seed_context(False)
-
-        result = QueryValidator().validate_query_result("tpch", "1", 0, scale_factor=1.0, stream_id=0)
+    def test_tpch_rows_with_other_parameters_are_checked(self) -> None:
+        with query_generation_context(QueryGeneration(seed=7)):
+            result = QueryValidator().validate_query_result("tpch", "1", 0, scale_factor=1.0, stream_id=0)
 
         assert result.is_valid is False
 
@@ -260,6 +260,26 @@ class TestTPCDSFailedPlatformResult:
         assert result.success is False
         assert result.throughput_at_size == 0.0
 
+    def test_every_throughput_row_records_the_effective_generator_seed_and_streams_index(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        benchmark = self._benchmark_with_sql(monkeypatch, "SELECT 1")
+        adapter = SQLiteAdapter(database_path=":memory:")
+
+        def factory() -> PlatformAdapterConnection:
+            wrapper = PlatformAdapterConnection(sqlite3.connect(":memory:", check_same_thread=False), adapter)
+            wrapper.benchmark_type = "tpcds"
+            wrapper.scale_factor = 1.0
+            return wrapper
+
+        test = TPCDSThroughputTest(
+            benchmark=benchmark, connection_factory=factory, scale_factor=1.0, num_streams=1, dialect="sqlite"
+        )
+        result = test.run(TPCDSThroughputTestConfig(scale_factor=1.0, num_streams=1, base_seed=7))
+
+        evidence = result.stream_results[0].query_results[0]["row_count_validation"]
+        assert (evidence["seed"], evidence["streams_index"]) == (7, 1)
+
     def test_valid_query_succeeds(self, monkeypatch: pytest.MonkeyPatch) -> None:
         benchmark = self._benchmark_with_sql(monkeypatch, "SELECT 1")
 
@@ -316,68 +336,3 @@ class TestSQLiteStreamConnections:
             require_throughput_stream_capability(adapter, platform_name="SQLite", connection=connection)
         finally:
             connection.close()
-
-
-class TestStreamSeedOverrideWarning:
-    @pytest.fixture(autouse=True)
-    def _reset(self) -> Any:
-        _stream_seed_override_warned.clear()
-        set_reference_seed_context(False)
-        yield
-        clear_reference_seed_context()
-        set_validation_mode_context(None)
-        _stream_seed_override_warned.clear()
-
-    @pytest.mark.parametrize("mode", [ValidationMode.EXACT, ValidationMode.LOOSE])
-    def test_requested_mode_override_is_warned_once(
-        self, mode: ValidationMode, caplog: pytest.LogCaptureFixture
-    ) -> None:
-        set_validation_mode_context(mode)
-
-        with caplog.at_level(logging.WARNING, logger="benchbox.core.validation.query_validation"):
-            for query_id in ("1", "2", "3"):
-                QueryValidator().validate_query_result("tpcds", query_id, 5, scale_factor=1.0, stream_id=0)
-
-        warnings = [record for record in caplog.records if record.levelno == logging.WARNING]
-        assert len(warnings) == 1
-        assert mode.value in warnings[0].getMessage()
-        assert "stream-seeded" in warnings[0].getMessage()
-
-    def test_default_skip_mode_does_not_warn(self, caplog: pytest.LogCaptureFixture) -> None:
-        with caplog.at_level(logging.WARNING, logger="benchbox.core.validation.query_validation"):
-            QueryValidator().validate_query_result("tpcds", "1", 5, scale_factor=1.0, stream_id=0)
-
-        assert [record for record in caplog.records if record.levelno == logging.WARNING] == []
-
-    def test_each_throughput_run_resets_the_once_only_record(
-        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
-    ) -> None:
-        monkeypatch.setenv("BENCHBOX_QUERY_VALIDATION_MODE", "exact")
-        monkeypatch.setattr(
-            "benchbox.core.tpcds.streams.generate_dsqgen_streams",
-            lambda **_kwargs: {1: [StreamQuery(stream_id=1, position=0, query_id=1, sql="SELECT 1")]},
-        )
-
-        class _Benchmark:
-            def translate_query_text(self, query: str, source_dialect: str, target_dialect: str) -> str:
-                return query
-
-        def run_once() -> None:
-            connection = sqlite3.connect(":memory:", check_same_thread=False)
-
-            def factory() -> PlatformAdapterConnection:
-                wrapper = PlatformAdapterConnection(connection, SQLiteAdapter(database_path=":memory:"))
-                wrapper.benchmark_type = "tpcds"
-                wrapper.scale_factor = 1.0
-                return wrapper
-
-            test = TPCDSThroughputTest(
-                benchmark=_Benchmark(), connection_factory=factory, scale_factor=1.0, num_streams=1, dialect="sqlite"
-            )
-            test.run(TPCDSThroughputTestConfig(scale_factor=1.0, num_streams=1, base_seed=7))
-
-        with caplog.at_level(logging.WARNING, logger="benchbox.core.validation.query_validation"):
-            run_once()
-            run_once()
-
-        assert len([record for record in caplog.records if "stream-seeded" in record.getMessage()]) == 2

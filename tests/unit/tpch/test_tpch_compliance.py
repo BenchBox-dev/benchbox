@@ -155,7 +155,7 @@ class TestTPCHCompliance:
         assert stream_1_queries == expected_stream_1
         assert stream_0_queries != stream_1_queries
         assert len(mock_connection.set_query_context.call_args_list) == 44
-        assert all(not call.kwargs for call in mock_connection.set_query_context.call_args_list)
+        assert all(set(call.kwargs) == {"generation"} for call in mock_connection.set_query_context.call_args_list)
         assert all(len(call.args) == 1 for call in mock_connection.set_query_context.call_args_list)
 
 

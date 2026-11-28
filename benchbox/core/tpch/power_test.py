@@ -17,7 +17,7 @@ from benchbox.core.plan_capture_phase import (
 from benchbox.core.result_receipt import cursor_result_count
 from benchbox.core.results.fetch_mode import ConversionClock
 from benchbox.core.results.platform_timing import deferred_platform_timing
-from benchbox.core.tpch.benchmark import binds_answer_set_parameters, has_answer_set, power_stream_seed
+from benchbox.core.tpch.benchmark import has_answer_set, power_stream_seed
 from benchbox.core.tpch.refresh import (
     TPCHRefreshUpdateSet,
     applied_counts,
@@ -34,10 +34,9 @@ from benchbox.core.tpch.refresh import (
 from benchbox.core.validation.query_validation import (
     DATA_REFRESHED_REASON,
     clear_data_refreshed_context,
-    clear_reference_seed_context,
     set_data_refreshed_context,
-    set_reference_seed_context,
 )
+from benchbox.core.validation.stream_checks import QueryGeneration
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.run_deadline import TIMED_OUT_QUERY_STATUS, failed_query_status, stop_requested_before_query
 
@@ -63,7 +62,7 @@ def summarize_power_validation(query_results: list[dict[str, Any]], data_state: 
             skipped.append(query_result["query_id"])
     summary: dict[str, Any] = {
         "data_state": data_state,
-        "validated_against": "base" if validated or failed else None,
+        "validated_against": "base" if data_state == DATA_STATE_BASE and (validated or failed) else None,
         "validated_queries": sorted(validated),
         "failed_queries": sorted(failed),
         "skipped_queries": sorted(skipped),
@@ -214,15 +213,6 @@ class TPCHPowerTest:
 
         if validation_mode == "disabled":
             validation = False
-
-        if stream_id != 0 and validation and validation_mode is None:
-            validation = False
-            actual_validation_mode = "disabled"
-            self.logger.warning(
-                "⚠️  Stream 0 was validated against the answer set; "
-                "streams > 0 are run for timing only (per TPC-H spec). "
-                f"stream_id={stream_id} therefore runs without answer-set validation."
-            )
 
         if not validation:
             actual_validation_mode = "disabled"
@@ -422,9 +412,10 @@ class TPCHPowerTest:
                 conversion_clock = ConversionClock().start()
                 try:
                     if hasattr(self.connection, "set_query_context"):
-                        self.connection.set_query_context(query_id, stream_id=self.config.stream_id)
+                        self.connection.set_query_context(
+                            query_id, stream_id=self.config.stream_id, generation=QueryGeneration(seed=stream_seed)
+                        )
 
-                    set_reference_seed_context(binds_answer_set_parameters(stream_seed))
                     set_data_refreshed_context(data_refreshed)
 
                     cursor = self.connection.execute(query_text)
@@ -444,7 +435,6 @@ class TPCHPowerTest:
                     if hasattr(self.connection, "commit"):
                         self.connection.commit()
                 finally:
-                    clear_reference_seed_context()
                     clear_data_refreshed_context()
                     self.captured_items.append((label, query_text))
 

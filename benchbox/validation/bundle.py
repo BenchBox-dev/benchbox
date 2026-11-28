@@ -25,6 +25,7 @@ def _load_schema_policy_helpers():
             result_schema_version_value,
             supports_capture_and_vendor_fields,
             supports_run_timeout_marker,
+            supports_stream_checks,
         )
 
         return (
@@ -32,6 +33,7 @@ def _load_schema_policy_helpers():
             result_schema_version_value,
             supports_capture_and_vendor_fields,
             supports_run_timeout_marker,
+            supports_stream_checks,
         )
     except ImportError:
         pass
@@ -47,6 +49,7 @@ def _load_schema_policy_helpers():
         module.result_schema_version_value,
         module.supports_capture_and_vendor_fields,
         module.supports_run_timeout_marker,
+        module.supports_stream_checks,
     )
 
 
@@ -55,6 +58,7 @@ def _load_schema_policy_helpers():
     result_schema_version_value,
     supports_capture_and_vendor_fields,
     supports_run_timeout_marker,
+    supports_stream_checks,
 ) = _load_schema_policy_helpers()
 
 
@@ -100,9 +104,6 @@ _corpus_rule = _load_corpus_rule_module()
 MIN_THROUGHPUT_STREAMS = _corpus_rule.min_throughput_streams()
 bundle_failed_query_count = _query_status.bundle_failed_query_count
 documented_exclusions_cover_failures = _query_status.documented_exclusions_cover_failures
-unchecked_row_count_evidence = _query_status.unchecked_row_count_evidence
-has_row_count_evidence = _query_status.has_row_count_evidence
-row_count_skip_is_documented = _query_status.row_count_skip_is_documented
 
 
 def _load_timing_field_helpers():
@@ -430,8 +431,17 @@ NUMERIC_SCHEMA_VERSION_RE = re.compile(r"^\d+\.\d+(?:\.\d+)?$")
 ROW_COUNT_VALIDATION_SCHEMA_VERSION = (2, 2)
 ROW_COUNT_VALIDATION_MESSAGE_MAX_CHARS = 500
 ROW_COUNT_VALIDATION_STATUSES = frozenset({"PASSED", "FAILED", "SKIPPED", "UNVALIDATED", "ERROR"})
-ROW_COUNT_VALIDATION_FIELDS = frozenset({"status", "expected", "actual", "error", "warning"})
+ROW_COUNT_VALIDATION_FIELDS = frozenset(
+    {"status", "expected", "actual", "error", "warning", "check", "bound", "seed", "streams_index"}
+)
 ROW_COUNT_VALIDATION_REQUIRED_FIELDS = frozenset({"status", "expected", "actual"})
+ROW_COUNT_VALIDATION_STREAM_FIELDS = frozenset({"check", "bound", "seed", "streams_index"})
+ROW_COUNT_VALIDATION_CHECKS = frozenset({"exact", "invariant", "range", "never_empty", "structural"})
+ROW_COUNT_VALIDATION_BOUND_MAX_CHARS = 120
+STREAM_CHECKS_BENCHMARKS = frozenset({"tpch", "tpcds"})
+STREAM_CHECKS_REFERENCE_FIELDS = frozenset(
+    {"benchmark", "scale_factor", "file", "sha256", "data_stamp", "query_generation_hash", "sample_draws"}
+)
 
 OVERRIDE_SUFFIX = ".override.json"
 COMPANION_SUFFIXES = (".plans.json", ".tuning.json", ".applied.json", OVERRIDE_SUFFIX)
@@ -2535,6 +2545,93 @@ def _schema_version_tuple(version: Any) -> tuple[int, ...] | None:
     return tuple(int(part) for part in version.strip().split("."))
 
 
+def _validate_passed_evidence(
+    index: int, status: Any, check: Any, counts: dict[str, int | None], vr: ValidationResult
+) -> None:
+    if status != "PASSED":
+        return
+    if check in ("range", "never_empty"):
+        if counts["expected"] is not None:
+            vr.error(f"queries[{index}].row_count_validation PASSED {check} check must not carry an expected count")
+    elif check == "structural":
+        vr.error(f"queries[{index}].row_count_validation a structural check alone cannot pass")
+    elif counts["expected"] is None or counts["actual"] != counts["expected"]:
+        vr.error(f"queries[{index}].row_count_validation PASSED requires equal integer expected and actual counts")
+
+
+def _validate_stream_check_evidence(index: int, evidence: dict[str, Any], version: Any, vr: ValidationResult) -> None:
+    present = ROW_COUNT_VALIDATION_STREAM_FIELDS & set(evidence)
+    if not present:
+        return
+    if not supports_stream_checks(version):
+        vr.error(f"queries[{index}].row_count_validation.{sorted(present)[0]} requires schema version 2.7 or later")
+    if "check" in evidence and evidence["check"] not in ROW_COUNT_VALIDATION_CHECKS:
+        vr.error(f"queries[{index}].row_count_validation.check is invalid: {evidence['check']!r}")
+    bound = evidence.get("bound")
+    if ("check" in evidence) != ("bound" in evidence):
+        vr.error(f"queries[{index}].row_count_validation.check and bound must be present together")
+    elif "bound" in evidence and (
+        not isinstance(bound, str) or not bound or len(bound) > ROW_COUNT_VALIDATION_BOUND_MAX_CHARS
+    ):
+        vr.error(
+            f"queries[{index}].row_count_validation.bound must be a non-empty string of at most "
+            f"{ROW_COUNT_VALIDATION_BOUND_MAX_CHARS} characters"
+        )
+    for field in ("seed", "streams_index"):
+        value = evidence.get(field)
+        if (
+            field in evidence
+            and value is not None
+            and (isinstance(value, bool) or not isinstance(value, int) or value < 0)
+        ):
+            vr.error(f"queries[{index}].row_count_validation.{field} must be a non-negative integer or null")
+
+
+def _validate_stream_checks_section(data: dict, version: Any, vr: ValidationResult) -> None:
+    if "validation" not in data:
+        return
+    if not supports_stream_checks(version):
+        vr.error("validation requires schema version 2.7 or later")
+        return
+    validation = data["validation"]
+    if not isinstance(validation, dict) or set(validation) != {"stream_checks"}:
+        vr.error("validation must hold exactly stream_checks")
+        return
+    stream_checks = validation["stream_checks"]
+    if not isinstance(stream_checks, dict) or set(stream_checks) != {"references", "checks"}:
+        vr.error("validation.stream_checks must hold exactly references and checks")
+        return
+    references = stream_checks["references"]
+    if not isinstance(references, list):
+        vr.error("validation.stream_checks.references must be a list")
+        references = []
+    for position, reference in enumerate(references):
+        if not isinstance(reference, dict) or set(reference) != STREAM_CHECKS_REFERENCE_FIELDS:
+            vr.error(
+                f"validation.stream_checks.references[{position}] must hold {sorted(STREAM_CHECKS_REFERENCE_FIELDS)}"
+            )
+            continue
+        digests = (reference["sha256"], reference["data_stamp"], reference["query_generation_hash"])
+        if (
+            reference["benchmark"] not in STREAM_CHECKS_BENCHMARKS
+            or isinstance(reference["scale_factor"], bool)
+            or not isinstance(reference["scale_factor"], (int, float))
+            or reference["scale_factor"] <= 0
+            or not isinstance(reference["file"], str)
+            or not reference["file"]
+            or any(not isinstance(d, str) or len(d) != 64 or set(d) - set("0123456789abcdef") for d in digests)
+            or isinstance(reference["sample_draws"], bool)
+            or not isinstance(reference["sample_draws"], int)
+            or reference["sample_draws"] < 1
+        ):
+            vr.error(f"validation.stream_checks.references[{position}] is malformed")
+    checks = stream_checks["checks"]
+    if not isinstance(checks, dict) or not set(checks) <= ROW_COUNT_VALIDATION_CHECKS:
+        vr.error("validation.stream_checks.checks must count known check kinds")
+    elif any(isinstance(n, bool) or not isinstance(n, int) or n < 1 for n in checks.values()):
+        vr.error("validation.stream_checks.checks counts must be positive integers")
+
+
 def _validate_row_count_validation(index: int, q: dict[str, Any], version: Any, vr: ValidationResult) -> None:
     if "row_count_validation" not in q:
         return
@@ -2576,10 +2673,8 @@ def _validate_row_count_validation(index: int, q: dict[str, Any], version: Any, 
         rows = None
     if normalized_counts["actual"] != rows:
         vr.error(f"queries[{index}].row_count_validation.actual must match queries[{index}].rows")
-    if status == "PASSED" and (
-        normalized_counts["expected"] is None or normalized_counts["actual"] != normalized_counts["expected"]
-    ):
-        vr.error(f"queries[{index}].row_count_validation PASSED requires equal integer expected and actual counts")
+    _validate_stream_check_evidence(index, evidence, version, vr)
+    _validate_passed_evidence(index, status, evidence.get("check"), normalized_counts, vr)
     if status == "UNVALIDATED" and normalized_counts["expected"] is not None:
         vr.error(f"queries[{index}].row_count_validation UNVALIDATED must not carry an expected count")
 
@@ -3107,71 +3202,27 @@ def _validate_execution_consistency(
         if no_reference
         else "summary.validation='passed'"
     )
-    if status == PUBLIC_CLEAN_VALIDATION_STATUS and not allow_partial_validation:
-        if not has_row_count_evidence(data.get("queries")):
-            vr.error(
-                "summary.validation='passed' requires per-query row-count evidence "
-                "(a measurement query with row_count_validation.status='PASSED' and none unvalidated); "
-                "a run with no row-count reference records 'no_reference'"
-            )
-    if no_reference:
-        benchmark_id, scale_factor = _bundle_benchmark_id(data), _bundle_scale_factor(data)
-        if _corpus_rule.row_count_reference_exists(benchmark_id, scale_factor):
-            vr.error(
-                f"{claim} is only valid where no row-count reference exists, but a reference is recorded for "
-                f"benchmark {benchmark_id!r} at scale factor {scale_factor:g}; record 'passed' with per-query evidence"
-            )
-
-    failed = 0 if documented else bundle_failed_query_count(data)
-    if failed > 0:
-        noun = "query" if failed == 1 else "queries"
-        vr.error(f"{claim} contradicts {failed} failed measurement {noun}")
-
     queries = data.get("queries")
-    if isinstance(queries, list):
-        for i, q in enumerate(queries):
-            if not isinstance(q, dict):
-                continue
-            rcv = q.get("row_count_validation")
-            if isinstance(rcv, dict):
-                rcv_status = rcv.get("status")
-                if rcv_status == "UNVALIDATED":
-                    if not no_reference:
-                        vr.error(
-                            f"{claim} counts queries[{i}] as validated, but its row count is "
-                            "unvalidated (no reference answers for this benchmark and scale factor)"
-                        )
-                elif rcv_status is not None and not (
-                    rcv_status == "PASSED"
-                    or (
-                        rcv_status == "SKIPPED"
-                        and (
-                            row_count_skip_is_documented(rcv)
-                            or (
-                                no_reference
-                                and isinstance(rcv.get("warning"), str)
-                                and rcv["warning"].startswith(_query_status.NO_REFERENCE_REASON)
-                            )
-                        )
-                    )
-                ):
-                    vr.error(f"{claim} contradicts queries[{i}].row_count_validation.status={rcv_status!r}")
-    if (
-        isinstance(queries, list)
-        and unchecked_row_count_evidence(queries)
-        and not (
-            no_reference
-            and all(
-                isinstance(q.get("row_count_validation", {}).get("warning"), str)
-                and q["row_count_validation"]["warning"].startswith(_query_status.NO_REFERENCE_REASON)
-                for q in queries
-                if isinstance(q, dict)
-                and isinstance(q.get("row_count_validation"), dict)
-                and q["row_count_validation"].get("status") == "SKIPPED"
-            )
-        )
-    ):
-        vr.error(f"{claim} counts row counts as validated, but every recorded row count was skipped")
+    failed = 0 if documented else bundle_failed_query_count(data)
+    rolled, reason = _query_status.row_evidence_roll_up(
+        queries,
+        reference_exists=_corpus_rule.row_count_reference_exists(
+            _bundle_benchmark_id(data), _bundle_scale_factor(data)
+        ),
+        failed_queries=failed,
+    )
+    recorded = _query_status.NO_REFERENCE_VALIDATION_STATUS if no_reference else _query_status.PASSED_VALIDATION_STATUS
+    carries_evidence = isinstance(queries, list) and any(
+        isinstance(q, dict) and isinstance(q.get("row_count_validation"), dict) for q in queries
+    )
+    unevidenced_exempt = (
+        recorded == _query_status.PASSED_VALIDATION_STATUS
+        and (allow_partial_validation or documented)
+        and not carries_evidence
+        and rolled in {_query_status.NO_REFERENCE_VALIDATION_STATUS, _query_status.NOT_VALIDATED_VALIDATION_STATUS}
+    )
+    if rolled != recorded and not unevidenced_exempt:
+        vr.error(f"{claim} contradicts the recorded row-count evidence: {reason}")
     _validate_throughput_stream_completeness(data, vr)
 
 
@@ -3263,6 +3314,7 @@ def _validate_bundle(
     _validate_net_estimate_status(data, vr)
     _validate_required_timing_fields(data, version, vr)
     _validate_capture_and_vendor_fields(data, version, vr, manifest_present=manifest_present)
+    _validate_stream_checks_section(data, version, vr)
     _warn_empty_result_rows(data, vr)
     _warn_timing_plateau(data, vr)
     _warn_small_scale_floor(data, vr)
