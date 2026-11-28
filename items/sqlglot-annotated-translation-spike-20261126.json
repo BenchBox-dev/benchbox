@@ -1,0 +1,25 @@
+{
+  "acceptance": [
+    "A results file records the per-benchmark, per-target counts: statements changed, row differences and translation time, for both modes.",
+    "Every fork patch or rewrite judged redundant under annotation is listed, with the evidence for it.",
+    "A recommendation for G1 is in context."
+  ],
+  "context": "The owner chose a measured spike over adopting now or keeping the current approach (choice dialog, 2026-11-26). `qualify` rewrites SQL shape (quoting, table prefixes, `*` expansion), so output changes on every platform are expected; measure them, but don't treat them as defects. Fork-side input: the benchbox-sqlglot tracker item annotated-translation-patch-inventory-20261128 classifies every carried patch by whether it only stands in for missing types, would be retired by annotation, or would be broken by annotation. The staged sqlite-temporal-lowering resolution (BenchBox-dev/benchbox-sqlglot#176) keeps SQLite EXTRACT as INTEGER because BenchBox does not annotate; upstream #9386 writes REAL for unannotated input, so revisit it if G1 adopts annotation.",
+  "description": "## Problem\nUpstream sqlglot expects callers to run `qualify` and `annotate_types` with a schema before generating type-dependent SQL. It declined tobymao/sqlglot#9384 for that reason (\"You need to run annotate_types first (and possibly qualify before that)\"). BenchBox's `translate_sql_query` (benchbox/utils/dialect_utils.py) parses and generates without either step. It relies on fork workarounds instead: the `mark_date_columns` rewrite, the fork's rule that treats a `CURRENT_DATE` base as DATE, and the lowering of unknown-type operands in `sqlite-temporal-lowering`. Every such carried patch is one more that can stop an upstream refresh.\n\n## Change\nA measured spike; it changes no production code. Translate TPC-H, TPC-DS and TPC-Havoc for SQLite and DuckDB (other targets optional) in two ways: as today, and with `qualify` and `annotate_types`, using the benchmark schema, before generation. Record:\n- how many statements change, with examples;\n- row differences against the DuckDB reference at SF 0.01;\n- the added translation time;\n- which fork patches and rewrites become redundant.\n\n## Known risk\nOn upstream main with types annotated, a DATE column compared with DATE minus an interval (PostgreSQL or DuckDB source) is written as `DATETIME(...)` and drops boundary rows on SQLite. That is tobymao/sqlglot#9391. Expect TPC-DS Q21 and Q40-style predicates to show it unless the fork's DATE rule stays.\n\n## Decision gate\nG1: the owner decides whether to adopt annotated translation, after seeing the numbers.",
+  "links": [
+    "https://github.com/tobymao/sqlglot/issues/9384",
+    "https://github.com/tobymao/sqlglot/issues/9391",
+    "https://github.com/BenchBox-dev/benchbox-sqlglot/pull/162",
+    "https://github.com/BenchBox-dev/benchbox-sqlglot/pull/176"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:mcp:joe@joe-mac-mini.local:259249b58788a610c8029065",
+      "at": "2026-11-28T13:24:00Z",
+      "client": "mcp",
+      "op": "create",
+      "op_id": "ec6fcb50b5c61724687e7ac85461a62f",
+      "session_id": "49b3af7b23b24d078d3824336f3bb7c4"
+    }
+  ]
+}

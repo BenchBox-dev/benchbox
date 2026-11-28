@@ -52136,6 +52136,13 @@
       "status": "done",
       "title": "SQLGlot adoption does not report translated-SQL changes for platforms the execution gate never runs"
     },
+    "sqlglot-annotated-translation-spike-20261126": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Measure what translating with qualify and annotate_types would change and which fork workarounds it would retire"
+    },
     "sqlglot-bundled-import-startup-cost": {
       "claim": null,
       "needs": [],
