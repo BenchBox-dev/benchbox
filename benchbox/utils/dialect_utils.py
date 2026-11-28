@@ -837,13 +837,19 @@ def placeholder_names(sql: str, dialect: str) -> list[str]:
     from benchbox._vendor import sqlglot
 
     resolved = resolve_sql_dialect(dialect)
-    names = {
-        placeholder.name
-        for statement in sqlglot.parse(sql, read=resolved)
-        if statement is not None
-        for placeholder in statement.find_all(sqlglot.exp.Placeholder)
-    }
-    return sorted(names)
+    exp = sqlglot.exp
+    bind_types = (exp.Placeholder, exp.Parameter) if resolved in ("bigquery", "sqlite") else (exp.Placeholder,)
+    return sorted(
+        {
+            bind.name
+            for statement in sqlglot.parse(sql, read=resolved)
+            if statement is not None
+            for bind in statement.find_all(*bind_types)
+            if isinstance(bind.this, (str, exp.Identifier, exp.Var))
+            and not (isinstance(bind.this, str) and bind.this.isdecimal())
+            and not isinstance(bind.parent, exp.Parameter)
+        }
+    )
 
 
 def translate_ddl(

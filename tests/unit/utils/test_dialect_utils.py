@@ -1091,13 +1091,17 @@ def test_doris_rollup_rewrite_preserves_with_clause_and_limit():
 
 
 @pytest.mark.parametrize(
-    ("sql", "names"),
+    ("sql", "dialect", "names"),
     [
-        ("UPDATE t SET a = 1 WHERE batchid = $batch_id AND b = $batch_id", ["batch_id"]),
-        ("INSERT INTO t SELECT $batch_id, $source FROM s", ["batch_id", "source"]),
-        ("SELECT '$batch_id' AS literal FROM t", []),
-        ("DROP TABLE t", []),
+        ("UPDATE t SET a = 1 WHERE batchid = $batch_id AND b = $batch_id", "duckdb", ["batch_id"]),
+        ("INSERT INTO t SELECT $batch_id, $source FROM s", "duckdb", ["batch_id", "source"]),
+        ("SELECT '$batch_id' AS literal FROM t", "duckdb", []),
+        ("SELECT ?, $1", "duckdb", []),
+        ("DROP TABLE t", "duckdb", []),
+        ("SELECT @RunKey, @`odd-name`, @@project_id", "bigquery", ["RunKey", "odd-name"]),
+        ("SELECT :name, @other", "sqlite", ["name", "other"]),
+        ("SELECT @user, @@version", "mysql", []),
     ],
 )
-def test_placeholder_names_come_from_the_parsed_statement(sql, names):
-    assert placeholder_names(sql, "duckdb") == names
+def test_placeholder_names_come_from_the_parsed_statement(sql, dialect, names):
+    assert placeholder_names(sql, dialect) == names
