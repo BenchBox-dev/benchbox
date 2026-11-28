@@ -5865,7 +5865,7 @@
         }
       },
       "integration_branch": "feat/explorer-data-r2",
-      "integration_head": "57ca3937bd347213415c18f16b3e8c8901725a8c",
+      "integration_head": "274a57eca445b8a04febdd15e7b00b6c6f7ae9ac",
       "integration_log": [
         {
           "at": "2026-11-27T16:35:55Z",
@@ -6117,6 +6117,35 @@
             "crr-b3-pipeline-emits-rule-outcome-and-medians"
           ],
           "seq": 6
+        },
+        {
+          "at": "2026-11-28T12:19:38Z",
+          "changed_files": [
+            "_project/planning/visible_metrics.yaml",
+            "_project/scripts/explorer_pipeline/contract.py",
+            "_project/scripts/explorer_pipeline/duckdb_builder.py",
+            "_project/scripts/explorer_pipeline/medians.py",
+            "_project/scripts/explorer_pipeline/pipeline.py",
+            "docs/internal/adr/adr-corpus-derived-outcome-rule.md",
+            "results-data/CORPUS_NOTES.md",
+            "results-data/compliance-classes.json",
+            "scripts/corpus_compliance_snapshot.py",
+            "scripts/publication/check_explorer_compat.py",
+            "tests/fixtures/explorer_read_model/next_read_model_contract.json",
+            "tests/unit/scripts/explorer_pipeline/test_corpus_read_model.py",
+            "tests/unit/scripts/explorer_pipeline/test_duckdb_browser_contract.py",
+            "tests/unit/scripts/explorer_pipeline/test_meta_leaderboard.py",
+            "tests/unit/scripts/explorer_pipeline/test_next_read_model_contract.py",
+            "tests/unit/scripts/test_corpus_compliance_snapshot.py"
+          ],
+          "head": "274a57eca445b8a04febdd15e7b00b6c6f7ae9ac",
+          "kind": "fix",
+          "op_id": "fa6a0f9bd4a55ae4d8a51b2ad73a06b6",
+          "previous_head": "57ca3937bd347213415c18f16b3e8c8901725a8c",
+          "requires_acceptance": [
+            "crr-b3-pipeline-emits-rule-outcome-and-medians"
+          ],
+          "seq": 7
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-explorer-data-r2",
