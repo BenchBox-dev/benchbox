@@ -150,18 +150,25 @@ def unmeasured_statements() -> Iterator[None]:
 class ExecutionEngineHook:
     OBSERVED_ENGINE_SOURCE: ObservedSource = "none"
     OBSERVATION_AT_RUN_END: bool = False
+    RUN_END_OBSERVATION_USES_CONNECTION: bool = False
 
     def reset_query_engine_observation(self) -> None:
         self._engine_targets = []
         self._engine_observations = []
         self._unrecognized_observations = 0
         self._engine_measured_phase_open = False
+        self._engine_window_active = False
+        self._engine_run_measured = False
+        self._engine_run_end_cache = None
 
     def open_engine_observation_window(self) -> None:
         self._engine_measured_phase_open = True
+        self._engine_window_active = True
 
     def close_engine_observation_window(self) -> None:
         self._engine_measured_phase_open = False
+        self._engine_window_active = False
+        self._engine_run_measured = True
 
     def engine_observation_gap(self) -> str | None:
         return None
@@ -190,6 +197,17 @@ class ExecutionEngineHook:
             for target in targets
         ]
 
+    def _observe_run_end(self, connection: Any) -> tuple[list[str | None], int, str | None]:
+        targets = getattr(self, "_engine_targets", [])
+        if not targets:
+            return [], 0, None
+        if self.RUN_END_OBSERVATION_USES_CONNECTION and connection is None:
+            reason = "the run ended contained, so its connections were not used to observe the engine"
+            return [None for _ in targets], 0, reason
+        self._unrecognized_observations = 0
+        observations = self.observe_run_end_targets(targets, connection)
+        return observations, self._unrecognized_observations, None
+
     def _observe_target(self, target: QueryObservationTarget) -> str | None:
         from benchbox.core.results.timer_scope import outside_query_timer
 
@@ -207,8 +225,14 @@ class ExecutionEngineHook:
         recorded = dict(receipt)
         if self.OBSERVED_ENGINE_SOURCE == "none":
             return recorded
-        if self.OBSERVATION_AT_RUN_END:
-            self._engine_observations = self.observe_run_end_targets(getattr(self, "_engine_targets", []), connection)
+        skipped_reason = None
+        if self.OBSERVATION_AT_RUN_END and not getattr(self, "_engine_window_active", False):
+            cache = getattr(self, "_engine_run_end_cache", None)
+            if cache is None:
+                cache = self._observe_run_end(connection)
+                if getattr(self, "_engine_run_measured", False):
+                    self._engine_run_end_cache = cache
+            self._engine_observations, self._unrecognized_observations, skipped_reason = cache
         observations = getattr(self, "_engine_observations", [])
         gap = self.engine_observation_gap()
         summary = summarize_observed_engines(
@@ -218,6 +242,8 @@ class ExecutionEngineHook:
         unrecognized = getattr(self, "_unrecognized_observations", 0)
         if unrecognized and gap is None and summary.observed == NOT_CAPTURED:
             reason = f"query evidence not recognized for {unrecognized} of {len(observations)} queries"
+        if skipped_reason and gap is None and summary.observed == NOT_CAPTURED:
+            reason = skipped_reason
         recorded.update(observed=summary.observed, observed_source=summary.observed_source, observed_reason=reason)
         return recorded
 

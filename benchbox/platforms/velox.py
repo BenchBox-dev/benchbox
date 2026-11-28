@@ -106,6 +106,7 @@ class VeloxAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecutio
 
     OBSERVED_ENGINE_SOURCE = "explain"
     OBSERVATION_AT_RUN_END = True
+    RUN_END_OBSERVATION_USES_CONNECTION = True
 
     _requires_csv_extension: bool = False
 

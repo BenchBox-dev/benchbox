@@ -114,7 +114,7 @@ def test_run_record_follows_the_timed_queries_even_when_the_probe_says_otherwise
 def test_run_record_is_velox_when_every_timed_query_is_offloaded(velox_adapter):
     spark = _spark_returning({"select 1": PLANS["offloaded"]})
     velox_adapter.record_query_engine_observation(spark, "select 1", "q1")
-    receipt = _platform_receipt(velox_adapter, None)
+    receipt = _platform_receipt(velox_adapter, spark)
     assert (receipt["observed"], receipt["observed_source"], receipt["observed_reason"]) == ("velox", "explain", None)
 
 
@@ -122,14 +122,14 @@ def test_run_record_is_mixed_when_queries_differ(velox_adapter):
     spark = _spark_returning({"select 1": PLANS["offloaded"], "select 2": PLANS["vanilla"]})
     velox_adapter.record_query_engine_observation(spark, "select 1", "q1")
     velox_adapter.record_query_engine_observation(spark, "select 2", "q2")
-    assert _platform_receipt(velox_adapter, None)["observed"] == MIXED
+    assert _platform_receipt(velox_adapter, spark)["observed"] == MIXED
 
 
 def test_run_record_is_not_captured_when_a_timed_query_cannot_be_explained(velox_adapter):
     spark = MagicMock()
     spark.sql.side_effect = RuntimeError("explain refused")
     velox_adapter.record_query_engine_observation(spark, "select 1", "q1")
-    receipt = _platform_receipt(velox_adapter, None)
+    receipt = _platform_receipt(velox_adapter, spark)
     assert (receipt["observed"], receipt["observed_source"]) == (NOT_CAPTURED, "none")
     assert receipt["observed_reason"] == "the library reported no engine for 1 of 1 queries"
 
@@ -159,7 +159,7 @@ def test_timed_query_execution_records_its_own_plan(velox_adapter):
     result = velox_adapter.execute_query(spark, "select 1", "q1")
 
     assert result["status"] == "SUCCESS"
-    assert _platform_receipt(velox_adapter, None)["observed"] == "velox"
+    assert _platform_receipt(velox_adapter, spark)["observed"] == "velox"
 
 
 def test_a_timed_phase_issues_no_explain_between_timed_queries(velox_adapter):
@@ -190,5 +190,35 @@ def test_observation_state_does_not_leak_between_runs(velox_adapter):
     velox_adapter._reset_run_scoped_state()
     velox_adapter.open_engine_observation_window()
     velox_adapter.record_query_engine_observation(spark, "select 2", "q2")
+    velox_adapter.close_engine_observation_window()
 
     assert _platform_receipt(velox_adapter, spark)["observed"] == "standard"
+
+
+def test_a_contained_run_never_touches_the_recorded_session(velox_adapter):
+    spark = _spark_returning({"select 1": PLANS["offloaded"]})
+    velox_adapter.reset_query_engine_observation()
+    velox_adapter.open_engine_observation_window()
+    velox_adapter.record_query_engine_observation(spark, "select 1", "q1")
+    velox_adapter.close_engine_observation_window()
+
+    receipt = _platform_receipt(velox_adapter, None)
+
+    assert not spark.sql.call_args_list
+    assert receipt["observed"] == NOT_CAPTURED
+    assert "contained" in receipt["observed_reason"]
+
+
+def test_two_platform_info_calls_after_a_run_observe_once(velox_adapter):
+    spark = _spark_returning({"select 1": PLANS["offloaded"]})
+    velox_adapter.reset_query_engine_observation()
+    velox_adapter.open_engine_observation_window()
+    velox_adapter.record_query_engine_observation(spark, "select 1", "q1")
+    velox_adapter.close_engine_observation_window()
+
+    first = _platform_receipt(velox_adapter, spark)
+    second = _platform_receipt(velox_adapter, spark)
+
+    explained = [call.args[0] for call in spark.sql.call_args_list if call.args[0].startswith("EXPLAIN EXTENDED")]
+    assert explained == ["EXPLAIN EXTENDED select 1"]
+    assert first == second

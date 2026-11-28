@@ -208,5 +208,21 @@ def test_observation_state_does_not_leak_between_runs(monkeypatch, adapter):
     adapter._reset_run_scoped_state()
     adapter.open_engine_observation_window()
     adapter.record_query_engine_observation(None, "select 2", "q2", [FIXTURE["photon_zero_with_tasks"]["query_id"]])
+    adapter.close_engine_observation_window()
 
     assert _receipt(adapter)["observed"] == "standard"
+
+
+def test_two_receipts_after_a_run_look_up_query_history_once(monkeypatch, adapter):
+    asked = _serve(monkeypatch, adapter, ["photon_run"])
+    adapter.reset_query_engine_observation()
+    adapter.open_engine_observation_window()
+    adapter.record_query_engine_observation(None, "select 1", "q1", [FIXTURE["photon_run"]["query_id"]])
+    adapter.close_engine_observation_window()
+
+    first = _receipt(adapter)
+    second = _receipt(adapter)
+
+    assert len(asked) == 1
+    assert first == second
+    assert first["observed"] == "photon"

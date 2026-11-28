@@ -83,7 +83,7 @@ def test_run_record_names_the_engine_each_timed_query_was_routed_to(adapter):
     adapter.record_query_engine_observation(connection, "select 1", "q1")
     adapter.record_query_engine_observation(connection, "select 2", "q2")
 
-    receipt = adapter.get_platform_info(None)["configuration"]["execution_engine"]
+    receipt = adapter.get_platform_info(connection)["configuration"]["execution_engine"]
 
     assert (receipt["observed"], receipt["observed_source"], receipt["observed_reason"]) == ("duckdb", "explain", None)
     assert receipt["applied"] == "duckdb"
@@ -94,14 +94,14 @@ def test_run_record_is_mixed_when_pg_duckdb_declines_some_queries(adapter):
     adapter.record_query_engine_observation(connection, "select 1", "q1")
     adapter.record_query_engine_observation(connection, "select 2", "q2")
 
-    assert adapter.get_platform_info(None)["configuration"]["execution_engine"]["observed"] == MIXED
+    assert adapter.get_platform_info(connection)["configuration"]["execution_engine"]["observed"] == MIXED
 
 
 def test_run_record_is_not_captured_when_a_plan_is_unavailable(adapter):
     connection = _connection({"select 1": RuntimeError("syntax")})
     adapter.record_query_engine_observation(connection, "select 1", "q1")
 
-    receipt = adapter.get_platform_info(None)["configuration"]["execution_engine"]
+    receipt = adapter.get_platform_info(connection)["configuration"]["execution_engine"]
 
     assert (receipt["observed"], receipt["observed_source"]) == (NOT_CAPTURED, "none")
     assert receipt["applied"] == "duckdb"
@@ -117,7 +117,7 @@ def test_a_successful_timed_query_is_observed_and_a_failed_one_is_not(adapter, m
     adapter.execute_query(connection, "select 1", "q1")
     adapter.execute_query(connection, "select 2", "q2")
 
-    assert adapter.get_platform_info(None)["configuration"]["execution_engine"]["observed"] == "duckdb"
+    assert adapter.get_platform_info(connection)["configuration"]["execution_engine"]["observed"] == "duckdb"
 
 
 class _RecordingConnection:
@@ -214,7 +214,38 @@ def test_observation_state_does_not_leak_between_runs(adapter):
     adapter.open_engine_observation_window()
     second = _RecordingConnection(status=2)
     adapter.record_query_engine_observation(second, "select 2", "q2")
+    adapter.close_engine_observation_window()
     receipt = adapter.get_platform_info(second)["configuration"]["execution_engine"]
 
     assert [s for s in second.statements if s.startswith("EXPLAIN")] == ["EXPLAIN select 2"]
     assert (receipt["observed"], receipt["observed_reason"]) == ("duckdb", None)
+
+
+def test_a_contained_run_never_touches_the_recorded_connections(adapter):
+    connection = _RecordingConnection(status=2)
+    adapter.reset_query_engine_observation()
+    adapter.open_engine_observation_window()
+    adapter.record_query_engine_observation(connection, "select 1", "q1")
+    adapter.close_engine_observation_window()
+
+    receipt = adapter.get_platform_info(None)["configuration"]["execution_engine"]
+
+    assert connection.statements == []
+    assert (receipt["observed"], receipt["observed_source"]) == (NOT_CAPTURED, "none")
+    assert "contained" in receipt["observed_reason"]
+
+
+def test_two_platform_info_calls_after_a_run_observe_once(adapter):
+    connection = _RecordingConnection(status=2)
+    adapter.reset_query_engine_observation()
+    adapter.open_engine_observation_window()
+    adapter.record_query_engine_observation(connection, "select 1", "q1")
+    adapter.get_platform_info(connection)
+    adapter.close_engine_observation_window()
+
+    first = adapter.get_platform_info(connection)["configuration"]["execution_engine"]
+    second = adapter.get_platform_info(connection)["configuration"]["execution_engine"]
+
+    assert [s for s in connection.statements if s.startswith("EXPLAIN")] == ["EXPLAIN select 1"]
+    assert first == second
+    assert first["observed"] == "duckdb"

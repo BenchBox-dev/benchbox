@@ -71,6 +71,7 @@ def classify_explain_plan(plan_text: str) -> str | None:
 class PgDuckDBAdapter(PostgreSQLAdapter):
     OBSERVED_ENGINE_SOURCE = "explain"
     OBSERVATION_AT_RUN_END = True
+    RUN_END_OBSERVATION_USES_CONNECTION = True
     execution_partitioning_supported = True
     post_load_index_cluster_supported = True
     supports_refresh_functions = False
