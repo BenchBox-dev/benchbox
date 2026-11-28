@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from tests.uat import config, docker_assets, managed_runtime, matrix
+from tests.uat import config, docker_assets, managed_runtime, matrix, mocker_launch
 from tests.uat.docker_path_helpers import compose_path_ends_with
 
 pytestmark = pytest.mark.medium
@@ -1157,6 +1157,66 @@ def test_coordinator_readiness_script_exits_127_when_curl_is_missing(platform, t
         check=False,
     )
     assert result.returncode == 127
+
+
+_QUERY_ACCEPTED = '{"id":"q1","nextUri":"http://localhost:8080/v1/statement/queued/q1/y1/1","stats":{"state":"QUEUED"}}'
+_QUERY_ANSWERED = '{"id":"q1","columns":[],"data":[[1]],"stats":{"state":"FINISHED"}}'
+_QUERY_FAILED = '{"id":"q1","error":{"message":"no nodes"}}'
+_QUERY_ENDED_WITHOUT_ANSWER = '{"id":"q1","stats":{"state":"FINISHED"}}'
+
+
+def _trino_probe_script(source: str) -> str:
+    if source == "readiness":
+        return managed_runtime.TRINO_READINESS[-1]
+    spec = docker_assets.docker_platform_spec("trino")
+    compose = yaml.safe_load(spec.compose_files[0].read_text(encoding="utf-8"))
+    argv, _ = mocker_launch._healthcheck(compose["services"]["trino"]["healthcheck"], {})
+    return argv[-1]
+
+
+@pytest.mark.parametrize(
+    ("poll_response", "expected_exit"),
+    [(_QUERY_ANSWERED, 0), (_QUERY_FAILED, 1), (_QUERY_ENDED_WITHOUT_ANSWER, 1)],
+    ids=["answered", "failed", "ended-without-answer"],
+)
+@pytest.mark.parametrize("source", ["compose-healthcheck", "readiness"])
+def test_trino_probe_needs_only_curl_and_sleep(source, poll_response, expected_exit, tmp_path):
+    import shutil
+    import subprocess
+
+    sh = shutil.which("sh")
+    assert sh is not None
+    tools = tmp_path / "tools"
+    tools.mkdir()
+    urls = tmp_path / "urls"
+    stubs = {
+        "curl": (
+            'for arg; do url="$arg"; done\n'
+            f"echo \"$url\" >> '{urls}'\n"
+            f"case \"$url\" in */v1/statement) echo '{_QUERY_ACCEPTED}';; *) echo '{poll_response}';; esac\n"
+        ),
+        "sleep": "exit 0\n",
+    }
+    for name, body in stubs.items():
+        tool = tools / name
+        tool.write_text(f"#!{sh}\n{body}", encoding="utf-8")
+        tool.chmod(0o755)
+
+    result = subprocess.run(
+        [sh],
+        input=_trino_probe_script(source),
+        env={**os.environ, "PATH": str(tools)},
+        capture_output=True,
+        text=True,
+        timeout=10,
+        check=False,
+    )
+
+    assert result.returncode == expected_exit, result.stderr
+    assert urls.read_text(encoding="utf-8").splitlines() == [
+        "http://localhost:8080/v1/statement",
+        "http://localhost:8080/v1/statement/queued/q1/y1/1",
+    ]
 
 
 def test_influxdb_cells_target_the_local_core_stack():
