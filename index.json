@@ -54178,6 +54178,13 @@
       "status": "done",
       "title": "Owner decision: approve one vendored soundness-path matcher module as the only embedded exception"
     },
+    "theseus-derived-brief-overstates-attestation-20261126": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Theseus: the summary-only brief claims nothing in the pull request can change what the attesting check verifies"
+    },
     "theseus-derived-paths-reproduce-review-20261125": {
       "claim": null,
       "needs": [],

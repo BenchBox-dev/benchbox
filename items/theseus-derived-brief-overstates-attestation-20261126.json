@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "`derived_block` no longer says nothing in the pull request can change what the check attests, and a unit test pins the replacement text.",
+    "The Derived paths section of `docs/consumer-policy.md` states the same limit, or this item records that its current wording (lines 174 and 192) already does.",
+    "The change is in a Theseus release that BenchBox has promoted, shown by a recorded run id whose brief carries the new text."
+  ],
+  "description": "#### Problem\n`derived_block` in `src/theseus_reviewer/render.py` (starts at line 406 on origin/main `409f610`; the text is at line 411) tells the reviewer that the derivation \"is attested by the project check `<name>`, which Theseus does not run or verify; nothing in this pull request can change what that check attests\".\n- **Theseus cannot know that.** On BenchBox the pull request's own `manifest.json` chooses which source runs the check rebuilds from.\n- **The hosted reviewer called it false.** In D8 on BenchBox #4541 (finding 4711372814 at `50404b86d3`) it said: \"Here that claim is false, because the manifest is pull request content.\"\n- **It conflicts with ADR 0001.** A statement about what a consumer's check verifies breaks the separation of concerns: Theseus states only what it can see.\n\n#### Change\nReword `derived_block` so it says only these things:\n- the check is named by the consumer's policy, read from the trusted base;\n- Theseus does not run it or verify it, and does not know what it accepts;\n- the summary is untrusted pull request data.\n\nKeep the instruction not to read the data files. Update the brief tests.\n\n#### Decision gates\n- Ship it in the next Theseus release, or as a release of its own if the owner asks.\n- Show the owner any change to what the reviewer is told to block on before it is committed.\n\n#### Guardrails\n- Name no consumer in the text.\n- Make no change to eligibility rules or to the not-read instruction.\n- Follow the release procedure. BenchBox adopts the change by lock promotion.\n\n#### Verification rubric\n- **Pass:** the rendered brief contains no claim about what the attesting check covers, and a unit test pins the new text. The released text is read from the brief in one BenchBox summary-only verdict run's log or artifact, with the run id recorded.\n- **Fail:** any wording that asserts properties of the consumer's check.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4ee2124a787b6f05e0bc0950",
+      "at": "2026-11-28T13:03:08Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "9ccf9f83244eedbd104666b68fe0a761",
+      "session_id": "1d89ef118510408e88eb75fe7b796609"
+    }
+  ]
+}
