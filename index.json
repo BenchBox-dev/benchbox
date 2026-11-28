@@ -34672,6 +34672,13 @@
       "status": "done",
       "title": "Owner decision: keep the fast-tier baseline merged in #4381 or refresh again"
     },
+    "fast-baseline-refresh-4548-land-and-weekly-repeat-20261126": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Land refresh PR #4548 on its summary-only review and confirm the weekly refresh repeats it unattended"
+    },
     "fast-baseline-refresh-commit-identity-owner-setting-20261120": {
       "claim": null,
       "needs": [],
