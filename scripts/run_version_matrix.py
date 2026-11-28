@@ -14,6 +14,7 @@ import subprocess
 import sys
 import threading
 import time
+from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from importlib import metadata
@@ -569,7 +570,12 @@ def extract_result(payload: dict[str, Any], spec: MatrixSpec, cell: Cell) -> dic
         for query in payload.get("queries", [])
         if isinstance(query, dict) and query.get("run_type") == "measurement"
     ]
-    iterations = sorted({query.get("iter", 1) for query in measured})
+    rows_by_iteration = Counter(query.get("iter", 1) for query in measured)
+    distinct_by_iteration = Counter(
+        iteration
+        for iteration, _, _ in {(query.get("iter", 1), query.get("stream"), query.get("id")) for query in measured}
+    )
+    iterations = sorted(rows_by_iteration)
     queries = {
         f"{query.get('stream')}:{query.get('id')}": {
             "rows": query.get("rows"),
@@ -590,7 +596,9 @@ def extract_result(payload: dict[str, Any], spec: MatrixSpec, cell: Cell) -> dic
         "engine_matches": requested == cell.engine,
         "polars_version_matches": platform_info.get("version") == cell.version,
         "iteration_count_matches": len(iterations) == expected_iterations,
-        "query_count_matches": counts.get("total") == expected * expected_iterations and len(queries) == expected,
+        "query_count_matches": counts.get("total") == expected * expected_iterations
+        and len(queries) == expected
+        and all(rows_by_iteration[i] == distinct_by_iteration[i] == expected for i in iterations),
         "no_failed_queries": counts.get("failed") == 0,
     }
     return {

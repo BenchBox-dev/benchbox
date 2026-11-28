@@ -351,6 +351,9 @@ def test_result_extraction_keeps_the_final_measured_iteration_and_requires_every
         "queries": [query for query in queries if query.get("iter", 1) == 1],
     }
     assert runner.extract_result(single, POLARS, cell)["checks"]["iteration_count_matches"] is False
+    short_first = [query for query in queries if not (query.get("iter") == 1 and query["id"] == "1")]
+    uneven = {**payload, "queries": [*short_first, next(q for q in queries if q.get("iter") == 2 and q["id"] == "2")]}
+    assert runner.extract_result(uneven, POLARS, cell)["checks"]["query_count_matches"] is False
     payload["platform"]["config"]["rechunk_effective"] = True
     assert runner.extract_result(payload, POLARS, cell)["result_ok"] is False
 
