@@ -121,7 +121,7 @@ def data_checksum(datagen: Path) -> dict[str, Any]:
 
 
 def generator_identity(benchmark: str, data_generator: str, query_generator: str, datagen: Path) -> dict[str, Any]:
-    from benchbox.utils.query_generation import current_query_generation_stamp
+    from benchbox.core.expected_results.query_generation import current_query_generation_stamp
 
     return {
         "data_generator": data_generator,

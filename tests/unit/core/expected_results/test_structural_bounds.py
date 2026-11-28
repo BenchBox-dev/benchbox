@@ -4,6 +4,7 @@ import re
 
 import pytest
 
+from benchbox.core.expected_results.query_generation import current_query_generation_hash
 from benchbox.core.expected_results.row_count_references import QUERY_IDS
 from benchbox.core.expected_results.structural_bounds import (
     StructuralBound,
@@ -12,7 +13,6 @@ from benchbox.core.expected_results.structural_bounds import (
     structural_bounds_identity,
     validate_structural_table,
 )
-from benchbox.utils.query_generation import current_query_generation_hash
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 

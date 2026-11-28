@@ -6,8 +6,8 @@ import json
 import pytest
 
 from benchbox.core.expected_results import row_count_references as references
+from benchbox.core.expected_results.query_generation import current_query_generation_hash
 from benchbox.utils import datagen_version
-from benchbox.utils.query_generation import current_query_generation_hash
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 

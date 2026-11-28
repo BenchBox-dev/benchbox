@@ -301,7 +301,7 @@ def decide_row_count(
         )
         return result
 
-    from benchbox.utils.query_generation import current_query_generation_hash
+    from benchbox.core.expected_results.query_generation import current_query_generation_hash
 
     inapplicable = reference.inapplicable_reason(
         run_data_stamp if run_data_stamp is not None else current_run_data_stamp(),

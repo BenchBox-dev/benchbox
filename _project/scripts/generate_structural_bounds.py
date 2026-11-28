@@ -8,6 +8,7 @@ import sys
 import tempfile
 from pathlib import Path
 
+from benchbox.core.expected_results.query_generation import current_query_generation_hash
 from benchbox.core.expected_results.row_count_references import QUERY_IDS
 from benchbox.core.expected_results.structural_bounds import (
     STRUCTURAL_BOUNDS_PATH,
@@ -15,7 +16,6 @@ from benchbox.core.expected_results.structural_bounds import (
     derive_structural_bound,
     validate_structural_table,
 )
-from benchbox.utils.query_generation import current_query_generation_hash
 
 SEEDS = (None, 1001, 1002, 7, 42, 2024, 1125143012)
 _QUERY_ID = re.compile(r"(\d+)([ab]?)")

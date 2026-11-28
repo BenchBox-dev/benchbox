@@ -6,6 +6,7 @@ import pytest
 
 from benchbox.core.expected_results import row_count_references as references
 from benchbox.core.expected_results.models import row_count_validation_record
+from benchbox.core.expected_results.query_generation import current_query_generation_stamp
 from benchbox.core.results.query_execution import normalize_row_count_validation
 from benchbox.core.results.query_status import (
     NO_REFERENCE_VALIDATION_STATUS,
@@ -16,7 +17,6 @@ from benchbox.core.results.query_status import (
 from benchbox.core.validation import stream_checks
 from benchbox.core.validation.stream_checks import QueryGeneration, decide_row_count
 from benchbox.utils.datagen_version import compute_base_constants_hash, current_datagen_stamp
-from benchbox.utils.query_generation import current_query_generation_stamp
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 

@@ -312,7 +312,7 @@ def require_current_generation(reference: RowCountReference, name: str) -> None:
 
 
 def _require_current_query_generation(reference: RowCountReference, name: str) -> None:
-    from benchbox.utils.query_generation import current_query_generation_hash
+    from benchbox.core.expected_results.query_generation import current_query_generation_hash
 
     if reference.benchmark in INTEGRITY_BENCHMARKS and reference.query_generation_hash != current_query_generation_hash(
         reference.benchmark

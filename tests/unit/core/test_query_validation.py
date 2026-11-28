@@ -227,7 +227,7 @@ class TestTPCHSubscaleRowCountReference:
         assert not too_many.is_valid and too_many.check == "structural"
 
     def test_reference_files_are_well_formed_and_bound_to_the_query_generation(self):
-        from benchbox.utils.query_generation import current_query_generation_stamp
+        from benchbox.core.expected_results.query_generation import current_query_generation_stamp
 
         for scale_factor in reference_scales("tpch"):
             payload = json.loads(reference_path("tpch", scale_factor).read_text(encoding="utf-8"))
