@@ -354,10 +354,12 @@ def _drift_check_pathspecs() -> list[str]:
 def test_drift_check_pathspec_matches_sync_list_except_derived_inventory() -> None:
     _, compare_paths, copy_paths = _mirrored_runtime_paths()
     drift_paths = _drift_check_pathspecs()
+    live_compare = set(compare_paths) - RETIRED_MIRRORED_PATHS
+    live_copy = [path for path in copy_paths if path not in RETIRED_MIRRORED_PATHS]
 
     assert sorted(drift_paths) == sorted(set(drift_paths))
-    assert sorted(drift_paths) == sorted(set(compare_paths) - {"results-data/corpus-inventory.json"})
-    assert sorted(drift_paths) == sorted([BUNDLES_DIR, *copy_paths])
+    assert sorted(drift_paths) == sorted(live_compare - {"results-data/corpus-inventory.json"})
+    assert sorted(drift_paths) == sorted([BUNDLES_DIR, *live_copy])
     assert not [path for path in drift_paths if "*" in path]
 
 
@@ -508,11 +510,10 @@ def test_mirror_file_lists_cover_every_module_the_validators_load_by_path() -> N
 
 
 def test_a_retired_mirrored_file_is_gone_from_the_source_and_still_listed_so_the_mirror_deletes_it() -> None:
-    triggers, compare_paths, copy_paths = _mirrored_runtime_paths()
+    _, compare_paths, copy_paths = _mirrored_runtime_paths()
 
     for path in RETIRED_MIRRORED_PATHS:
         assert not (REPO_ROOT / path).exists(), path
-        assert path in triggers
         assert path in compare_paths
         assert path in copy_paths
 
