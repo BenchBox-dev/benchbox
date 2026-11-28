@@ -30,6 +30,8 @@ from benchbox.core.tpcdi.schema import (
     get_all_create_table_sql,
 )
 from benchbox.core.tpcdi.sources.digen import DigenResult, generate as generate_digen_sources
+from benchbox.core.tpcdi.validity import Validity, combined_status, evaluate_validity
+from benchbox.core.tpcdi.visibility import VisibilityRunner
 from benchbox.utils.run_deadline import enter_run_phase, own_run_deadline
 
 DIGEN_SOURCE_DIRECTORY = "digen"
@@ -73,8 +75,8 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
         self.tables: dict[str, Any] = {}
         self._digen_staging_dir: Optional[Path] = None
         self._initialization: Optional[PhaseRecord] = None
-        self._measured_phases: Optional[tuple[PhaseRecord, tuple[PhaseRecord, ...]]] = None
-        self._power_phases: Optional[tuple[PhaseRecord, tuple[PhaseRecord, ...], AuditOutcome]] = None
+        self._measured_phases: Optional[tuple[PhaseRecord, tuple[PhaseRecord, ...], VisibilityRunner]] = None
+        self._power_phases: Optional[tuple[PhaseRecord, tuple[PhaseRecord, ...], AuditOutcome, Validity]] = None
 
     def _sync_output_dir_to_generators(self, path: Any) -> None:
         super()._sync_output_dir_to_generators(path)
@@ -111,18 +113,28 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
         record, self._initialization = self._initialization, None
         return record
 
-    def record_measured_phases(self, initialization: PhaseRecord, phases: tuple[PhaseRecord, ...]) -> None:
-        self._measured_phases = (initialization, phases)
+    def record_measured_phases(
+        self, initialization: PhaseRecord, phases: tuple[PhaseRecord, ...], visibility: VisibilityRunner
+    ) -> None:
+        self._measured_phases = (initialization, phases, visibility)
 
     def complete_power_test(self, adapter: Any, connection: Any) -> Optional[tuple[str, str, int]]:
         if self._measured_phases is None:
             return None
-        (initialization, phases), self._measured_phases = self._measured_phases, None
-        last = phases[-1]
-        outcome = run_audit(
-            connection, self.digen_staging_dir, latest_batch=last.batch_id, platform=adapter.get_target_dialect()
+        (initialization, phases, visibility), self._measured_phases = self._measured_phases, None
+        first, last = phases[0], phases[-1]
+        try:
+            visibility.run_audit_query()
+            outcome = run_audit(
+                connection, self.digen_staging_dir, latest_batch=last.batch_id, platform=adapter.get_target_dialect()
+            )
+        finally:
+            visibility.close()
+        validity = evaluate_validity(
+            (initialization, *phases),
+            visibility.evidence(iu1_start=first.completed_mono, iu2_end=last.completed_mono),
         )
-        self.record_power_phases(initialization, phases, outcome)
+        self.record_power_phases(initialization, phases, outcome, validity)
         return (
             initialization.completed_at.isoformat(),
             last.completed_at.isoformat(),
@@ -130,9 +142,9 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
         )
 
     def record_power_phases(
-        self, initialization: PhaseRecord, phases: tuple[PhaseRecord, ...], outcome: AuditOutcome
+        self, initialization: PhaseRecord, phases: tuple[PhaseRecord, ...], outcome: AuditOutcome, validity: Validity
     ) -> None:
-        self._power_phases = (initialization, phases, outcome)
+        self._power_phases = (initialization, phases, outcome, validity)
 
     def create_enhanced_benchmark_result(
         self,
@@ -146,16 +158,19 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
         **kwargs: Any,
     ) -> Any:
         if self._power_phases is not None:
-            (initialization, measured, outcome), self._power_phases = self._power_phases, None
+            (initialization, measured, outcome, validity), self._power_phases = self._power_phases, None
+            status = combined_status(outcome, validity)
             incoming = normalize_validation_status(kwargs.get("validation_status"))
             if incoming not in CLI_FAILURE_VALIDATION_STATUSES and (
-                outcome.status == FAILED_STATUS or not validation_status_is_non_clean(incoming)
+                status == FAILED_STATUS or not validation_status_is_non_clean(incoming)
             ):
-                kwargs["validation_status"] = outcome.status
+                kwargs["validation_status"] = status
             kwargs["validation_details"] = {
                 **(kwargs.get("validation_details") or {}),
                 TPCDI_AUDIT_BLOCK_KEY: {
                     **outcome.as_block(),
+                    "status": status,
+                    "validity": validity.as_block(),
                     "phases": [record.as_dict() for record in (initialization, *measured)],
                 },
             }

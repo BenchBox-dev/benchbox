@@ -38,6 +38,7 @@ Every site in `tpch`, `tpcds`, `tpcdi` and `throughput` that starts or stops a m
 | TPC-DI 7.2.3.6 | The initialization phase is not timed. |
 | TPC-DI 7.2.4.1, 7.2.4.3 | The Historical Load transforms Batch1 Source Data read from the Staging Area and is timed per 7.5.2. |
 | TPC-DI 7.2.5.4 | Each Incremental Update is timed per 7.5.3. |
+| TPC-DI 7.3.3 to 7.3.7 | Data Visibility queries run on a separate session during the Incremental Updates, at no more than 300 s intervals; BenchBox schedules 60 s plus 5 s of lateness. |
 | TPC-DI 7.4.2 | The batch validation query is included in the phase it runs in. |
 | TPC-DI 7.5.1 to 7.5.3 | Phase times are differences of completion timestamps from the PCR records in `DImessages`. |
 | TPC-DI 1.2.2.4 | The automated audit phase is not timed. |
@@ -85,6 +86,15 @@ Deviation column: tracker item id, `none`, `K<n>` (known deviations) or `F<n>` (
 | D9 | `tpcds/benchmark/runner.py` `TPCDSBenchmark._execute_power_test_query` | 7.4.7.1 | `time.time()` before `get_query`: generation and translation inside; `execute`, `fetchall` | n/a | F4 |
 | D10 | `tpcds/benchmark/runner.py` `TPCDSBenchmark.run_power_test` | 7.4.5.1 | 99-query loop as `total_time` (`time.time()`); Power@Size from that total | Warm-up | F4 |
 | D11 | `tpcds/benchmark/runner.py` `TPCDSBenchmark.run_official_benchmark`, `_finalize_benchmark_result`, `run_throughput_test`, `_aggregate_stream_results` | none | Wall-clock spans of the legacy run, routed throughput wrapper (reports `routed.total_time`) and stream aggregate | n/a | none; F4 |
+
+### TPC-DI
+
+| # | File and symbol | Clause | Inside | Outside | Deviation |
+|---|---|---|---|---|---|
+| I1 | `tpcdi/phases.py` `complete_phase` | 7.4.2, 7.5.1 to 7.5.3 | Appendix B validation, then `mono_time()` taken once the validation statements committed; the PCR timestamp is read back for the record | Initialization (batch 0) interval start only | none |
+| I2 | `tpcdi/platform_power.py` `execute_tpcdi_power_test`, `timed_row` | 7.5.2, 7.5.3, 7.2.5.4 | `TDI_HISTORICAL` = historical PCR minus initialization PCR; `TDI_INCREMENTAL_1` = update 1 PCR minus historical PCR; `TDI_INCREMENTAL_2` = update 2 PCR minus update 1 PCR, all monotonic | Opening the visibility session, the audit | none |
+| I3 | `tpcdi/visibility.py` `VisibilityRunner` | 7.3.3 to 7.3.7, 7.2.6.5 | Visibility_1 at the start of update 1, Visibility_2 every 60 s and at the update boundary, on a second session; gaps are start to start in `mono_time()` and are late above 65 s | Queries inside the update intervals are not subtracted from them; the final Visibility_1 at the audit start | none |
+| I4 | `tpcdi/validity.py` `evaluate_validity`, `incremental_timings` | 7.1.1, 7.2.2, 7.5.3.3 | `reported = ceil(elapsed x 10) / 10`; an update above 3600 s makes the run FAILED; under 1800 s is flagged | Wall clocks (used for event timestamps only) | none |
 
 ## Not a measured interval
 
@@ -155,7 +165,7 @@ Cost, not a deviation: `perf-tpch-rf1-bulk-load-20261031` (batched `INSERT ... V
 | F4 | Legacy `TPCDSBenchmark.run_power_test` and `_execute_power_test_query` use `time.time()`, time `get_query` inside the interval and compute Power@Size from whole-run elapsed time; `PlatformAdapter.run_power_test` and `run_official_benchmark` reach them. |
 | F5 | TPC-DS maintenance `total_time` runs from the first function start to the last function end, so it includes the per-function connect, row-count reads and staging cleanup between intervals. |
 | F6 | `TPCDSOfficialBenchmark.run_official_benchmark` runs power, throughput and maintenance once each; 7.4.6.2 and 7.4.7.6 to 7.4.7.8 put Throughput Test 2 after Data Maintenance Test 1; not modelled. |
-| F8 | TPC-DI 7.5.1 to 7.5.3 take phase times from PCR records in `DImessages`; `tpcdi` writes none, so phase times come from BenchBox clocks. |
+| F8 | TPC-DI 7.5.1 to 7.5.3 take phase times from PCR records in `DImessages`; Appendix B writes them and BenchBox stores each timestamp in the phase record, but the durations come from the monotonic clock read when the validation committed (I1), because wall clocks can step. |
 
 ## Refresh path
 
