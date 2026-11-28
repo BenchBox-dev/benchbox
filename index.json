@@ -29977,7 +29977,12 @@
       "title": "Generate TPC-DS at SF >= 1 in benchbox-datagen on the upstream tpcdsgen crates"
     },
     "datagen-lib-tpcds-dsqgen": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-29T13:13:59Z",
+        "generation": "03dd34588d4a42a7898c61b10f905f3d",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af"
+      },
       "needs": [
         "tpc-query-conformance-corpus",
         "datagen-lib-tpcds-fractional-and-refresh",
@@ -29986,7 +29991,7 @@
         "tpc-query-corpus-explicit-parameters-and-replay-rule"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Implement TPC-DS dsqgen (template language, distributions, streams) in benchbox-datagen"
     },
     "datagen-lib-tpcds-fractional-and-refresh": {
