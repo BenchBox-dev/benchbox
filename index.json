@@ -55356,12 +55356,17 @@
       "title": "TPC-DI step 22: incremental updates, dimension tables"
     },
     "tpcdi-incremental-facts-20261121": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-29T03:57:32Z",
+        "generation": "ad22b2e5ec4a44399dd36e55a3f7aa5d",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d9c82d4657b7a4cbcbfb0e73"
+      },
       "needs": [
         "tpcdi-incremental-dimensions-20261121"
       ],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "TPC-DI step 23: incremental updates, trade and fact tables"
     },
     "tpcdi-memory-test-delta-refactor": {
