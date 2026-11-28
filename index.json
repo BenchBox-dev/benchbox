@@ -5859,7 +5859,7 @@
         }
       },
       "integration_branch": "feat/explorer-data-r2",
-      "integration_head": "4e0957b501585680949c1b183567124d07cc5216",
+      "integration_head": "57ca3937bd347213415c18f16b3e8c8901725a8c",
       "integration_log": [
         {
           "at": "2026-11-27T16:35:55Z",
@@ -6087,6 +6087,30 @@
             "crr-d2-observed-engine-sql-platforms"
           ],
           "seq": 5
+        },
+        {
+          "at": "2026-11-28T09:57:31Z",
+          "changed_files": [
+            "_project/planning/visible_metrics.yaml",
+            "_project/scripts/explorer_pipeline/medians.py",
+            "benchbox/core/results/corpus_rule.py",
+            "docs/internal/adr/adr-corpus-derived-outcome-rule.md",
+            "results-data/CORPUS_NOTES.md",
+            "results-data/compliance-classes.json",
+            "scripts/corpus_compliance_snapshot.py",
+            "tests/unit/core/results/test_corpus_rule.py",
+            "tests/unit/scripts/explorer_pipeline/test_corpus_read_model.py",
+            "tests/unit/scripts/test_corpus_compliance_snapshot.py",
+            "tests/unit/scripts/test_validate_submission.py"
+          ],
+          "head": "57ca3937bd347213415c18f16b3e8c8901725a8c",
+          "kind": "fix",
+          "op_id": "ef20e86b3d6759c67742beb08060f894",
+          "previous_head": "4e0957b501585680949c1b183567124d07cc5216",
+          "requires_acceptance": [
+            "crr-b3-pipeline-emits-rule-outcome-and-medians"
+          ],
+          "seq": 6
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-explorer-data-r2",
