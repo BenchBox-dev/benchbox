@@ -52886,7 +52886,9 @@
     },
     "sqlglot-rewrites-into-fork-deferral-1": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "sqlglot-cutover-translated-scripts-engine-verification-20261126"
+      ],
       "priority": "low",
       "status": "open",
       "title": "Move the remaining local SQL translator logic (runtime generator patches, post-passes, QuestDB rewriter, cleanup regexes) into the SQLGlot fork"
