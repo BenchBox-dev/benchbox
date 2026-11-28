@@ -17400,7 +17400,20 @@
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
-      "final_pr_history": [],
+      "final_pr": {
+        "head": "930aecb9bd7815dd9946af683c8315c55a1d7ba3",
+        "node_id": "PR_kwDOQ7J64c8AAAABSkD9uA",
+        "number": 4571,
+        "repository": "https://github.com/BenchBox-dev/BenchBox.git"
+      },
+      "final_pr_history": [
+        {
+          "at": "2026-11-28T13:44:42Z",
+          "head": "930aecb9bd7815dd9946af683c8315c55a1d7ba3",
+          "op_id": "da4f487f45004735b69c3bbc69a77fb3",
+          "previous_head": null
+        }
+      ],
       "integrated_members": {
         "tpcdi-17-duckdb-incremental-and-full-audit-20261120": {
           "accepted_head": "ec4c2b6889178ad63da91fcddc2ec43a295c2746",
