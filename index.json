@@ -5877,7 +5877,7 @@
         }
       },
       "integration_branch": "feat/explorer-data-r2",
-      "integration_head": "4dced48a917e7900ce5dc8a377f51e79eef7821a",
+      "integration_head": "0a371962467b2b54db3125392df9e3f6c43edfbc",
       "integration_log": [
         {
           "at": "2026-11-27T16:35:55Z",
@@ -6173,6 +6173,20 @@
             "crr-b3-pipeline-emits-rule-outcome-and-medians"
           ],
           "seq": 8
+        },
+        {
+          "at": "2026-11-28T16:13:20Z",
+          "changed_files": [
+            "_project/design/browser-duckdb-schema.sql"
+          ],
+          "head": "0a371962467b2b54db3125392df9e3f6c43edfbc",
+          "kind": "fix",
+          "op_id": "ad8301b3bf19d46bd66a91437681da80",
+          "previous_head": "4dced48a917e7900ce5dc8a377f51e79eef7821a",
+          "requires_acceptance": [
+            "crr-b3-pipeline-emits-rule-outcome-and-medians"
+          ],
+          "seq": 9
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-explorer-data-r2",
